@@ -56,9 +56,14 @@ class _RootRouter extends StatelessWidget {
 
     if (state.loading) {
       return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: AppColors.bg,
         body: Center(
-          child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+          child: Image.asset(
+            'assets/images/pulguinha_logo.png',
+            width: 280,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
         ),
       );
     }
