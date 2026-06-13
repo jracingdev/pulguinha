@@ -53,16 +53,24 @@ flutter run \
 
 O workflow `.github/workflows/deploy.yml` faz build e deploy automático a cada push na branch `main`.
 
-### Configuração no GitHub
+> **Se o site mostra o conteúdo deste README em vez do app**, a causa é quase sempre a origem do Pages estar em **"Deploy from a branch"** em vez de **GitHub Actions**. Veja a seção abaixo.
 
-1. **Settings → Pages → Build and deployment**
-   - Source: **GitHub Actions**
-2. **Settings → Secrets and variables → Actions** — adicione:
+### Configuração obrigatória no GitHub (UI)
+
+1. Abra **Settings → Pages → Build and deployment**
+   - **Source:** selecione **GitHub Actions** (não use "Deploy from a branch" / `main` / `(root)`)
+2. Em **Settings → Pages → Custom domain**
+   - **Remova** qualquer valor inválido (ex.: `pulguinha` sem `.com`) e deixe o campo **vazio**
+   - Salve; o banner de erro do domínio deve sumir
+3. (Opcional, para Supabase em produção) **Settings → Secrets and variables → Actions** — adicione:
    - `SUPABASE_URL` — URL do projeto Supabase
-   - `SUPABASE_ANON_KEY` — chave anon pública
-3. Faça push para `main` (ou dispare manualmente em **Actions → Deploy GitHub Pages**)
+   - `SUPABASE_ANON_KEY` — chave anon pública  
+   Sem esses secrets o app publica em **modo demo** (comportamento esperado).
+4. Dispare o deploy:
+   - **Actions → Deploy GitHub Pages → Run workflow**, ou
+   - faça push para `main`
 
-O app ficará disponível em:
+Aguarde o workflow terminar com sucesso (check verde). O app ficará em:
 
 **https://jracingdev.github.io/pulguinha/**
 
