@@ -93,41 +93,34 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            HorarioGrid(
               children: state.horarios.map((h) {
                 final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
                 final lotado = ags.length >= h.capacidade;
                 final eu = state.agendamentos.where((ag) => ag.alunoId == aluno.id && ag.data == dia.iso && ag.horarioId == h.id).firstOrNull;
-                return SizedBox(
-                  width: (MediaQuery.of(context).size.width - 88) / 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: eu != null ? AppColors.neon.withValues(alpha: 0.1) : AppColors.card2,
-                      border: Border.all(color: eu != null ? AppColors.neon : AppColors.border, width: eu != null ? 2 : 1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(h.hora, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: eu != null ? AppColors.neon : AppColors.white)),
-                        Text('👥 ${ags.length}/${h.capacidade}', style: TextStyle(fontSize: 11, color: lotado ? AppColors.red : AppColors.gray)),
-                        const SizedBox(height: 6),
-                        if (eu != null)
-                          TextButton(
+                return HorarioSlotCard(
+                  hora: h.hora,
+                  ocupados: ags.length,
+                  capacidade: h.capacidade,
+                  selected: eu != null,
+                  enabled: eu != null || !lotado,
+                  onTap: eu != null || lotado ? null : () => _agendarDireto(state, aluno, dia.iso, h),
+                  footer: eu != null
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
                             onPressed: () => _cancelar(context, state, eu.id),
+                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                             child: const Text('Cancelar', style: TextStyle(fontSize: 10, color: AppColors.red, fontWeight: FontWeight.w700)),
-                          )
-                        else
-                          TextButton(
-                            onPressed: lotado ? null : () => _agendarDireto(state, aluno, dia.iso, h),
-                            child: Text(lotado ? 'Lotada' : '+ Entrar', style: TextStyle(fontSize: 10, color: lotado ? AppColors.grayDim : AppColors.neon, fontWeight: FontWeight.w700)),
                           ),
-                      ],
-                    ),
-                  ),
+                        )
+                      : Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            lotado ? 'Lotada' : 'Toque para entrar',
+                            style: TextStyle(fontSize: 10, color: lotado ? AppColors.grayDim : AppColors.neon, fontWeight: FontWeight.w700),
+                          ),
+                        ),
                 );
               }).toList(),
             ),

@@ -37,7 +37,7 @@ class _PublicScreenState extends State<PublicScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Column(
             children: [
               _buildHero(),
@@ -53,7 +53,7 @@ class _PublicScreenState extends State<PublicScreen> {
 
   Widget _buildHero() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
           Container(
@@ -93,24 +93,19 @@ class _PublicScreenState extends State<PublicScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle(icon: '📋', title: 'Horários disponíveis'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              HorarioGrid(
                 children: state.horarios.map((h) {
-                  return SizedBox(
-                    width: (MediaQuery.of(context).size.width - 72) / 2,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(10)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(h.hora, style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.neon, fontSize: 15)),
-                          Text(h.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
-                          Text('até ${h.capacidade} alunos', style: const TextStyle(fontSize: 11, color: AppColors.grayDim)),
-                        ],
-                      ),
-                    ),
+                  final ocupadosHoje = state.agendamentosPorDataHorario(MockData.today, h.id).length;
+                  return HorarioInfoCard(
+                    hora: h.hora,
+                    dias: h.dias,
+                    capacidade: h.capacidade,
+                    ocupadosHoje: ocupadosHoje,
+                    onTap: () => setState(() {
+                      step = 'agendar';
+                      horarioId = '${h.id}';
+                      data = MockData.today;
+                    }),
                   );
                 }).toList(),
               ),
@@ -182,7 +177,7 @@ class _PublicScreenState extends State<PublicScreen> {
           children: [
             _navBtn(() => setState(() => semana--)),
             Text(DateHelper.labelSemana(dias), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray)),
-            _navBtn(() => setState(() => semana++)),
+            _navBtn(() => setState(() => semana++), next: true),
           ],
         ),
         const SizedBox(height: 16),
@@ -197,11 +192,11 @@ class _PublicScreenState extends State<PublicScreen> {
     );
   }
 
-  Widget _navBtn(VoidCallback onTap) {
+  Widget _navBtn(VoidCallback onTap, {bool next = false}) {
     return IconButton(
       onPressed: onTap,
       style: IconButton.styleFrom(backgroundColor: AppColors.card2, side: const BorderSide(color: AppColors.border)),
-      icon: const Icon(Icons.chevron_left, color: AppColors.white),
+      icon: Icon(next ? Icons.chevron_right : Icons.chevron_left, color: AppColors.white),
     );
   }
 
@@ -234,36 +229,21 @@ class _PublicScreenState extends State<PublicScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            HorarioGrid(
               children: state.horarios.map((h) {
                 final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
                 final lotado = ags.length >= h.capacidade;
                 final sel = horarioId == '${h.id}' && data == dia.iso;
-                return GestureDetector(
-                  onTap: lotado
-                      ? null
-                      : () => setState(() {
-                            horarioId = '${h.id}';
-                            data = dia.iso;
-                          }),
-                  child: Container(
-                    width: (MediaQuery.of(context).size.width - 88) / 2,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: sel ? AppColors.neon.withValues(alpha: 0.12) : AppColors.card2,
-                      border: Border.all(color: sel ? AppColors.neon : lotado ? AppColors.red.withValues(alpha: 0.2) : AppColors.border, width: sel ? 2 : 1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(h.hora, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: sel ? AppColors.neon : AppColors.white)),
-                        Text('${ags.length}/${h.capacidade} ${lotado ? "LOTADO" : "vagas"}', style: TextStyle(fontSize: 11, color: lotado ? AppColors.red : AppColors.gray)),
-                      ],
-                    ),
-                  ),
+                return HorarioSlotCard(
+                  hora: h.hora,
+                  ocupados: ags.length,
+                  capacidade: h.capacidade,
+                  selected: sel,
+                  enabled: !lotado,
+                  onTap: () => setState(() {
+                    horarioId = '${h.id}';
+                    data = dia.iso;
+                  }),
                 );
               }).toList(),
             ),

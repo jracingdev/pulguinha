@@ -250,6 +250,261 @@ class DangerButton extends StatelessWidget {
   }
 }
 
+enum HorarioOccupancy { available, almostFull, full }
+
+HorarioOccupancy horarioOccupancy(int ocupados, int capacidade) {
+  if (ocupados >= capacidade) return HorarioOccupancy.full;
+  if (ocupados / capacidade >= 0.75) return HorarioOccupancy.almostFull;
+  return HorarioOccupancy.available;
+}
+
+Color horarioBarColor(int ocupados, int capacidade) {
+  final pct = capacidade > 0 ? ocupados / capacidade : 0.0;
+  if (pct >= 1) return AppColors.red;
+  if (pct >= 0.75) return AppColors.yellow;
+  return AppColors.neon;
+}
+
+BadgeVariant horarioBadgeVariant(HorarioOccupancy level) {
+  return switch (level) {
+    HorarioOccupancy.full => BadgeVariant.red,
+    HorarioOccupancy.almostFull => BadgeVariant.yellow,
+    HorarioOccupancy.available => BadgeVariant.neon,
+  };
+}
+
+String horarioBadgeLabel(HorarioOccupancy level, int vagasRestantes) {
+  return switch (level) {
+    HorarioOccupancy.full => 'LOTADO',
+    HorarioOccupancy.almostFull => '$vagasRestantes vagas',
+    HorarioOccupancy.available => '$vagasRestantes vagas',
+  };
+}
+
+class HorarioGrid extends StatelessWidget {
+  const HorarioGrid({super.key, required this.children, this.spacing = 8});
+
+  final List<Widget> children;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth < 280 ? 1 : 2;
+        final itemWidth = cols == 1 ? constraints.maxWidth : (constraints.maxWidth - spacing) / 2;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: children.map((child) => SizedBox(width: itemWidth, child: child)).toList(),
+        );
+      },
+    );
+  }
+}
+
+class HorarioOccupancyBar extends StatelessWidget {
+  const HorarioOccupancyBar({super.key, required this.ocupados, required this.capacidade});
+
+  final int ocupados;
+  final int capacidade;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = capacidade > 0 ? (ocupados / capacidade).clamp(0.0, 1.0) : 0.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: LinearProgressIndicator(
+        value: pct,
+        minHeight: 3,
+        backgroundColor: AppColors.card2,
+        color: horarioBarColor(ocupados, capacidade),
+      ),
+    );
+  }
+}
+
+class HorarioSlotCard extends StatefulWidget {
+  const HorarioSlotCard({
+    super.key,
+    required this.hora,
+    required this.ocupados,
+    required this.capacidade,
+    this.selected = false,
+    this.enabled = true,
+    this.onTap,
+    this.subtitle,
+    this.footer,
+    this.showProgress = true,
+    this.showBadge = true,
+  });
+
+  final String hora;
+  final int ocupados;
+  final int capacidade;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback? onTap;
+  final String? subtitle;
+  final Widget? footer;
+  final bool showProgress;
+  final bool showBadge;
+
+  @override
+  State<HorarioSlotCard> createState() => _HorarioSlotCardState();
+}
+
+class _HorarioSlotCardState extends State<HorarioSlotCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = horarioOccupancy(widget.ocupados, widget.capacidade);
+    final lotado = level == HorarioOccupancy.full;
+    final vagas = widget.capacidade - widget.ocupados;
+    final borderColor = widget.selected
+        ? AppColors.neon
+        : lotado
+            ? AppColors.red.withValues(alpha: 0.25)
+            : AppColors.border;
+
+    return GestureDetector(
+      onTapDown: widget.enabled && widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.enabled && widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.enabled ? () => setState(() => _pressed = false) : null,
+      onTap: widget.enabled ? widget.onTap : null,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: widget.selected ? AppColors.neon.withValues(alpha: 0.12) : AppColors.card2,
+            border: Border.all(color: borderColor, width: widget.selected ? 2 : 1),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: widget.selected
+                ? [BoxShadow(color: AppColors.neon.withValues(alpha: 0.15), blurRadius: 8)]
+                : null,
+          ),
+          child: Opacity(
+            opacity: lotado && !widget.selected ? 0.55 : 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.hora,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          color: widget.selected ? AppColors.neon : AppColors.white,
+                        ),
+                      ),
+                    ),
+                    if (widget.showBadge)
+                      PulguinhaBadge(
+                        label: horarioBadgeLabel(level, vagas.clamp(0, widget.capacidade)),
+                        variant: horarioBadgeVariant(level),
+                      ),
+                  ],
+                ),
+                if (widget.subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(widget.subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.ocupados}/${widget.capacidade} ${lotado ? "LOTADO" : "ocupadas"}',
+                  style: TextStyle(fontSize: 11, color: lotado ? AppColors.red : AppColors.gray),
+                ),
+                if (widget.showProgress) ...[
+                  const SizedBox(height: 6),
+                  HorarioOccupancyBar(ocupados: widget.ocupados, capacidade: widget.capacidade),
+                ],
+                if (widget.footer != null) ...[
+                  const SizedBox(height: 6),
+                  widget.footer!,
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class HorarioInfoCard extends StatefulWidget {
+  const HorarioInfoCard({
+    super.key,
+    required this.hora,
+    required this.dias,
+    required this.capacidade,
+    required this.ocupadosHoje,
+    this.onTap,
+  });
+
+  final String hora;
+  final String dias;
+  final int capacidade;
+  final int ocupadosHoje;
+  final VoidCallback? onTap;
+
+  @override
+  State<HorarioInfoCard> createState() => _HorarioInfoCardState();
+}
+
+class _HorarioInfoCardState extends State<HorarioInfoCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = horarioOccupancy(widget.ocupadosHoje, widget.capacidade);
+    final vagas = (widget.capacidade - widget.ocupadosHoje).clamp(0, widget.capacidade);
+
+    return GestureDetector(
+      onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.onTap != null ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.onTap != null ? () => setState(() => _pressed = false) : null,
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.card2,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(widget.hora, style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.neon, fontSize: 15)),
+                  ),
+                  PulguinhaBadge(label: horarioBadgeLabel(level, vagas), variant: horarioBadgeVariant(level)),
+                ],
+              ),
+              Text(widget.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+              Text('até ${widget.capacidade} alunos', style: const TextStyle(fontSize: 10, color: AppColors.grayDim, height: 1.6)),
+              const SizedBox(height: 6),
+              HorarioOccupancyBar(ocupados: widget.ocupadosHoje, capacidade: widget.capacidade),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<T?> showPulguinhaModal<T>({
   required BuildContext context,
   required String title,

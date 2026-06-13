@@ -90,72 +90,51 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
             const Divider(height: 1, color: AppColors.border),
             Padding(
               padding: const EdgeInsets.all(14),
-              child: Wrap(
+              child: HorarioGrid(
                 spacing: 10,
-                runSpacing: 10,
                 children: state.horarios.map((h) {
                   final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
-                  final pct = ags.length / h.capacidade;
-                  final lotado = ags.length >= h.capacidade;
                   final isVer = verAula?.d == dia.iso && verAula?.h == h.id;
-                  return SizedBox(
-                    width: (MediaQuery.of(context).size.width - 72) / 2,
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: ags.isEmpty ? null : () => setState(() => verAula = isVer ? null : (d: dia.iso, h: h.id)),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.card2,
-                              border: Border.all(color: ags.isNotEmpty ? AppColors.neon.withValues(alpha: 0.2) : AppColors.border),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(h.hora, style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.neon, fontSize: 15)),
-                                Text('👥 ${ags.length}/${h.capacidade}', style: TextStyle(fontSize: 11, color: lotado ? AppColors.red : AppColors.gray)),
-                                const SizedBox(height: 6),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(99),
-                                  child: LinearProgressIndicator(value: pct.clamp(0, 1), minHeight: 3, backgroundColor: const Color(0xFF1A1A1A), color: pct >= 0.9 ? AppColors.red : AppColors.neon),
+                  return Column(
+                    children: [
+                      HorarioSlotCard(
+                        hora: h.hora,
+                        ocupados: ags.length,
+                        capacidade: h.capacidade,
+                        selected: isVer,
+                        enabled: ags.isNotEmpty,
+                        onTap: ags.isEmpty ? null : () => setState(() => verAula = isVer ? null : (d: dia.iso, h: h.id)),
+                      ),
+                      if (isVer)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111111),
+                            border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
+                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
+                          ),
+                          child: Column(
+                            children: ags.map((ag) {
+                              final aluno = state.alunoPorId(ag.alunoId);
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Row(
+                                  children: [
+                                    PulguinhaAvatar(initials: aluno?.avatar ?? ag.nomeAluno.substring(0, 2).toUpperCase(), size: AvatarSize.sm),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(ag.nomeAluno.split(' ').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white))),
+                                    TextButton(
+                                      onPressed: () => _cancelar(context, state, ag.id),
+                                      child: const Text('Cancelar', style: TextStyle(fontSize: 11, color: AppColors.red, fontWeight: FontWeight.w700)),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            }).toList(),
                           ),
                         ),
-                        if (isVer)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF111111),
-                              border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
-                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                            ),
-                            child: Column(
-                              children: ags.map((ag) {
-                                final aluno = state.alunoPorId(ag.alunoId);
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Row(
-                                    children: [
-                                      PulguinhaAvatar(initials: aluno?.avatar ?? ag.nomeAluno.substring(0, 2).toUpperCase(), size: AvatarSize.sm),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: Text(ag.nomeAluno.split(' ').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white))),
-                                      TextButton(
-                                        onPressed: () => _cancelar(context, state, ag.id),
-                                        child: const Text('Cancelar', style: TextStyle(fontSize: 11, color: AppColors.red, fontWeight: FontWeight.w700)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   );
                 }).toList(),
               ),
