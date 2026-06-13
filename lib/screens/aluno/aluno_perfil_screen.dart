@@ -1,17 +1,35 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/qr_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
+import 'package:pulguinha/widgets/qr_widgets.dart';
 
 class AlunoPerfilScreen extends StatelessWidget {
   const AlunoPerfilScreen({super.key, required this.usuario, required this.onLogout});
 
   final Usuario usuario;
   final VoidCallback onLogout;
+
+  Future<void> _pickPhoto(BuildContext context, AppState state, int alunoId) async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 70);
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    state.atualizarFotoAluno(alunoId, base64Encode(bytes));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto atualizada!'), behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +55,40 @@ class AlunoPerfilScreen extends StatelessWidget {
         PulguinhaCard(
           child: Column(
             children: [
-              PulguinhaAvatar(initials: aluno.avatar, size: AvatarSize.lg),
+              Stack(
+                children: [
+                  PulguinhaAvatar(initials: aluno.avatar, size: AvatarSize.lg, fotoBase64: aluno.foto),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: InkWell(
+                      onTap: () => _pickPhoto(context, state, aluno.id),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: AppColors.neon, borderRadius: BorderRadius.circular(20)),
+                        child: const Icon(Icons.camera_alt, size: 14, color: Color(0xFF111111)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               Text(aluno.nome, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppColors.white)),
               Text(aluno.email, style: const TextStyle(fontSize: 13, color: AppColors.gray)),
               Text(aluno.telefone, style: const TextStyle(fontSize: 13, color: AppColors.gray)),
+              if (aluno.dataNascimento != null)
+                Text('🎂 ${DateHelper.formatarAniversario(aluno.dataNascimento!)}', style: const TextStyle(fontSize: 12, color: AppColors.yellow)),
               const SizedBox(height: 12),
-              PulguinhaBadge(label: aluno.status, variant: aluno.status == 'Ativo' ? BadgeVariant.neon : BadgeVariant.red),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PulguinhaBadge(label: aluno.status, variant: aluno.status == 'Ativo' ? BadgeVariant.neon : BadgeVariant.red),
+                  if (aluno.streakPresenca >= 2) ...[
+                    const SizedBox(width: 8),
+                    PulguinhaBadge(label: '🔥 ${aluno.streakPresenca}', variant: BadgeVariant.yellow),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -61,10 +106,40 @@ class AlunoPerfilScreen extends StatelessWidget {
                   _infoBox('Status', aluno.status),
                   _infoBox('Vencimento', DateHelper.formatarData(aluno.vencimento)),
                   _infoBox('Dias restantes', d < 0 ? '${d.abs()}d atrasado' : d == 0 ? 'Hoje!' : '${d}d', highlight: d < 0),
+                  if (aluno.pulguinhaPoints > 0) _infoBox('Points', '${aluno.pulguinhaPoints} ⭐'),
                 ],
               ),
             ],
           ),
+        ),
+        if (!aluno.anamnese.isEmpty) ...[
+          const SizedBox(height: 16),
+          PulguinhaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionTitle(icon: '🏥', title: 'Anamnese'),
+                if (aluno.anamnese.objetivoTreino.isNotEmpty) _anamneseRow('Objetivo', aluno.anamnese.objetivoTreino),
+                if (aluno.anamnese.nivelExperiencia.isNotEmpty) _anamneseRow('Nível', aluno.anamnese.nivelExperiencia),
+                if (aluno.anamnese.restricoesMedicas.isNotEmpty) _anamneseRow('Restrições', aluno.anamnese.restricoesMedicas),
+                if (aluno.anamnese.medicamentos.isNotEmpty) _anamneseRow('Medicamentos', aluno.anamnese.medicamentos),
+                if (aluno.anamnese.contatoEmergencia.isNotEmpty)
+                  _anamneseRow('Emergência', '${aluno.anamnese.contatoEmergencia} · ${aluno.anamnese.telefoneEmergencia}'),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text('QR de backup (opcional)', style: TextStyle(fontSize: 12, color: AppColors.grayDim, fontWeight: FontWeight.w600)),
+          children: [
+            QrDisplayCard(
+              data: QrHelper.payloadAluno(aluno.id),
+              titulo: 'Meu QR (backup)',
+              subtitulo: 'Use apenas se o check-in da aula falhar',
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         PulguinhaCard(
@@ -72,20 +147,8 @@ class AlunoPerfilScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle(icon: '🔐', title: 'Segurança'),
-              _securityItem(context, '🔑', 'Biometria / Face ID', 'Entrar sem senha', () {
-                showEmDesenvolvimentoDialog(
-                  context,
-                  titulo: 'Biometria / Face ID',
-                  mensagem: 'Disponível na tela de login após marcar "Lembrar neste dispositivo". Autenticação biométrica nativa em breve.',
-                );
-              }),
-              const SizedBox(height: 8),
-              _securityItem(context, '🔒', 'Alterar senha', 'Atualizar credenciais', () {
-                showEmDesenvolvimentoDialog(
-                  context,
-                  titulo: 'Alterar senha',
-                  mensagem: 'A alteração de senha estará disponível quando a integração com Supabase Auth for configurada.',
-                );
+              _securityItem(context, '🔒', 'Alterar senha', 'Em breve via Supabase Auth', () {
+                showEmDesenvolvimentoDialog(context, titulo: 'Alterar senha', mensagem: 'Disponível quando Supabase Auth for configurado.');
               }),
             ],
           ),
@@ -109,6 +172,19 @@ class AlunoPerfilScreen extends StatelessWidget {
             Text(val, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: highlight ? AppColors.red : AppColors.neon)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _anamneseRow(String label, String val) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 90, child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w700))),
+          Expanded(child: Text(val, style: const TextStyle(fontSize: 12, color: AppColors.white))),
+        ],
       ),
     );
   }

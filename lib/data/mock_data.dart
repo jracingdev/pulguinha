@@ -9,11 +9,82 @@ class MockData {
   static const adminNome = 'Pulguinha Admin';
 
   static final List<Aluno> alunosIniciais = [
-    const Aluno(id: 1, nome: 'Ana Costa', email: 'ana@email.com', senha: '1234', telefone: '(11) 98765-0001', plano: 'Mensal', vencimento: '2026-06-20', status: 'Ativo', avatar: 'AC'),
-    const Aluno(id: 2, nome: 'Bruno Lima', email: 'bruno@email.com', senha: '1234', telefone: '(11) 98765-0002', plano: 'Trimestral', vencimento: '2026-08-10', status: 'Ativo', avatar: 'BL'),
-    const Aluno(id: 3, nome: 'Carla Dias', email: 'carla@email.com', senha: '1234', telefone: '(11) 98765-0003', plano: 'Mensal', vencimento: '2026-06-05', status: 'Inadimplente', avatar: 'CD'),
-    const Aluno(id: 4, nome: 'Diego Souza', email: 'diego@email.com', senha: '1234', telefone: '(11) 98765-0004', plano: 'Anual', vencimento: '2027-01-15', status: 'Ativo', avatar: 'DS'),
-    const Aluno(id: 5, nome: 'Elisa Rocha', email: 'elisa@email.com', senha: '1234', telefone: '(11) 98765-0005', plano: 'Mensal', vencimento: '2026-06-28', status: 'Ativo', avatar: 'ER'),
+    Aluno(
+      id: 1,
+      nome: 'Ana Costa',
+      email: 'ana@email.com',
+      senha: '1234',
+      telefone: '(11) 98765-0001',
+      plano: 'Mensal',
+      vencimento: '2026-06-20',
+      status: 'Ativo',
+      avatar: 'AC',
+      dataNascimento: '1995-06-13',
+      anamnese: const Anamnese(objetivoTreino: 'Condicionamento', nivelExperiencia: 'Intermediário'),
+      streakPresenca: 5,
+      pulguinhaPoints: 50,
+      dataCadastro: '2026-01-15',
+    ),
+    Aluno(
+      id: 2,
+      nome: 'Bruno Lima',
+      email: 'bruno@email.com',
+      senha: '1234',
+      telefone: '(11) 98765-0002',
+      plano: 'Trimestral',
+      vencimento: '2026-08-10',
+      status: 'Ativo',
+      avatar: 'BL',
+      dataNascimento: '1990-03-22',
+      anamnese: const Anamnese(objetivoTreino: 'Emagrecer', nivelExperiencia: 'Iniciante'),
+      streakPresenca: 3,
+      pulguinhaPoints: 30,
+      dataCadastro: '2026-02-01',
+    ),
+    const Aluno(
+      id: 3,
+      nome: 'Carla Dias',
+      email: 'carla@email.com',
+      senha: '1234',
+      telefone: '(11) 98765-0003',
+      plano: 'Mensal',
+      vencimento: '2026-06-05',
+      status: 'Inadimplente',
+      avatar: 'CD',
+      dataNascimento: '1988-11-08',
+    ),
+    Aluno(
+      id: 4,
+      nome: 'Diego Souza',
+      email: 'diego@email.com',
+      senha: '1234',
+      telefone: '(11) 98765-0004',
+      plano: 'Anual',
+      vencimento: '2027-01-15',
+      status: 'Ativo',
+      avatar: 'DS',
+      dataNascimento: '1992-07-04',
+      anamnese: const Anamnese(restricoesMedicas: 'Joelho direito', nivelExperiencia: 'Avançado'),
+      streakPresenca: 8,
+      pulguinhaPoints: 80,
+      dataCadastro: '2025-11-20',
+    ),
+    Aluno(
+      id: 5,
+      nome: 'Elisa Rocha',
+      email: 'elisa@email.com',
+      senha: '1234',
+      telefone: '(11) 98765-0005',
+      plano: 'Mensal',
+      vencimento: '2026-06-28',
+      status: 'Ativo',
+      avatar: 'ER',
+      dataNascimento: '1998-06-18',
+      anamnese: const Anamnese(objetivoTreino: 'Força', nivelExperiencia: 'Intermediário'),
+      streakPresenca: 2,
+      pulguinhaPoints: 20,
+      dataCadastro: '2026-05-01',
+    ),
   ];
 
   static final List<Horario> horariosIniciais = [
@@ -37,12 +108,29 @@ class MockData {
   ];
 
   static final List<Agendamento> agendamentosIniciais = [
-    const Agendamento(id: 1, alunoId: 1, nomeAluno: 'Ana Costa', horarioId: 5, data: '2026-06-12', horario: '18:00', status: 'Confirmado'),
-    const Agendamento(id: 2, alunoId: 2, nomeAluno: 'Bruno Lima', horarioId: 5, data: '2026-06-12', horario: '18:00', status: 'Confirmado'),
-    const Agendamento(id: 3, alunoId: 4, nomeAluno: 'Diego Souza', horarioId: 6, data: '2026-06-12', horario: '19:00', status: 'Confirmado'),
-    const Agendamento(id: 4, alunoId: 5, nomeAluno: 'Elisa Rocha', horarioId: 1, data: '2026-06-12', horario: '06:00', status: 'Confirmado'),
-    const Agendamento(id: 5, alunoId: 1, nomeAluno: 'Ana Costa', horarioId: 7, data: '2026-06-13', horario: '20:00', status: 'Confirmado'),
+    Agendamento(id: 1, alunoId: 1, nomeAluno: 'Ana Costa', horarioId: 5, data: today, horario: '18:00', status: 'Confirmado'),
+    Agendamento(id: 2, alunoId: 2, nomeAluno: 'Bruno Lima', horarioId: 5, data: today, horario: '18:00', status: 'Confirmado'),
+    Agendamento(id: 3, alunoId: 4, nomeAluno: 'Diego Souza', horarioId: 6, data: today, horario: '19:00', status: 'Confirmado'),
+    Agendamento(id: 4, alunoId: 5, nomeAluno: 'Elisa Rocha', horarioId: 1, data: today, horario: '06:00', status: 'Confirmado'),
+    const Agendamento(id: 5, alunoId: 1, nomeAluno: 'Ana Costa', horarioId: 7, data: '2026-06-14', horario: '20:00', status: 'Confirmado'),
   ];
+
+  static List<Presenca> presencasIniciais() {
+    final now = DateTime.now();
+    String iso(int daysAgo) => DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: daysAgo)));
+    return [
+      Presenca(id: 1, alunoId: 1, horarioId: 5, data: iso(4), horario: '18:00', timestamp: now.subtract(const Duration(days: 4)), tipo: TipoPresenca.scanProfessor, nomeAluno: 'Ana Costa'),
+      Presenca(id: 2, alunoId: 1, horarioId: 5, data: iso(3), horario: '18:00', timestamp: now.subtract(const Duration(days: 3)), tipo: TipoPresenca.scanAluno, nomeAluno: 'Ana Costa'),
+      Presenca(id: 3, alunoId: 1, horarioId: 5, data: iso(2), horario: '18:00', timestamp: now.subtract(const Duration(days: 2)), tipo: TipoPresenca.scanProfessor, nomeAluno: 'Ana Costa'),
+      Presenca(id: 4, alunoId: 1, horarioId: 5, data: iso(1), horario: '18:00', timestamp: now.subtract(const Duration(days: 1)), tipo: TipoPresenca.scanAluno, nomeAluno: 'Ana Costa'),
+      Presenca(id: 5, alunoId: 2, horarioId: 5, data: iso(2), horario: '18:00', timestamp: now.subtract(const Duration(days: 2)), tipo: TipoPresenca.scanProfessor, nomeAluno: 'Bruno Lima'),
+      Presenca(id: 6, alunoId: 2, horarioId: 6, data: iso(1), horario: '19:00', timestamp: now.subtract(const Duration(days: 1)), tipo: TipoPresenca.scanAluno, nomeAluno: 'Bruno Lima'),
+      Presenca(id: 7, alunoId: 4, horarioId: 1, data: iso(1), horario: '06:00', timestamp: now.subtract(const Duration(days: 1)), tipo: TipoPresenca.scanProfessor, nomeAluno: 'Diego Souza'),
+      Presenca(id: 8, alunoId: 5, horarioId: 1, data: today, horario: '06:00', timestamp: now, tipo: TipoPresenca.scanAluno, nomeAluno: 'Elisa Rocha'),
+      Presenca(id: 9, alunoId: 4, horarioId: 6, data: iso(3), horario: '19:00', timestamp: now.subtract(const Duration(days: 3)), tipo: TipoPresenca.scanProfessor, nomeAluno: 'Diego Souza'),
+      Presenca(id: 10, alunoId: 4, horarioId: 5, data: iso(5), horario: '18:00', timestamp: now.subtract(const Duration(days: 5)), tipo: TipoPresenca.scanAluno, nomeAluno: 'Diego Souza'),
+    ];
+  }
 
   static const valoresPlano = {
     'Mensal': 150.0,
@@ -64,4 +152,7 @@ class MockData {
     'Plano Semestral': 6,
     'Plano Anual': 12,
   };
+
+  static const streakMilestones = [5, 10, 20];
+  static const pointsPorCheckin = 10;
 }

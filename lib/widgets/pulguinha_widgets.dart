@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 
@@ -70,10 +71,12 @@ class PulguinhaAvatar extends StatelessWidget {
     super.key,
     required this.initials,
     this.size = AvatarSize.md,
+    this.fotoBase64,
   });
 
   final String initials;
   final AvatarSize size;
+  final String? fotoBase64;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +91,13 @@ class PulguinhaAvatar extends StatelessWidget {
       AvatarSize.lg => 16.0,
     };
 
+    ImageProvider? imageProvider;
+    if (fotoBase64 != null && fotoBase64!.isNotEmpty) {
+      try {
+        imageProvider = MemoryImage(base64Decode(fotoBase64!.contains(',') ? fotoBase64!.split(',').last : fotoBase64!));
+      } catch (_) {}
+    }
+
     return Container(
       width: dim,
       height: dim,
@@ -95,12 +105,15 @@ class PulguinhaAvatar extends StatelessWidget {
         color: AppColors.neon.withValues(alpha: 0.12),
         border: Border.all(color: AppColors.neon.withValues(alpha: 0.35), width: 1.5),
         shape: BoxShape.circle,
+        image: imageProvider != null ? DecorationImage(image: imageProvider, fit: BoxFit.cover) : null,
       ),
       alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w900, fontSize: fontSize),
-      ),
+      child: imageProvider == null
+          ? Text(
+              initials,
+              style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w900, fontSize: fontSize),
+            )
+          : null,
     );
   }
 }

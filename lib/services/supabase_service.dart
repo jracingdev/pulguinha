@@ -27,6 +27,11 @@ class SupabaseService {
     return (rows as List).map((r) => Produto.fromJson(Map<String, dynamic>.from(r as Map))).toList();
   }
 
+  Future<List<Presenca>> fetchPresencas() async {
+    final rows = await _db.from('presencas').select().order('timestamp', ascending: false);
+    return (rows as List).map((r) => Presenca.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
   Future<Usuario?> autenticarAdmin(String email, String senha) async {
     final rows = await _db.from('admins').select().eq('email', email).eq('senha', senha).maybeSingle();
     if (rows == null) return null;
@@ -61,6 +66,11 @@ class SupabaseService {
 
   Future<void> deleteAgendamento(int id) async {
     await _db.from('agendamentos').delete().eq('id', id);
+  }
+
+  Future<Presenca> insertPresenca(Presenca presenca) async {
+    final rows = await _db.from('presencas').insert(presenca.toJson()).select().single();
+    return Presenca.fromJson(Map<String, dynamic>.from(rows as Map));
   }
 
   Future<void> updateAlunoFields(int id, Map<String, dynamic> fields) async {

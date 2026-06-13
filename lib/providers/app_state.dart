@@ -3,8 +3,27 @@ import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/services/supabase_service.dart';
+import 'package:pulguinha/utils/date_helper.dart';
 
 enum AppScreen { public, login, admin, aluno }
+
+class RegistrarPresencaResult {
+  const RegistrarPresencaResult({
+    required this.ok,
+    this.mensagem,
+    this.aluno,
+    this.novoStreak = 0,
+    this.milestoneAtingido,
+    this.pointsGanhos = 0,
+  });
+
+  final bool ok;
+  final String? mensagem;
+  final Aluno? aluno;
+  final int novoStreak;
+  final int? milestoneAtingido;
+  final int pointsGanhos;
+}
 
 class AppState extends ChangeNotifier {
   AppScreen screen = AppScreen.public;
@@ -13,6 +32,7 @@ class AppState extends ChangeNotifier {
   List<Horario> horarios = [];
   List<Agendamento> agendamentos = [];
   List<Produto> produtos = [];
+  List<Presenca> presencas = [];
   String adminTab = 'dashboard';
   String alunoTab = 'home';
 
@@ -37,11 +57,13 @@ class AppState extends ChangeNotifier {
           svc.fetchHorarios(),
           svc.fetchAgendamentos(),
           svc.fetchProdutos(),
+          svc.fetchPresencas(),
         ]);
         alunos = results[0] as List<Aluno>;
         horarios = results[1] as List<Horario>;
         agendamentos = results[2] as List<Agendamento>;
         produtos = results[3] as List<Produto>;
+        presencas = results[4] as List<Presenca>;
         useMock = false;
       } catch (e) {
         debugPrint('Supabase indisponível, usando mock: $e');
@@ -62,6 +84,7 @@ class AppState extends ChangeNotifier {
     horarios = List.from(MockData.horariosIniciais);
     agendamentos = List.from(MockData.agendamentosIniciais);
     produtos = List.from(MockData.produtosLoja);
+    presencas = MockData.presencasIniciais();
   }
 
   void irParaLogin() {
@@ -116,6 +139,9 @@ class AppState extends ChangeNotifier {
   void salvarAluno({Aluno? editando, required Aluno dados}) {
     if (editando != null) {
       alunos = alunos.map((a) => a.id == editando.id ? dados : a).toList();
+      if (usuario?.id == editando.id) {
+        usuario = dados.toUsuario();
+      }
       if (!useMock) {
         SupabaseService.instance.updateAluno(dados).catchError((Object e) {
           debugPrint('Erro ao atualizar aluno: $e');
@@ -123,10 +149,11 @@ class AppState extends ChangeNotifier {
         });
       }
     } else {
+      final novo = dados.copyWith(dataCadastro: dados.dataCadastro ?? MockData.today);
       if (useMock) {
-        alunos = [...alunos, dados];
+        alunos = [...alunos, novo];
       } else {
-        SupabaseService.instance.insertAluno(dados).then((saved) {
+        SupabaseService.instance.insertAluno(novo).then((saved) {
           alunos = [...alunos, saved];
           notifyListeners();
         }).catchError((Object e) {
@@ -137,8 +164,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void atualizarFotoAluno(int alunoId, String? fotoBase64) {
+    alunos = alunos.map((a) {
+      if (a.id != alunoId) return a;
+      return a.copyWith(foto: fotoBase64);
+    }).toList();
+    if (usuario?.id == alunoId) {
+      usuario = alunos.firstWhere((a) => a.id == alunoId).toUsuario();
+    }
+    notifyListeners();
+    _syncAluno(alunoId);
+  }
+
   void removerAluno(int id) {
     alunos = alunos.where((a) => a.id != id).toList();
+    presencas = presencas.where((p) => p.alunoId != id).toList();
     notifyListeners();
     if (!useMock) {
       SupabaseService.instance.deleteAluno(id).catchError((Object e) {
@@ -250,6 +290,226 @@ class AppState extends ChangeNotifier {
         debugPrint('Erro ao cancelar agendamento: $e');
       });
     }
+  }
+
+  // ── Presença ──
+
+  bool jaRegistrouPresenca(int alunoId, int horarioId, String data) {
+    return presencas.any((p) => p.alunoId == alunoId && p.horarioId == horarioId && p.data == data);
+  }
+
+  RegistrarPresencaResult registrarPresenca({
+    required int alunoId,
+    required int horarioId,
+    required String data,
+    required TipoPresenca tipo,
+  }) {
+    if (jaRegistrouPresenca(alunoId, horarioId, data)) {
+      return const RegistrarPresencaResult(ok: false, mensagem: 'Presença já registrada hoje nesta aula!');
+    }
+
+    final aluno = alunoPorId(alunoId);
+    if (aluno == null) {
+      return const RegistrarPresencaResult(ok: false, mensagem: 'Aluno não encontrado.');
+    }
+
+    final hor = horarios.where((h) => h.id == horarioId).firstOrNull;
+    if (hor == null) {
+      return const RegistrarPresencaResult(ok: false, mensagem: 'Horário inválido.');
+    }
+
+    final nova = Presenca(
+      id: DateTime.now().millisecondsSinceEpoch,
+      alunoId: alunoId,
+      horarioId: horarioId,
+      data: data,
+      horario: hor.hora,
+      timestamp: DateTime.now(),
+      tipo: tipo,
+      nomeAluno: aluno.nome,
+    );
+
+    presencas = [...presencas, nova];
+
+    final novoStreak = _calcularStreak(alunoId);
+    final pointsGanhos = MockData.pointsPorCheckin + (MockData.streakMilestones.contains(novoStreak) ? 50 : 0);
+    final milestone = MockData.streakMilestones.contains(novoStreak) ? novoStreak : null;
+
+    alunos = alunos.map((a) {
+      if (a.id != alunoId) return a;
+      return a.copyWith(
+        streakPresenca: novoStreak,
+        pulguinhaPoints: a.pulguinhaPoints + pointsGanhos,
+      );
+    }).toList();
+
+    if (usuario?.id == alunoId) {
+      usuario = alunos.firstWhere((a) => a.id == alunoId).toUsuario();
+    }
+
+    notifyListeners();
+
+    if (!useMock) {
+      SupabaseService.instance.insertPresenca(nova).catchError((Object e) {
+        debugPrint('Erro ao registrar presença: $e');
+        return nova;
+      });
+      _syncAluno(alunoId);
+    }
+
+    final atualizado = alunos.firstWhere((a) => a.id == alunoId);
+    return RegistrarPresencaResult(
+      ok: true,
+      aluno: atualizado,
+      novoStreak: novoStreak,
+      milestoneAtingido: milestone,
+      pointsGanhos: pointsGanhos,
+      mensagem: 'Presença confirmada! 💪',
+    );
+  }
+
+  int _calcularStreak(int alunoId) {
+    final datas = presencas
+        .where((p) => p.alunoId == alunoId)
+        .map((p) => p.data)
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    if (datas.isEmpty) return 0;
+
+    var streak = 1;
+    var cursor = DateTime.parse(datas.first);
+
+    for (var i = 1; i < datas.length; i++) {
+      final d = DateTime.parse(datas[i]);
+      final diff = cursor.difference(d).inDays;
+      if (diff == 1) {
+        streak++;
+        cursor = d;
+      } else if (diff > 1) {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  List<Presenca> presencasPorAluno(int alunoId) {
+    return presencas.where((p) => p.alunoId == alunoId).toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+
+  List<Presenca> presencasHoje([String? data]) {
+    final d = data ?? MockData.today;
+    return presencas.where((p) => p.data == d).toList();
+  }
+
+  List<Presenca> presencasNaSemana() {
+    final hoje = DateTime.parse(MockData.today);
+    final inicio = hoje.subtract(Duration(days: hoje.weekday - 1));
+    final fim = inicio.add(const Duration(days: 6));
+    return presencas.where((p) {
+      final d = DateTime.parse(p.data);
+      return !d.isBefore(inicio) && !d.isAfter(fim);
+    }).toList();
+  }
+
+  double taxaPresenca({int? alunoId, int dias = 30}) {
+    final hoje = DateTime.parse(MockData.today);
+    final inicio = hoje.subtract(Duration(days: dias - 1));
+    final noPeriodo = presencas.where((p) {
+      if (alunoId != null && p.alunoId != alunoId) return false;
+      final d = DateTime.parse(p.data);
+      return !d.isBefore(inicio) && !d.isAfter(hoje);
+    }).toList();
+
+    if (alunoId != null) {
+      final diasComPresenca = noPeriodo.map((p) => p.data).toSet().length;
+      return (diasComPresenca / dias * 100).clamp(0, 100);
+    }
+
+    final totalAlunos = alunos.where((a) => a.status == 'Ativo').length;
+    if (totalAlunos == 0) return 0;
+    final mediaPorAluno = alunos.where((a) => a.status == 'Ativo').map((a) {
+      final diasAluno = noPeriodo.where((p) => p.alunoId == a.id).map((p) => p.data).toSet().length;
+      return diasAluno / dias * 100;
+    });
+    return mediaPorAluno.isEmpty ? 0 : mediaPorAluno.reduce((a, b) => a + b) / mediaPorAluno.length;
+  }
+
+  Map<String, int> presencasPorDia(int dias) {
+    final hoje = DateTime.parse(MockData.today);
+    final map = <String, int>{};
+    for (var i = dias - 1; i >= 0; i--) {
+      final d = hoje.subtract(Duration(days: i));
+      final iso = _formatDate(d);
+      map[iso] = presencas.where((p) => p.data == iso).length;
+    }
+    return map;
+  }
+
+  Map<int, int> presencasPorHorario({int dias = 7}) {
+    final hoje = DateTime.parse(MockData.today);
+    final inicio = hoje.subtract(Duration(days: dias - 1));
+    final map = <int, int>{};
+    for (final h in horarios) {
+      map[h.id] = presencas.where((p) {
+        if (p.horarioId != h.id) return false;
+        final d = DateTime.parse(p.data);
+        return !d.isBefore(inicio) && !d.isAfter(hoje);
+      }).length;
+    }
+    return map;
+  }
+
+  List<(Aluno, int)> rankingSemana({int top = 3}) {
+    final semana = presencasNaSemana();
+    final counts = <int, int>{};
+    for (final p in semana) {
+      counts[p.alunoId] = (counts[p.alunoId] ?? 0) + 1;
+    }
+    final ranked = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return ranked.take(top).map((e) {
+      final aluno = alunoPorId(e.key)!;
+      return (aluno, e.value);
+    }).toList();
+  }
+
+  List<Aluno> aniversariantesHoje() {
+    return alunos.where((a) => DateHelper.isAniversarioHoje(a.dataNascimento)).toList();
+  }
+
+  List<Aluno> aniversariantesProximos7Dias() {
+    return alunos.where((a) {
+      if (a.dataNascimento == null || a.dataNascimento!.isEmpty) return false;
+      if (DateHelper.isAniversarioHoje(a.dataNascimento)) return false;
+      final dias = DateHelper.diasAteAniversario(a.dataNascimento!);
+      return dias > 0 && dias <= 7;
+    }).toList()
+      ..sort((a, b) => DateHelper.diasAteAniversario(a.dataNascimento!).compareTo(DateHelper.diasAteAniversario(b.dataNascimento!)));
+  }
+
+  int aniversariantesDoMes() {
+    final mes = DateTime.now().month;
+    return alunos.where((a) => DateHelper.aniversarioNoMes(a.dataNascimento, mes)).length;
+  }
+
+  int novosAlunosMes() {
+    final mes = DateTime.now().month;
+    final ano = DateTime.now().year;
+    return alunos.where((a) {
+      if (a.dataCadastro == null) return false;
+      final d = DateTime.parse(a.dataCadastro!);
+      return d.month == mes && d.year == ano;
+    }).length;
+  }
+
+  Map<String, int> distribuicaoPlanos() {
+    final map = <String, int>{};
+    for (final a in alunos.where((a) => a.status == 'Ativo')) {
+      map[a.plano] = (map[a.plano] ?? 0) + 1;
+    }
+    return map;
   }
 
   double get receitaMensalEstimada {

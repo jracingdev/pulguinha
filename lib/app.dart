@@ -6,8 +6,11 @@ import 'package:pulguinha/screens/admin/admin_agendamentos_screen.dart';
 import 'package:pulguinha/screens/admin/admin_alunos_screen.dart';
 import 'package:pulguinha/screens/admin/admin_dashboard_screen.dart';
 import 'package:pulguinha/screens/admin/admin_financeiro_screen.dart';
+import 'package:pulguinha/screens/admin/admin_presenca_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_agenda_screen.dart';
+import 'package:pulguinha/screens/aluno/aluno_checkin_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_home_screen.dart';
+import 'package:pulguinha/screens/aluno/aluno_evolucao_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_perfil_screen.dart';
 import 'package:pulguinha/screens/auth/login_screen.dart';
 import 'package:pulguinha/screens/public/public_screen.dart';
@@ -74,6 +77,7 @@ class _AdminShell extends StatelessWidget {
     TabItem(id: 'dashboard', label: 'Início', icon: '⚡'),
     TabItem(id: 'alunos', label: 'Alunos', icon: '👥'),
     TabItem(id: 'agenda', label: 'Agenda', icon: '📅'),
+    TabItem(id: 'presenca', label: 'Presença', icon: '📱'),
     TabItem(id: 'financeiro', label: 'Financ.', icon: '💰'),
     TabItem(id: 'loja', label: 'Loja', icon: '🛒'),
   ];
@@ -85,6 +89,7 @@ class _AdminShell extends StatelessWidget {
       'dashboard' => const AdminDashboardScreen(),
       'alunos' => const AdminAlunosScreen(),
       'agenda' => const AdminAgendamentosScreen(),
+      'presenca' => const AdminPresencaScreen(),
       'financeiro' => const AdminFinanceiroScreen(),
       'loja' => LojaScreen(usuario: usuario),
       _ => const AdminDashboardScreen(),
@@ -116,6 +121,8 @@ class _AlunoShell extends StatelessWidget {
 
   static const _tabs = [
     TabItem(id: 'home', label: 'Início', icon: '🏠'),
+    TabItem(id: 'evolucao', label: 'Evolução', icon: '📈'),
+    TabItem(id: 'checkin', label: 'Check-in', icon: '📷'),
     TabItem(id: 'agenda', label: 'Agenda', icon: '📅'),
     TabItem(id: 'loja', label: 'Loja', icon: '🛒'),
     TabItem(id: 'perfil', label: 'Perfil', icon: '👤'),
@@ -126,6 +133,8 @@ class _AlunoShell extends StatelessWidget {
     final usuario = state.usuario!;
     final body = switch (state.alunoTab) {
       'home' => AlunoHomeScreen(usuario: usuario),
+      'evolucao' => const AlunoEvolucaoScreen(),
+      'checkin' => AlunoCheckinScreen(usuario: usuario),
       'agenda' => AlunoAgendaScreen(usuario: usuario),
       'loja' => LojaScreen(usuario: usuario),
       'perfil' => AlunoPerfilScreen(usuario: usuario, onLogout: state.logout),

@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
@@ -73,13 +77,14 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
             : d <= 7
                 ? 'Vence em ${d}d'
                 : 'Venc. ${DateHelper.formatarData(a.vencimento)}';
+    final isAniv = DateHelper.isAniversarioHoje(a.dataNascimento);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: PulguinhaCard(
         child: Row(
           children: [
-            PulguinhaAvatar(initials: a.avatar),
+            PulguinhaAvatar(initials: a.avatar, fotoBase64: a.foto),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -91,10 +96,14 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     children: [
                       Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
                       PulguinhaBadge(label: a.status, variant: a.status == 'Ativo' ? BadgeVariant.neon : BadgeVariant.red),
+                      if (isAniv) const PulguinhaBadge(label: '🎂 Hoje!', variant: BadgeVariant.yellow),
+                      if (a.streakPresenca >= 3) PulguinhaBadge(label: '🔥 ${a.streakPresenca}', variant: BadgeVariant.yellow),
                     ],
                   ),
                   Text('${a.telefone} · ${a.plano}', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
                   Text(vt, style: TextStyle(fontSize: 11, color: vc, fontWeight: FontWeight.w600)),
+                  if (!a.anamnese.isEmpty && a.anamnese.restricoesMedicas.isNotEmpty)
+                    Text('⚠️ ${a.anamnese.restricoesMedicas}', style: const TextStyle(fontSize: 10, color: AppColors.yellow)),
                 ],
               ),
             ),
@@ -114,69 +123,129 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     final emailCtrl = TextEditingController(text: editando?.email ?? '');
     final telCtrl = TextEditingController(text: editando?.telefone ?? '');
     final vencCtrl = TextEditingController(text: editando?.vencimento ?? '');
+    final nascCtrl = TextEditingController(text: editando?.dataNascimento ?? '');
     final senhaCtrl = TextEditingController(text: editando?.senha ?? '1234');
+    final restrCtrl = TextEditingController(text: editando?.anamnese.restricoesMedicas ?? '');
+    final medCtrl = TextEditingController(text: editando?.anamnese.medicamentos ?? '');
+    final objCtrl = TextEditingController(text: editando?.anamnese.objetivoTreino ?? '');
+    final emergCtrl = TextEditingController(text: editando?.anamnese.contatoEmergencia ?? '');
+    final emergTelCtrl = TextEditingController(text: editando?.anamnese.telefoneEmergencia ?? '');
     var plano = editando?.plano ?? 'Mensal';
     var status = editando?.status ?? 'Ativo';
+    var nivel = editando?.anamnese.nivelExperiencia ?? 'Iniciante';
+    String? fotoBase64 = editando?.foto;
 
     await showPulguinhaModal(
       context: context,
       title: editando == null ? 'Novo Aluno' : 'Editar Aluno',
       child: StatefulBuilder(
         builder: (ctx, setModalState) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FieldLabel(label: 'Nome *', child: TextField(controller: nomeCtrl)),
-              FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl)),
-              FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
-              FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: '2026-06-20'))),
-              FieldLabel(label: 'Senha do app', child: TextField(controller: senhaCtrl, obscureText: true)),
-              FieldLabel(
-                label: 'Plano',
-                child: DropdownButtonFormField<String>(
-                  value: plano,
-                  items: ['Mensal', 'Trimestral', 'Semestral', 'Anual'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                  onChanged: (v) => setModalState(() => plano = v ?? plano),
-                ),
-              ),
-              FieldLabel(
-                label: 'Status',
-                child: DropdownButtonFormField<String>(
-                  value: status,
-                  items: ['Ativo', 'Inadimplente', 'Inativo'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (v) => setModalState(() => status = v ?? status),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(child: GhostButton(label: 'Cancelar', onPressed: () => Navigator.pop(ctx))),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: NeonButton(
-                      label: 'Salvar',
-                      onPressed: () {
-                        if (nomeCtrl.text.trim().isEmpty) return;
-                        final avatar = nomeCtrl.text.split(' ').map((n) => n[0]).take(2).join().toUpperCase();
-                        final dados = Aluno(
-                          id: editando?.id ?? DateTime.now().millisecondsSinceEpoch,
-                          nome: nomeCtrl.text.trim(),
-                          email: emailCtrl.text.trim(),
-                          telefone: telCtrl.text.trim(),
-                          plano: plano,
-                          vencimento: vencCtrl.text.trim(),
-                          status: status,
-                          senha: senhaCtrl.text,
-                          avatar: editando?.avatar ?? avatar,
-                        );
-                        state.salvarAluno(editando: editando, dados: dados);
-                        Navigator.pop(ctx);
-                      },
-                    ),
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FieldLabel(label: 'Nome *', child: TextField(controller: nomeCtrl)),
+                FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl)),
+                FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
+                FieldLabel(label: 'Data nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '1995-06-13'))),
+                FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: '2026-06-20'))),
+                FieldLabel(label: 'Senha do app', child: TextField(controller: senhaCtrl, obscureText: true)),
+                FieldLabel(
+                  label: 'Plano',
+                  child: DropdownButtonFormField<String>(
+                    value: plano,
+                    items: ['Mensal', 'Trimestral', 'Semestral', 'Anual'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                    onChanged: (v) => setModalState(() => plano = v ?? plano),
                   ),
-                ],
-              ),
-            ],
+                ),
+                FieldLabel(
+                  label: 'Status',
+                  child: DropdownButtonFormField<String>(
+                    value: status,
+                    items: ['Ativo', 'Inadimplente', 'Inativo'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) => setModalState(() => status = v ?? status),
+                  ),
+                ),
+                const SectionTitle(icon: '🏥', title: 'Anamnese'),
+                FieldLabel(label: 'Restrições / lesões', child: TextField(controller: restrCtrl, maxLines: 2)),
+                FieldLabel(label: 'Medicamentos', child: TextField(controller: medCtrl)),
+                FieldLabel(label: 'Objetivo do treino', child: TextField(controller: objCtrl)),
+                FieldLabel(
+                  label: 'Nível',
+                  child: DropdownButtonFormField<String>(
+                    value: nivel,
+                    items: ['Iniciante', 'Intermediário', 'Avançado'].map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+                    onChanged: (v) => setModalState(() => nivel = v ?? nivel),
+                  ),
+                ),
+                FieldLabel(label: 'Contato emergência', child: TextField(controller: emergCtrl)),
+                FieldLabel(label: 'Tel. emergência', child: TextField(controller: emergTelCtrl)),
+                FieldLabel(
+                  label: 'Foto',
+                  child: Row(
+                    children: [
+                      if (fotoBase64 != null && fotoBase64!.isNotEmpty)
+                        PulguinhaAvatar(initials: editando?.avatar ?? 'AL', fotoBase64: fotoBase64),
+                      const SizedBox(width: 10),
+                      GhostButton(
+                        label: '📷 Escolher foto',
+                        onPressed: () async {
+                          final picker = ImagePicker();
+                          final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 70);
+                          if (file != null) {
+                            final bytes = await file.readAsBytes();
+                            setModalState(() => fotoBase64 = base64Encode(bytes));
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: GhostButton(label: 'Cancelar', onPressed: () => Navigator.pop(ctx))),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: NeonButton(
+                        label: 'Salvar',
+                        onPressed: () {
+                          if (nomeCtrl.text.trim().isEmpty) return;
+                          final avatar = nomeCtrl.text.split(' ').map((n) => n[0]).take(2).join().toUpperCase();
+                          final anamnese = Anamnese(
+                            restricoesMedicas: restrCtrl.text.trim(),
+                            medicamentos: medCtrl.text.trim(),
+                            objetivoTreino: objCtrl.text.trim(),
+                            nivelExperiencia: nivel,
+                            contatoEmergencia: emergCtrl.text.trim(),
+                            telefoneEmergencia: emergTelCtrl.text.trim(),
+                          );
+                          final dados = Aluno(
+                            id: editando?.id ?? DateTime.now().millisecondsSinceEpoch,
+                            nome: nomeCtrl.text.trim(),
+                            email: emailCtrl.text.trim(),
+                            telefone: telCtrl.text.trim(),
+                            plano: plano,
+                            vencimento: vencCtrl.text.trim().isEmpty ? MockData.today : vencCtrl.text.trim(),
+                            status: status,
+                            senha: senhaCtrl.text,
+                            avatar: editando?.avatar ?? avatar,
+                            dataNascimento: nascCtrl.text.trim().isEmpty ? null : nascCtrl.text.trim(),
+                            anamnese: anamnese,
+                            foto: fotoBase64,
+                            streakPresenca: editando?.streakPresenca ?? 0,
+                            pulguinhaPoints: editando?.pulguinhaPoints ?? 0,
+                            dataCadastro: editando?.dataCadastro ?? MockData.today,
+                          );
+                          state.salvarAluno(editando: editando, dados: dados);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           );
         },
       ),

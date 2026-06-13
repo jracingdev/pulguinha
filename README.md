@@ -6,8 +6,10 @@ App Flutter de gestão e agendamento para o estúdio **Funcional do Pulguinha**,
 
 - **Área pública** — agendar aula e assinar plano sem login
 - **Login** — aluno e admin (Supabase ou modo demo offline)
-- **Painel Admin** — dashboard, alunos, agenda, financeiro e loja
-- **Área do Aluno** — início, agenda, loja e perfil
+- **Painel Admin** — dashboard com KPIs/gráficos, alunos, agenda, **presença (QR)**, financeiro e loja
+- **Área do Aluno** — início, **check-in QR**, agenda, loja e perfil
+- **Presença QR** — admin exibe QR da aula/dia; aluno escaneia ao chegar (Android, iOS e web)
+- **Anamnese, fotos, aniversariantes** — cadastro completo e gamificação (streak, Pulguinha Points)
 - **Loja + Mercado Pago** — fluxo simulado de pagamento (PIX, cartão, boleto)
 
 ## Credenciais demo
@@ -48,6 +50,14 @@ flutter run \
 ```
 
 > **Nunca** commite chaves reais no repositório. Use `--dart-define` ou secrets do CI.
+
+> **Fotos:** armazenadas em base64 no campo `foto` do aluno (demo). Em produção, prefira Supabase Storage.
+
+### Check-in QR (fluxo correto)
+
+1. **Admin/Professor** — aba Presença → exibe QR da aula ou QR do dia em tela cheia (projetor/TV)
+2. **Aluno** — botão "Fazer Check-in" → escaneia o QR com a câmera
+3. **Web** — scanner via `mobile_scanner`; se a câmera falhar, use entrada manual do código
 
 ## Deploy no GitHub Pages
 

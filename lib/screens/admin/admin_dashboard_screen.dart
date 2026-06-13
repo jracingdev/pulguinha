@@ -4,6 +4,7 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/widgets/admin_analytics.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
@@ -15,6 +16,7 @@ class AdminDashboardScreen extends StatelessWidget {
     final ativos = state.alunos.where((a) => a.status == 'Ativo').length;
     final inadimp = state.alunos.where((a) => a.status == 'Inadimplente').length;
     final agHoje = state.agendamentos.where((ag) => ag.data == MockData.today).length;
+    final presHoje = state.presencasHoje().length;
     final venc7 = state.alunos.where((a) {
       final d = DateHelper.diasAteVencimento(a.vencimento);
       return d >= 0 && d <= 7;
@@ -36,11 +38,11 @@ class AdminDashboardScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.border),
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('⚡ PAINEL ADMIN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 2)),
-              Text.rich(
+              const Text('⚡ PAINEL ADMIN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 2)),
+              const Text.rich(
                 TextSpan(
                   style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppColors.white, height: 1.1),
                   children: [
@@ -49,8 +51,8 @@ class AdminDashboardScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 6),
-              Text('Sexta-feira, 12 de junho de 2026', style: TextStyle(fontSize: 12, color: AppColors.gray)),
+              const SizedBox(height: 6),
+              Text(DateHelper.hojeFormatado(), style: const TextStyle(fontSize: 12, color: AppColors.gray)),
             ],
           ),
         ),
@@ -61,13 +63,17 @@ class AdminDashboardScreen extends StatelessWidget {
           children: [
             _statCard('👥', '$ativos', 'Alunos Ativos', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
             _statCard('⚠️', '$inadimp', 'Inadimplentes', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
+            _statCard('✅', '$presHoje', 'Presenças Hoje', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
             _statCard('📅', '$agHoje', 'Agendados Hoje', AppColors.blue, AppColors.blue.withValues(alpha: 0.08)),
             _statCard('💰', '$venc7', 'Vencendo 7d', AppColors.yellow, AppColors.yellow.withValues(alpha: 0.08)),
+            _statCard('🎂', '${state.aniversariantesDoMes()}', 'Aniv. do Mês', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
           ],
         ),
+        const SizedBox(height: 24),
+        AdminAnalyticsSection(state: state),
         const SizedBox(height: 20),
         const SectionTitle(icon: '📋', title: 'Aulas de Hoje'),
-        ...aulasHoje.map((e) => _aulaCard(e.$1, e.$2)),
+        ...aulasHoje.map((e) => _aulaCard(e.$1, e.$2, state)),
         const SizedBox(height: 20),
         const SectionTitle(icon: '🔔', title: 'Alertas'),
         ...state.alunos.where((a) => a.status == 'Inadimplente').map(_alertaInadimplente),
@@ -97,7 +103,8 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _aulaCard(dynamic h, List ags) {
+  Widget _aulaCard(dynamic h, List ags, AppState state) {
+    final pres = state.presencasHoje().where((p) => p.horarioId == h.id).length;
     final pct = ags.length / h.capacidade * 100;
     final barC = pct >= 90 ? AppColors.red : pct >= 60 ? AppColors.yellow : AppColors.neon;
     return Padding(
@@ -116,7 +123,13 @@ class AdminDashboardScreen extends StatelessWidget {
                     Text(h.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
                   ],
                 ),
-                Text('${ags.length}/${h.capacidade}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gray)),
+                Row(
+                  children: [
+                    if (pres > 0) PulguinhaBadge(label: '✅ $pres', variant: BadgeVariant.neon),
+                    const SizedBox(width: 6),
+                    Text('${ags.length}/${h.capacidade}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gray)),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -161,7 +174,7 @@ class AdminDashboardScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm),
+            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm, fotoBase64: a.foto),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +202,7 @@ class AdminDashboardScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm),
+            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm, fotoBase64: a.foto),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

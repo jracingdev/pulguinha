@@ -38,6 +38,36 @@ class DateHelper {
   static String formatarDataLonga(String iso) {
     return DateFormat("EEEE, d 'de' MMM", 'pt_BR').format(DateTime.parse('${iso}T12:00:00'));
   }
+
+  static String hojeFormatado() {
+    return DateFormat("EEEE, d 'de' MMMM 'de' yyyy", 'pt_BR').format(DateTime.now());
+  }
+
+  static bool isAniversarioHoje(String? dataNascimento) {
+    if (dataNascimento == null || dataNascimento.isEmpty) return false;
+    final nasc = DateTime.parse(dataNascimento);
+    final hoje = DateTime.now();
+    return nasc.month == hoje.month && nasc.day == hoje.day;
+  }
+
+  static int diasAteAniversario(String dataNascimento) {
+    final nasc = DateTime.parse(dataNascimento);
+    final hoje = DateTime.now();
+    var proximo = DateTime(hoje.year, nasc.month, nasc.day);
+    if (proximo.isBefore(DateTime(hoje.year, hoje.month, hoje.day))) {
+      proximo = DateTime(hoje.year + 1, nasc.month, nasc.day);
+    }
+    return proximo.difference(DateTime(hoje.year, hoje.month, hoje.day)).inDays;
+  }
+
+  static bool aniversarioNoMes(String? dataNascimento, int mes) {
+    if (dataNascimento == null || dataNascimento.isEmpty) return false;
+    return DateTime.parse(dataNascimento).month == mes;
+  }
+
+  static String formatarAniversario(String dataNascimento) {
+    return DateFormat("d 'de' MMMM", 'pt_BR').format(DateTime.parse(dataNascimento));
+  }
 }
 
 class DiaSemana {
