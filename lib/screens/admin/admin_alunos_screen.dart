@@ -1,8 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/utils/photo_picker_helper.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
@@ -182,21 +180,35 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 FieldLabel(label: 'Tel. emergência', child: TextField(controller: emergTelCtrl)),
                 FieldLabel(
                   label: 'Foto',
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (fotoBase64 != null && fotoBase64!.isNotEmpty)
-                        PulguinhaAvatar(initials: editando?.avatar ?? 'AL', fotoBase64: fotoBase64),
-                      const SizedBox(width: 10),
-                      GhostButton(
-                        label: '📷 Escolher foto',
-                        onPressed: () async {
-                          final picker = ImagePicker();
-                          final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 70);
-                          if (file != null) {
-                            final bytes = await file.readAsBytes();
-                            setModalState(() => fotoBase64 = base64Encode(bytes));
-                          }
-                        },
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: PulguinhaAvatar(initials: editando?.avatar ?? 'AL', size: AvatarSize.lg, fotoBase64: fotoBase64),
+                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GhostButton(
+                              label: '📷 Escolher foto',
+                              onPressed: () async {
+                                final base64 = await pickPhotoBase64(ctx);
+                                if (base64 != null) {
+                                  setModalState(() => fotoBase64 = base64);
+                                }
+                              },
+                            ),
+                          ),
+                          if (fotoBase64 != null && fotoBase64!.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            GhostButton(
+                              label: 'Remover',
+                              onPressed: () => setModalState(() => fotoBase64 = null),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),

@@ -1,5 +1,6 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:pulguinha/config/supabase_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/services/supabase_service.dart';
@@ -35,6 +36,7 @@ class AppState extends ChangeNotifier {
   List<Presenca> presencas = [];
   String adminTab = 'dashboard';
   String alunoTab = 'home';
+  ThemeMode themeMode = ThemeMode.dark;
 
   bool loading = true;
   bool useMock = true;
@@ -44,10 +46,14 @@ class AppState extends ChangeNotifier {
     init();
   }
 
+  static const _themePrefKey = 'pulguinha_theme_mode';
+
   Future<void> init() async {
     loading = true;
     initError = null;
     notifyListeners();
+
+    await _loadThemeMode();
 
     if (SupabaseConfig.isConfigured) {
       try {
@@ -114,6 +120,32 @@ class AppState extends ChangeNotifier {
   void setAlunoTab(String tab) {
     alunoTab = tab;
     notifyListeners();
+  }
+
+  Future<void> _loadThemeMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_themePrefKey);
+      if (saved == 'light') themeMode = ThemeMode.light;
+      if (saved == 'dark') themeMode = ThemeMode.dark;
+    } catch (e) {
+      debugPrint('Erro ao carregar tema: $e');
+    }
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    themeMode = mode;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_themePrefKey, mode == ThemeMode.light ? 'light' : 'dark');
+    } catch (e) {
+      debugPrint('Erro ao salvar tema: $e');
+    }
+  }
+
+  void toggleThemeMode() {
+    setThemeMode(themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
   }
 
   Future<Usuario?> autenticar(String email, String senha, UserType tipo) async {

@@ -10,7 +10,9 @@ App Flutter de gestão e agendamento para o estúdio **Funcional do Pulguinha**,
 - **Área do Aluno** — início, **check-in QR**, agenda, loja e perfil
 - **Presença QR** — admin exibe QR da aula/dia; aluno escaneia ao chegar (Android, iOS e web)
 - **Anamnese, fotos, aniversariantes** — cadastro completo e gamificação (streak, Pulguinha Points)
-- **Loja + Mercado Pago** — fluxo simulado de pagamento (PIX, cartão, boleto)
+- **Loja + Mercado Pago** — Checkout Pro real (Payment Links ou Edge Function Supabase) com fallback demo
+- **Tema claro/escuro** — alternância persistida em Perfil e Admin
+- **Sobre o app** — versão, desenvolvedor e logo
 
 ## Credenciais demo
 
@@ -52,6 +54,46 @@ flutter run \
 > **Nunca** commite chaves reais no repositório. Use `--dart-define` ou secrets do CI.
 
 > **Fotos:** armazenadas em base64 no campo `foto` do aluno (demo). Em produção, prefira Supabase Storage.
+
+### Mercado Pago (Checkout Pro)
+
+A integração real está implementada em `lib/services/mercado_pago_service.dart`. O **access token nunca vai para o app** — apenas para a Edge Function.
+
+#### Opção A — Payment Links (mais rápido)
+
+1. Crie links de pagamento no [painel Mercado Pago](https://www.mercadopago.com.br/developers/panel/app)
+2. Execute com `--dart-define` por produto:
+
+```bash
+flutter run \
+  --dart-define=MP_PUBLIC_KEY=SUA_PUBLIC_KEY \
+  --dart-define=MP_LINK_PLANO_MENSAL=https://mpago.la/... \
+  --dart-define=MP_LINK_PLANO_TRIMESTRAL=https://mpago.la/... \
+  --dart-define=MP_LINK_PLANO_SEMESTRAL=https://mpago.la/... \
+  --dart-define=MP_LINK_PLANO_ANUAL=https://mpago.la/...
+```
+
+#### Opção B — Edge Function Supabase (Checkout Pro dinâmico)
+
+1. Deploy da function:
+
+```bash
+supabase functions deploy create-mp-preference
+supabase secrets set MP_ACCESS_TOKEN=SEU_ACCESS_TOKEN_MP
+```
+
+2. Execute com Supabase + public key:
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=https://SEU_PROJETO.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=sua_chave_anon \
+  --dart-define=MP_PUBLIC_KEY=SUA_PUBLIC_KEY
+```
+
+3. (Opcional) Deep link de retorno: `--dart-define=MP_BACK_URL=pulguinha://payment/success`
+
+Sem credenciais configuradas, a loja usa **modo demonstração** com aviso explícito.
 
 ### Check-in QR (fluxo correto)
 
@@ -103,22 +145,24 @@ flutter build web --release --base-href "/pulguinha/" \
 ```
 lib/
 ├── app.dart                      # Roteamento principal
-├── config/supabase_config.dart   # URL e chave via --dart-define
-├── data/mock_data.dart           # Fallback offline / demo
-├── models/models.dart            # Aluno, Horario, Agendamento, etc.
-├── providers/app_state.dart      # Estado global (Provider)
-├── services/supabase_service.dart # CRUD Supabase
+├── config/
+│   ├── supabase_config.dart      # URL e chave via --dart-define
+│   └── mercado_pago_config.dart  # MP public key, payment links
+├── services/
+│   ├── supabase_service.dart     # CRUD Supabase
+│   └── mercado_pago_service.dart # Checkout Pro / Payment Links
 ├── screens/                      # Telas por módulo
 ├── theme/                        # Cores e tema escuro neon
 └── widgets/                      # Componentes reutilizáveis
 
 supabase/
-└── schema.sql                    # Tabelas, RLS e dados iniciais (seed)
+├── schema.sql                              # Tabelas, RLS e dados iniciais (seed)
+└── functions/create-mp-preference/index.ts # Cria preferência MP (access token no secret)
 ```
 
 ## Roadmap (fora do escopo atual)
 
-- Integração real com Mercado Pago
+- Webhook MP para confirmação automática de pagamento
 - Supabase Auth (substituir senha em texto)
 - Políticas RLS mais restritivas em produção
 - Push notifications para lembretes de aula

@@ -1,8 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
+import 'package:pulguinha/utils/photo_picker_helper.dart';
+import 'package:pulguinha/widgets/theme_settings_tile.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
@@ -19,11 +19,9 @@ class AlunoPerfilScreen extends StatelessWidget {
   final VoidCallback onLogout;
 
   Future<void> _pickPhoto(BuildContext context, AppState state, int alunoId) async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 400, maxHeight: 400, imageQuality: 70);
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    state.atualizarFotoAluno(alunoId, base64Encode(bytes));
+    final base64 = await pickPhotoBase64(context);
+    if (base64 == null) return;
+    state.atualizarFotoAluno(alunoId, base64);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Foto atualizada!'), behavior: SnackBarBehavior.floating),
@@ -146,6 +144,21 @@ class AlunoPerfilScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SectionTitle(icon: '⚙️', title: 'Configurações'),
+              const SizedBox(height: 8),
+              const ThemeSettingsTile(),
+              const SizedBox(height: 10),
+              _settingsItem(context, 'ℹ️', 'Sobre o app', 'Versão, desenvolvedor e informações', () {
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SobreAppScreen()));
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        PulguinhaCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const SectionTitle(icon: '🔐', title: 'Segurança'),
               _securityItem(context, '🔒', 'Alterar senha', 'Em breve via Supabase Auth', () {
                 showEmDesenvolvimentoDialog(context, titulo: 'Alterar senha', mensagem: 'Disponível quando Supabase Auth for configurado.');
@@ -185,6 +198,33 @@ class AlunoPerfilScreen extends StatelessWidget {
           SizedBox(width: 90, child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w700))),
           Expanded(child: Text(val, style: const TextStyle(fontSize: 12, color: AppColors.white))),
         ],
+      ),
+    );
+  }
+
+  Widget _settingsItem(BuildContext context, String icon, String label, String sub, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                  Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.grayDim),
+          ],
+        ),
       ),
     );
   }

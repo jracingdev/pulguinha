@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
@@ -160,7 +161,10 @@ class _LojaScreenState extends State<LojaScreen> {
   }
 
   Widget _linkPublico() {
-    const link = 'https://pulguinha.mercadopago.com.br/checkout';
+    final link = MercadoPagoConfig.paymentLinkForProduct(1).isNotEmpty
+        ? MercadoPagoConfig.paymentLinkForProduct(1)
+        : 'https://www.mercadopago.com.br/ (configure MP_LINK_PLANO_MENSAL)';
+    final isConfigured = MercadoPagoConfig.paymentLinkForProduct(1).isNotEmpty;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -173,13 +177,16 @@ class _LojaScreenState extends State<LojaScreen> {
         children: [
           const Text('🔗 LINK PÚBLICO DE PAGAMENTO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.mercadoPago, letterSpacing: 1)),
           const SizedBox(height: 6),
-          const Text('Compartilhe com novos alunos sem precisar de login', style: TextStyle(fontSize: 12, color: AppColors.gray)),
+          Text(
+            isConfigured ? 'Compartilhe com novos alunos sem precisar de login' : 'Configure MP_LINK_PLANO_MENSAL para link real',
+            style: const TextStyle(fontSize: 12, color: AppColors.gray),
+          ),
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: AppColors.card2, borderRadius: BorderRadius.circular(8)),
-            child: const Text(link, style: TextStyle(fontSize: 11, color: AppColors.neon, fontFamily: 'monospace')),
+            child: Text(link, style: const TextStyle(fontSize: 11, color: AppColors.neon, fontFamily: 'monospace')),
           ),
           const SizedBox(height: 10),
           GhostButton(
@@ -187,10 +194,12 @@ class _LojaScreenState extends State<LojaScreen> {
             fullWidth: true,
             borderColor: AppColors.mercadoPago.withValues(alpha: 0.3),
             textColor: AppColors.mercadoPago,
-            onPressed: () {
-              Clipboard.setData(const ClipboardData(text: link));
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copiado!')));
-            },
+            onPressed: isConfigured
+                ? () {
+                    Clipboard.setData(ClipboardData(text: link));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copiado!')));
+                  }
+                : null,
           ),
         ],
       ),

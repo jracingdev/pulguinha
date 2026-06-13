@@ -26,18 +26,22 @@ class PulguinhaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppState(),
-      child: MaterialApp(
-        title: 'Funcional do Pulguinha',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.dark,
-        locale: const Locale('pt', 'BR'),
-        supportedLocales: const [Locale('pt', 'BR')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: const _RootRouter(),
+      child: Consumer<AppState>(
+        builder: (context, state, _) => MaterialApp(
+          title: 'Funcional do Pulguinha',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: state.themeMode,
+          locale: const Locale('pt', 'BR'),
+          supportedLocales: const [Locale('pt', 'BR')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const _RootRouter(),
+        ),
       ),
     );
   }
@@ -51,10 +55,10 @@ class _RootRouter extends StatelessWidget {
     final state = context.watch<AppState>();
 
     if (state.loading) {
-      return const Scaffold(
-        backgroundColor: AppColors.bg,
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.neon),
+          child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
         ),
       );
     }

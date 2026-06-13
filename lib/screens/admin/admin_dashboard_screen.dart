@@ -4,6 +4,8 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
+import 'package:pulguinha/widgets/theme_settings_tile.dart';
 import 'package:pulguinha/widgets/admin_analytics.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -81,6 +83,35 @@ class AdminDashboardScreen extends StatelessWidget {
           final d = DateHelper.diasAteVencimento(a.vencimento);
           return d >= 0 && d <= 7 && a.status == 'Ativo';
         }).map(_alertaVencendo),
+        const SizedBox(height: 24),
+        const SectionTitle(icon: '⚙️', title: 'Configurações'),
+        const SizedBox(height: 10),
+        const ThemeSettingsTile(),
+        const SizedBox(height: 10),
+        InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SobreAppScreen())),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
+            child: const Row(
+              children: [
+                Text('ℹ️', style: TextStyle(fontSize: 20)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Sobre o app', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                      Text('Versão, desenvolvedor e informações', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: AppColors.grayDim),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
