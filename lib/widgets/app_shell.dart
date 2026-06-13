@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class TabItem {
   const TabItem({required this.id, required this.label, required this.icon});
@@ -43,13 +44,7 @@ class AppShell extends StatelessWidget {
               bottom: false,
               child: Row(
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(color: AppColors.neon, borderRadius: BorderRadius.circular(8)),
-                    alignment: Alignment.center,
-                    child: const Text('⚡', style: TextStyle(fontSize: 16)),
-                  ),
+                  const PulguinhaLogo(size: 32, borderRadius: 8, showShadow: false),
                   const SizedBox(width: 10),
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

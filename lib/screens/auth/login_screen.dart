@@ -53,11 +53,35 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       erro = '';
       loading = true;
     });
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+        title: const Text('Login rápido', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+        content: const Text(
+          'Biometria real requer configuração nativa. Por enquanto, usamos a conta salva com "Lembrar" para entrar rapidamente.',
+          style: TextStyle(color: AppColors.gray, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar', style: TextStyle(color: AppColors.gray))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Continuar', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (confirmed != true) {
+      setState(() => loading = false);
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
     final appState = context.read<AppState>();
@@ -153,17 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLogo() {
     return Column(
       children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: AppColors.neon,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: AppColors.neon.withValues(alpha: 0.4), blurRadius: 30)],
-          ),
-          alignment: Alignment.center,
-          child: const Text('⚡', style: TextStyle(fontSize: 32)),
-        ),
+        const PulguinhaLogo(size: 72, borderRadius: 20),
         const SizedBox(height: 12),
         const Text('FUNCIONAL DO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 2)),
         const Text('PULGUINHA', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 2)),

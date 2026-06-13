@@ -27,6 +27,32 @@ class Usuario {
 
   bool get isAdmin => tipo == UserType.admin;
   bool get isAluno => tipo == UserType.aluno;
+
+  Usuario copyWith({
+    UserType? tipo,
+    int? id,
+    String? nome,
+    String? email,
+    String? telefone,
+    String? plano,
+    String? vencimento,
+    String? status,
+    String? avatar,
+    String? senha,
+  }) {
+    return Usuario(
+      tipo: tipo ?? this.tipo,
+      id: id ?? this.id,
+      nome: nome ?? this.nome,
+      email: email ?? this.email,
+      telefone: telefone ?? this.telefone,
+      plano: plano ?? this.plano,
+      vencimento: vencimento ?? this.vencimento,
+      status: status ?? this.status,
+      avatar: avatar ?? this.avatar,
+      senha: senha ?? this.senha,
+    );
+  }
 }
 
 class Aluno {

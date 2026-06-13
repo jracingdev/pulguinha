@@ -56,17 +56,7 @@ class _PublicScreenState extends State<PublicScreen> {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.neon,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: AppColors.neon.withValues(alpha: 0.4), blurRadius: 30)],
-            ),
-            alignment: Alignment.center,
-            child: const Text('⚡', style: TextStyle(fontSize: 28)),
-          ),
+          const PulguinhaLogo(size: 68, borderRadius: 18),
           const SizedBox(height: 12),
           const Text('FUNCIONAL DO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 2)),
           const Text('PULGUINHA', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 2)),

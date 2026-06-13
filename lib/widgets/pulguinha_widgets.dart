@@ -1,6 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 
+class PulguinhaLogo extends StatelessWidget {
+  const PulguinhaLogo({
+    super.key,
+    this.size = 64,
+    this.showShadow = true,
+    this.borderRadius = 18,
+  });
+
+  final double size;
+  final bool showShadow;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: showShadow
+            ? [BoxShadow(color: AppColors.neon.withValues(alpha: 0.35), blurRadius: size * 0.45)]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Image.asset(
+          'assets/images/pulguinha_logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => Container(
+            color: AppColors.neon,
+            alignment: Alignment.center,
+            child: Text('P', style: TextStyle(fontSize: size * 0.45, fontWeight: FontWeight.w900, color: const Color(0xFF111111))),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> showEmDesenvolvimentoDialog(BuildContext context, {required String titulo, String? mensagem}) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+      title: Text(titulo, style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+      content: Text(
+        mensagem ?? 'Esta funcionalidade estará disponível em uma próxima atualização.',
+        style: const TextStyle(color: AppColors.gray, fontSize: 13, height: 1.5),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Entendi', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w700)),
+        ),
+      ],
+    ),
+  );
+}
+
 enum BadgeVariant { neon, red, yellow, gray, blue, mercadoPago }
 
 class PulguinhaAvatar extends StatelessWidget {
@@ -85,7 +147,6 @@ class PulguinhaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: backgroundColor ?? AppColors.card,
@@ -291,8 +352,12 @@ class HorarioGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth < 280 ? 1 : 2;
-        final itemWidth = cols == 1 ? constraints.maxWidth : (constraints.maxWidth - spacing) / 2;
+        final rawMax = constraints.maxWidth;
+        final maxW = rawMax.isFinite && rawMax > 0
+            ? rawMax
+            : MediaQuery.sizeOf(context).width;
+        final cols = maxW < 280 ? 1 : 2;
+        final double itemWidth = (cols == 1 ? maxW : (maxW - spacing) / 2).clamp(0.0, double.infinity);
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,

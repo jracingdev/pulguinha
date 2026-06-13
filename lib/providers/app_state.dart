@@ -185,6 +185,10 @@ class AppState extends ChangeNotifier {
         vencimento: _formatDate(novaData),
       );
     }).toList();
+    if (usuario?.id == alunoId) {
+      final atualizado = alunos.firstWhere((a) => a.id == alunoId);
+      usuario = atualizado.toUsuario();
+    }
     notifyListeners();
     _syncAluno(alunoId);
   }

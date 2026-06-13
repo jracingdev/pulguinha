@@ -205,6 +205,14 @@ class _LojaScreenState extends State<LojaScreen> {
       onSuccess: () {
         if (item.tipo == 'plano' && widget.usuario.isAluno && widget.usuario.id != null) {
           context.read<AppState>().ativarPlanoAluno(widget.usuario.id!, item);
+          final plano = item.nome.replaceFirst('Plano ', '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('✅ Plano $plano ativado com sucesso!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('✅ ${item.nome} — pagamento confirmado!')),
+          );
         }
       },
     );

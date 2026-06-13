@@ -73,14 +73,18 @@ class AlunoPerfilScreen extends StatelessWidget {
             children: [
               const SectionTitle(icon: '🔐', title: 'Segurança'),
               _securityItem(context, '🔑', 'Biometria / Face ID', 'Entrar sem senha', () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Biometria disponível na tela de login após marcar "Lembrar".')),
+                showEmDesenvolvimentoDialog(
+                  context,
+                  titulo: 'Biometria / Face ID',
+                  mensagem: 'Disponível na tela de login após marcar "Lembrar neste dispositivo". Autenticação biométrica nativa em breve.',
                 );
               }),
               const SizedBox(height: 8),
               _securityItem(context, '🔒', 'Alterar senha', 'Atualizar credenciais', () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Alteração de senha em breve.')),
+                showEmDesenvolvimentoDialog(
+                  context,
+                  titulo: 'Alterar senha',
+                  mensagem: 'A alteração de senha estará disponível quando a integração com Supabase Auth for configurada.',
                 );
               }),
             ],

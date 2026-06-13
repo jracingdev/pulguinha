@@ -72,12 +72,25 @@ class _MercadoPagoModalState extends State<MercadoPagoModal> {
               children: [
                 const Text('💳', style: TextStyle(fontSize: 22)),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Mercado Pago', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white)),
-                      Text('Pagamento seguro', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                      Row(
+                        children: [
+                          const Text('Mercado Pago', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.white)),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('Pagamento simulado', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                      const Text('Demonstração — sem cobrança real', style: TextStyle(fontSize: 11, color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -145,7 +158,7 @@ class _MercadoPagoModalState extends State<MercadoPagoModal> {
         onPressed: _pay,
       ),
       const SizedBox(height: 12),
-      const Center(child: Text('🔒 Protegido por Mercado Pago', style: TextStyle(fontSize: 10, color: AppColors.grayDim))),
+      const Center(child: Text('🔒 Demonstração — integração real requer backend + credenciais MP', style: TextStyle(fontSize: 10, color: AppColors.grayDim))),
     ];
   }
 
