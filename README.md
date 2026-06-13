@@ -26,6 +26,14 @@ flutter run
 
 Sem variáveis de ambiente, o app roda em **modo demo** com dados mock locais.
 
+### Testes e qualidade
+
+```bash
+flutter analyze
+flutter test
+flutter build web --release --base-href "/pulguinha/"
+```
+
 ### Com Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
@@ -87,12 +95,12 @@ lib/
 └── widgets/                      # Componentes reutilizáveis
 
 supabase/
-└── schema.sql                    # Tabelas e dados iniciais
+└── schema.sql                    # Tabelas, RLS e dados iniciais (seed)
 ```
 
-## Próximos passos
+## Roadmap (fora do escopo atual)
 
 - Integração real com Mercado Pago
-- Autenticação com Supabase Auth (em vez de senha em texto)
+- Supabase Auth (substituir senha em texto)
 - Políticas RLS mais restritivas em produção
 - Push notifications para lembretes de aula

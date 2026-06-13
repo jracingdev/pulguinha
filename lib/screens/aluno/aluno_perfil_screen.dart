@@ -72,9 +72,17 @@ class AlunoPerfilScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle(icon: '🔐', title: 'Segurança'),
-              _securityItem('🔑', 'Biometria / Face ID', 'Entrar sem senha'),
+              _securityItem(context, '🔑', 'Biometria / Face ID', 'Entrar sem senha', () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Biometria disponível na tela de login após marcar "Lembrar".')),
+                );
+              }),
               const SizedBox(height: 8),
-              _securityItem('🔒', 'Alterar senha', 'Atualizar credenciais'),
+              _securityItem(context, '🔒', 'Alterar senha', 'Atualizar credenciais', () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Alteração de senha em breve.')),
+                );
+              }),
             ],
           ),
         ),
@@ -101,25 +109,29 @@ class AlunoPerfilScreen extends StatelessWidget {
     );
   }
 
-  Widget _securityItem(String icon, String label, String sub) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
-                Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
-              ],
+  Widget _securityItem(BuildContext context, String icon, String label, String sub, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                  Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: AppColors.grayDim),
-        ],
+            const Icon(Icons.chevron_right, color: AppColors.grayDim),
+          ],
+        ),
       ),
     );
   }

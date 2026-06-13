@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool mostrarSenha = false;
   bool lembrar = false;
   bool loading = false;
+  bool bioDisp = false;
   String erro = '';
 
   @override
@@ -38,8 +39,49 @@ class _LoginScreenState extends State<LoginScreen> {
         emailCtrl.text = savedEmail;
         role = savedRole == 'admin' ? UserType.admin : UserType.aluno;
         lembrar = true;
+        bioDisp = true;
       });
     }
+  }
+
+  Future<void> _biometria() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('pulg_email');
+    final savedRole = prefs.getString('pulg_role');
+    if (savedEmail == null || savedRole == null) {
+      setState(() => erro = 'Nenhuma conta salva para biometria. Faça login e marque "Lembrar".');
+      return;
+    }
+
+    setState(() {
+      erro = '';
+      loading = true;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+
+    final appState = context.read<AppState>();
+    final rl = savedRole == 'admin' ? UserType.admin : UserType.aluno;
+
+    if (rl == UserType.admin) {
+      if (savedEmail == MockData.adminEmail) {
+        setState(() => loading = false);
+        appState.login(Usuario(tipo: UserType.admin, nome: MockData.adminNome, email: savedEmail));
+        return;
+      }
+    } else {
+      final matches = appState.alunos.where((a) => a.email == savedEmail);
+      if (matches.isNotEmpty) {
+        setState(() => loading = false);
+        appState.login(matches.first.toUsuario());
+        return;
+      }
+    }
+
+    setState(() {
+      loading = false;
+      erro = 'Conta salva não encontrada. Faça login novamente.';
+    });
   }
 
   Future<void> _tentarLogin({String? email, String? senha, UserType? tipo}) async {
@@ -255,6 +297,14 @@ class _LoginScreenState extends State<LoginScreen> {
           enabled: !loading,
           onPressed: () => _tentarLogin(),
         ),
+        if (bioDisp) ...[
+          const SizedBox(height: 12),
+          GhostButton(
+            label: '🔑 Entrar com Biometria / Face ID',
+            fullWidth: true,
+            onPressed: loading ? null : _biometria,
+          ),
+        ],
         const SizedBox(height: 16),
         PulguinhaCard(
           backgroundColor: AppColors.card2,
