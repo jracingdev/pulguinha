@@ -4,6 +4,8 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/config/mercado_pago_config.dart';
+import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/widgets/theme_settings_tile.dart';
 import 'package:pulguinha/widgets/admin_analytics.dart';
@@ -88,6 +90,17 @@ class AdminDashboardScreen extends StatelessWidget {
         const SizedBox(height: 10),
         const ThemeSettingsTile(),
         const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '💳',
+          title: 'Mercado Pago',
+          subtitle: MercadoPagoConfig.integrationLabel(),
+          color: AppColors.mercadoPago,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AdminMpConfigScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
         InkWell(
           onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SobreAppScreen())),
           borderRadius: BorderRadius.circular(12),
@@ -113,6 +126,40 @@ class AdminDashboardScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _configTile(
+    BuildContext context, {
+    required String icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: color)),
+                  Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.grayDim),
+          ],
+        ),
+      ),
     );
   }
 

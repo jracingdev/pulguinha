@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -32,7 +34,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
-        _mpCard(rec),
+        _mpCard(context, rec),
         if (inad.isNotEmpty) ...[
           const SectionTitle(icon: '⚠️', title: 'Em Atraso'),
           ...inad.map((a) => _alunoFinanceiro(context, state, a, tipo: 'inad')),
@@ -63,8 +65,17 @@ class AdminFinanceiroScreen extends StatelessWidget {
     );
   }
 
-  Widget _mpCard(double rec) {
-    return Container(
+  Widget _mpCard(BuildContext context, double rec) {
+    final configured = MercadoPagoConfig.isRealCheckoutAvailable;
+    final badgeLabel = configured ? 'Ativo' : 'Demo';
+    final badgeVariant = configured ? BadgeVariant.mercadoPago : BadgeVariant.yellow;
+
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const AdminMpConfigScreen()),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -78,16 +89,18 @@ class AdminFinanceiroScreen extends StatelessWidget {
             children: [
               const Text('💳', style: TextStyle(fontSize: 24)),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Mercado Pago', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.mercadoPago)),
-                    Text('Integração ativa — Conta: @pulguinha', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                    const Text('Mercado Pago', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.mercadoPago)),
+                    Text(MercadoPagoConfig.integrationLabel(), style: const TextStyle(fontSize: 11, color: AppColors.gray)),
                   ],
                 ),
               ),
-              const PulguinhaBadge(label: 'Conectado', variant: BadgeVariant.mercadoPago),
+              PulguinhaBadge(label: badgeLabel, variant: badgeVariant),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, color: AppColors.grayDim, size: 18),
             ],
           ),
           const SizedBox(height: 10),
@@ -100,8 +113,11 @@ class AdminFinanceiroScreen extends StatelessWidget {
               Expanded(child: _miniStat('Próx. repasse', 'Seg 16/06', AppColors.blue)),
             ],
           ),
+          const SizedBox(height: 8),
+          const Text('Toque para configurar chave pública e links', style: TextStyle(fontSize: 10, color: AppColors.grayDim)),
         ],
       ),
+    ),
     );
   }
 

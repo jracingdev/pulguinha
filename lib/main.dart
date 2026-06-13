@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pulguinha/app.dart';
+import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR');
+  await MercadoPagoConfig.initialize();
 
   if (SupabaseConfig.isConfigured) {
     await Supabase.initialize(
