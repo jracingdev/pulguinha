@@ -1,0 +1,206 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:pulguinha/data/mock_data.dart';
+import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/widgets/pulguinha_widgets.dart';
+
+class AdminDashboardScreen extends StatelessWidget {
+  const AdminDashboardScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final ativos = state.alunos.where((a) => a.status == 'Ativo').length;
+    final inadimp = state.alunos.where((a) => a.status == 'Inadimplente').length;
+    final agHoje = state.agendamentos.where((ag) => ag.data == MockData.today).length;
+    final venc7 = state.alunos.where((a) {
+      final d = DateHelper.diasAteVencimento(a.vencimento);
+      return d >= 0 && d <= 7;
+    }).length;
+
+    final aulasHoje = state.horarios.map((h) {
+      final ags = state.agendamentos.where((ag) => ag.data == MockData.today && ag.horarioId == h.id).toList();
+      return (h, ags);
+    }).where((e) => e.$2.isNotEmpty || ['06:00', '18:00', '19:00'].contains(e.$1.hora)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF1A1A1A), AppColors.bg]),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('⚡ PAINEL ADMIN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 2)),
+              Text.rich(
+                TextSpan(
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppColors.white, height: 1.1),
+                  children: [
+                    TextSpan(text: 'BOM DIA, '),
+                    TextSpan(text: 'PULGUINHA!', style: TextStyle(color: AppColors.neon)),
+                  ],
+                ),
+              ),
+              SizedBox(height: 6),
+              Text('Sexta-feira, 12 de junho de 2026', style: TextStyle(fontSize: 12, color: AppColors.gray)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _statCard('👥', '$ativos', 'Alunos Ativos', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
+            _statCard('⚠️', '$inadimp', 'Inadimplentes', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
+            _statCard('📅', '$agHoje', 'Agendados Hoje', AppColors.blue, AppColors.blue.withValues(alpha: 0.08)),
+            _statCard('💰', '$venc7', 'Vencendo 7d', AppColors.yellow, AppColors.yellow.withValues(alpha: 0.08)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        const SectionTitle(icon: '📋', title: 'Aulas de Hoje'),
+        ...aulasHoje.map((e) => _aulaCard(e.$1, e.$2)),
+        const SizedBox(height: 20),
+        const SectionTitle(icon: '🔔', title: 'Alertas'),
+        ...state.alunos.where((a) => a.status == 'Inadimplente').map(_alertaInadimplente),
+        ...state.alunos.where((a) {
+          final d = DateHelper.diasAteVencimento(a.vencimento);
+          return d >= 0 && d <= 7 && a.status == 'Ativo';
+        }).map(_alertaVencendo),
+      ],
+    );
+  }
+
+  Widget _statCard(String icon, String value, String label, Color color, Color bg) {
+    return SizedBox(
+      width: 160,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: bg, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 20)),
+            Text(value, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: color, height: 1)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _aulaCard(dynamic h, List ags) {
+    final pct = ags.length / h.capacidade * 100;
+    final barC = pct >= 90 ? AppColors.red : pct >= 60 ? AppColors.yellow : AppColors.neon;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: PulguinhaCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(h.hora, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.neon)),
+                    const SizedBox(width: 8),
+                    Text(h.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                  ],
+                ),
+                Text('${ags.length}/${h.capacidade}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gray)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(value: pct / 100, minHeight: 4, backgroundColor: AppColors.card2, color: barC),
+            ),
+            const SizedBox(height: 10),
+            if (ags.isEmpty)
+              const Text('Nenhum aluno agendado', style: TextStyle(fontSize: 12, color: AppColors.grayDim))
+            else
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: ags.map<Widget>((ag) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.neon.withValues(alpha: 0.1),
+                      border: Border.all(color: AppColors.neon.withValues(alpha: 0.2)),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(ag.nomeAluno.split(' ').first, style: const TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w700)),
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _alertaInadimplente(dynamic a) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.red.withValues(alpha: 0.08),
+          border: Border.all(color: AppColors.red.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                const Text('Mensalidade em atraso', style: TextStyle(fontSize: 11, color: AppColors.red)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _alertaVencendo(dynamic a) {
+    final d = DateHelper.diasAteVencimento(a.vencimento);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.yellow.withValues(alpha: 0.08),
+          border: Border.all(color: AppColors.yellow.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                Text('Vence em $d dias', style: const TextStyle(fontSize: 11, color: AppColors.yellow)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
