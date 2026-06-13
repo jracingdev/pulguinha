@@ -124,7 +124,7 @@ class _AlunoCheckinScreenState extends State<AlunoCheckinScreen> {
               const PulguinhaCard(
                 child: Column(
                   children: [
-                    PulguinhaLogo(size: 40, showShadow: false),
+                    PulguinhaLogo(size: 60, showShadow: false),
                     SizedBox(height: 8),
                     Text('Nenhuma presença ainda', style: TextStyle(color: AppColors.gray)),
                     Text('Faça seu primeiro check-in! 💪', style: TextStyle(fontSize: 11, color: AppColors.grayDim)),

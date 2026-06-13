@@ -56,7 +56,7 @@ class _PublicScreenState extends State<PublicScreen> {
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
         children: [
-          const PulguinhaLogo(size: 68, borderRadius: 18),
+          const PulguinhaLogo(size: 136, borderRadius: 24),
           const SizedBox(height: 12),
           const Text('FUNCIONAL DO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 2)),
           const Text('PULGUINHA', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 2)),

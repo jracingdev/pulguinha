@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLogo() {
     return Column(
       children: [
-        const PulguinhaLogo(size: 72, borderRadius: 20),
+        const PulguinhaLogo(size: 144, borderRadius: 28),
         const SizedBox(height: 12),
         const Text('FUNCIONAL DO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 2)),
         const Text('PULGUINHA', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 2)),

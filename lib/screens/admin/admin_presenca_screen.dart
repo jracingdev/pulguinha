@@ -101,7 +101,7 @@ class AdminPresencaScreen extends StatelessWidget {
           const PulguinhaCard(
             child: Column(
               children: [
-                PulguinhaLogo(size: 48, showShadow: false),
+                PulguinhaLogo(size: 72, showShadow: false),
                 SizedBox(height: 8),
                 Text('Aguardando check-ins dos alunos', style: TextStyle(color: AppColors.gray, fontWeight: FontWeight.w700)),
                 Text('Exiba o QR acima — os alunos escaneiam ao chegar', style: TextStyle(fontSize: 11, color: AppColors.grayDim)),

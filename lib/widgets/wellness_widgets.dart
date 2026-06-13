@@ -287,7 +287,7 @@ class DicaDoDiaCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const PulguinhaLogo(size: 32, showShadow: false, borderRadius: 8),
+              const PulguinhaLogo(size: 48, showShadow: false, borderRadius: 10),
               const SizedBox(width: 10),
               const Expanded(
                 child: Column(

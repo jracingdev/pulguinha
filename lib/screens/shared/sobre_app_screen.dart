@@ -50,7 +50,7 @@ class _SobreAppScreenState extends State<SobreAppScreen> {
           Center(
             child: Column(
               children: [
-                const PulguinhaLogo(size: 88, borderRadius: 22),
+                const PulguinhaLogo(size: 176, borderRadius: 28),
                 const SizedBox(height: 16),
                 const Text(
                   'Funcional do Pulguinha',

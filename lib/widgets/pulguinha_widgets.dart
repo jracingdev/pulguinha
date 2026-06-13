@@ -5,7 +5,7 @@ import 'package:pulguinha/theme/app_colors.dart';
 class PulguinhaLogo extends StatelessWidget {
   const PulguinhaLogo({
     super.key,
-    this.size = 64,
+    this.size = 128,
     this.showShadow = true,
     this.borderRadius = 18,
   });
@@ -22,7 +22,13 @@ class PulguinhaLogo extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: showShadow
-            ? [BoxShadow(color: AppColors.neon.withValues(alpha: 0.35), blurRadius: size * 0.45)]
+            ? [
+                BoxShadow(
+                  color: AppColors.neon.withValues(alpha: 0.18),
+                  blurRadius: size * 0.12,
+                  spreadRadius: 0,
+                ),
+              ]
             : null,
       ),
       child: ClipRRect(
@@ -32,6 +38,8 @@ class PulguinhaLogo extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          isAntiAlias: true,
           errorBuilder: (_, __, ___) => Container(
             color: AppColors.neon,
             alignment: Alignment.center,

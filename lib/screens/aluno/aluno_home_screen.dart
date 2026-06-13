@@ -138,7 +138,7 @@ class AlunoHomeScreen extends StatelessWidget {
             const PulguinhaCard(
               child: Column(
                 children: [
-                  PulguinhaLogo(size: 40, showShadow: false),
+                  PulguinhaLogo(size: 60, showShadow: false),
                   SizedBox(height: 8),
                   Text('Nenhum treino agendado', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gray)),
                   SizedBox(height: 4),

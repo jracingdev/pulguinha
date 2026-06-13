@@ -44,7 +44,7 @@ class QrDisplayCard extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const PulguinhaLogo(size: 56, showShadow: true),
+                const PulguinhaLogo(size: 112, showShadow: true),
                 const SizedBox(height: 24),
                 Container(
                   padding: const EdgeInsets.all(24),

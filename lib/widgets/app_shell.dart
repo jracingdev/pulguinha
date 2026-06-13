@@ -44,7 +44,7 @@ class AppShell extends StatelessWidget {
               bottom: false,
               child: Row(
                 children: [
-                  const PulguinhaLogo(size: 32, borderRadius: 8, showShadow: false),
+                  const PulguinhaLogo(size: 48, borderRadius: 10, showShadow: false),
                   const SizedBox(width: 10),
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
