@@ -36,13 +36,14 @@ jobs:
 
       - name: Build web
         env:
-          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN }}
+          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN || 'funcionaldopulguinha.com.br' }}
         run: |
           if [ -n "$CUSTOM_DOMAIN" ]; then
             BASE_HREF="/"
           else
             BASE_HREF="/pulguinha/"
           fi
+          echo "Build com base-href: $BASE_HREF (domínio: ${CUSTOM_DOMAIN:-nenhum})"
           flutter build web --release \
             --base-href "$BASE_HREF" \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
@@ -50,7 +51,7 @@ jobs:
 
       - name: Preparar artefato Pages
         env:
-          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN }}
+          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN || 'funcionaldopulguinha.com.br' }}
         run: |
           touch build/web/.nojekyll
           if [ -n "$CUSTOM_DOMAIN" ]; then
