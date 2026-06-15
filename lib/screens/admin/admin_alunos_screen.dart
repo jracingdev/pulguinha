@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pulguinha/utils/photo_picker_helper.dart';
+import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
-import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/photo_picker_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminAlunosScreen extends StatefulWidget {
@@ -132,8 +132,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     final nomeCtrl = TextEditingController(text: editando?.nome ?? '');
     final emailCtrl = TextEditingController(text: editando?.email ?? '');
     final telCtrl = TextEditingController(text: editando?.telefone ?? '');
-    final vencCtrl = TextEditingController(text: editando?.vencimento ?? '');
-    final nascCtrl = TextEditingController(text: editando?.dataNascimento ?? '');
+    final vencCtrl = TextEditingController(text: editando != null ? DateHelper.formatarData(editando.vencimento) : '');
+    final nascCtrl = TextEditingController(text: editando?.dataNascimento != null && editando!.dataNascimento!.isNotEmpty ? DateHelper.formatarData(editando.dataNascimento!) : '');
     final senhaCtrl = TextEditingController(text: editando?.senha ?? '1234');
     final restrCtrl = TextEditingController(text: editando?.anamnese.restricoesMedicas ?? '');
     final medCtrl = TextEditingController(text: editando?.anamnese.medicamentos ?? '');
@@ -157,8 +157,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 FieldLabel(label: 'Nome *', child: TextField(controller: nomeCtrl)),
                 FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl)),
                 FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
-                FieldLabel(label: 'Data nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '1995-06-13'))),
-                FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: '2026-06-20'))),
+                FieldLabel(label: 'Data nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
+                FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: '20-06-2026'))),
                 FieldLabel(label: 'Senha do app', child: TextField(controller: senhaCtrl, obscureText: true)),
                 FieldLabel(
                   label: 'Plano',
@@ -250,11 +250,11 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             email: emailCtrl.text.trim(),
                             telefone: telCtrl.text.trim(),
                             plano: plano,
-                            vencimento: vencCtrl.text.trim().isEmpty ? MockData.today : vencCtrl.text.trim(),
+                            vencimento: vencCtrl.text.trim().isEmpty ? MockData.today : DateHelper.paraIso(vencCtrl.text.trim()),
                             status: status,
                             senha: senhaCtrl.text,
                             avatar: editando?.avatar ?? avatar,
-                            dataNascimento: nascCtrl.text.trim().isEmpty ? null : nascCtrl.text.trim(),
+                            dataNascimento: nascCtrl.text.trim().isEmpty ? null : DateHelper.paraIso(nascCtrl.text.trim()),
                             anamnese: anamnese,
                             foto: fotoBase64,
                             streakPresenca: editando?.streakPresenca ?? 0,

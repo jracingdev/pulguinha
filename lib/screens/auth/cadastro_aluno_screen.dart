@@ -5,6 +5,7 @@ import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -96,7 +97,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       vencimento: MockData.today,
       status: 'Pendente',
       avatar: avatar,
-      dataNascimento: nascCtrl.text.trim().isEmpty ? null : nascCtrl.text.trim(),
+      dataNascimento: nascCtrl.text.trim().isEmpty ? null : DateHelper.paraIso(nascCtrl.text.trim()),
       anamnese: Anamnese(
         restricoesMedicas: restrCtrl.text.trim(),
         objetivoTreino: objCtrl.text.trim(),
@@ -180,7 +181,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
             FieldLabel(label: 'Nome completo *', child: TextField(controller: nomeCtrl)),
             FieldLabel(label: 'E-mail *', child: TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress)),
             FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl, keyboardType: TextInputType.phone)),
-            FieldLabel(label: 'Data de nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: 'AAAA-MM-DD'))),
+            FieldLabel(label: 'Data de nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
             FieldLabel(label: 'Senha *', child: TextField(controller: senhaCtrl, obscureText: true)),
             FieldLabel(label: 'Confirmar senha *', child: TextField(controller: confirmSenhaCtrl, obscureText: true)),
             const SectionTitle(icon: '🏥', title: 'Anamnese'),

@@ -32,16 +32,15 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: AppColors.card,
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: SafeArea(
-              bottom: false,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: const BoxDecoration(
+                color: AppColors.card,
+                border: Border(bottom: BorderSide(color: AppColors.border)),
+              ),
               child: Row(
                 children: [
                   const PulguinhaLogo(size: 48, borderRadius: 10, showShadow: false),
@@ -49,8 +48,8 @@ class AppShell extends StatelessWidget {
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('FUNCIONAL DO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 1.5)),
-                      Text('PULGUINHA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 1)),
+                      Text('FUNCIONAL DO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 1.5, decoration: TextDecoration.none)),
+                      Text('PULGUINHA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 1, decoration: TextDecoration.none)),
                     ],
                   ),
                   const Spacer(),
@@ -72,14 +71,14 @@ class AppShell extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 100),
-              child: child,
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
+                child: child,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
@@ -87,8 +86,9 @@ class AppShell extends StatelessWidget {
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
         child: SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 14),
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
             child: Row(
               children: tabs.map((t) {
                 final active = activeTab == t.id;
@@ -105,7 +105,7 @@ class AppShell extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             t.label,
-                            style: TextStyle(fontSize: 10, fontWeight: active ? FontWeight.w900 : FontWeight.w600, color: active ? AppColors.neon : AppColors.grayDim, letterSpacing: 0.5),
+                            style: TextStyle(fontSize: 10, fontWeight: active ? FontWeight.w900 : FontWeight.w600, color: active ? AppColors.neon : AppColors.grayDim, letterSpacing: 0.5, decoration: TextDecoration.none),
                           ),
                           if (active)
                             Container(

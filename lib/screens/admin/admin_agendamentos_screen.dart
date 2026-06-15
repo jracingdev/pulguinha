@@ -168,7 +168,13 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                 child: const Text('⏰ Cancelamentos: entre 24h e 1h antes', style: TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w600)),
               ),
               const SizedBox(height: 14),
-              FieldLabel(label: 'Data', child: TextField(onChanged: (v) => data = v, decoration: InputDecoration(hintText: data))),
+              FieldLabel(
+                label: 'Data',
+                child: TextField(
+                  decoration: InputDecoration(hintText: DateHelper.formatarData(data)),
+                  onChanged: (v) => data = v.trim().isEmpty ? data : DateHelper.paraIso(v),
+                ),
+              ),
               FieldLabel(
                 label: 'Aluno *',
                 child: DropdownButtonFormField<String>(

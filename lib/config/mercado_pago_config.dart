@@ -87,22 +87,20 @@ class MercadoPagoConfig {
   }
 
   static String checkoutModeLabel() {
-    if (!isRealCheckoutAvailable) return 'Demonstração';
+    if (!isRealCheckoutAvailable) return 'Não configurado';
     if (hasStaticPaymentLinks && canUseEdgeFunction) return 'Payment Links + Edge Function';
     if (hasStaticPaymentLinks) return 'Payment Links';
     if (canUseEdgeFunction) return 'Edge Function';
-    return 'Demonstração';
+    return 'Não configurado';
   }
 
   static String statusIndicatorLabel() {
-    if (isRealCheckoutAvailable || hasPublicKey) {
-      return '✅ Checkout real ativo';
-    }
-    return '⚠️ Modo demonstração';
+    if (isRealCheckoutAvailable) return '✅ Checkout real ativo';
+    return '⚠️ Configure Mercado Pago';
   }
 
   static String integrationLabel() {
-    if (!isRealCheckoutAvailable) return 'Modo demonstração';
+    if (!isRealCheckoutAvailable) return 'Configure Supabase + Edge Function ou Payment Links';
     if (hasStaticPaymentLinks && canUseEdgeFunction) {
       return 'Checkout Pro (links + Edge Function)';
     }

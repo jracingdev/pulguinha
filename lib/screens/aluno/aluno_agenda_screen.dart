@@ -157,7 +157,13 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
                 child: const Text('⏰ Você pode cancelar até 1h antes da aula', style: TextStyle(fontSize: 12, color: AppColors.neon)),
               ),
               const SizedBox(height: 14),
-              FieldLabel(label: 'Data', child: TextField(onChanged: (v) => data = v, decoration: InputDecoration(hintText: data))),
+              FieldLabel(
+                label: 'Data',
+                child: TextField(
+                  decoration: InputDecoration(hintText: DateHelper.formatarData(data)),
+                  onChanged: (v) => data = v.trim().isEmpty ? data : DateHelper.paraIso(v),
+                ),
+              ),
               FieldLabel(
                 label: 'Horário',
                 child: DropdownButtonFormField<String>(

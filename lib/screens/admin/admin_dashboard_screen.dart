@@ -111,7 +111,7 @@ class AdminDashboardScreen extends StatelessWidget {
           subtitle: '${state.produtos.length} itens na loja',
           color: AppColors.neon,
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const AdminProdutosScreen()),
+            MaterialPageRoute<void>(builder: (_) => const AdminProdutosScreen(standalone: true)),
           ),
         ),
         const SizedBox(height: 10),

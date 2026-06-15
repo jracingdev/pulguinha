@@ -3,30 +3,35 @@ import 'package:provider/provider.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/widgets/admin_page_layout.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminHorariosScreen extends StatelessWidget {
-  const AdminHorariosScreen({super.key});
+  const AdminHorariosScreen({super.key, this.standalone = true});
+
+  final bool standalone;
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final content = state.horarios.map((h) => _horarioCard(context, state, h)).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('HORÁRIOS', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.white)),
-            NeonButton(label: '+ Novo', onPressed: () => _abrirModal(context, state)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text('Configure turmas, dias e vagas por horário.', style: TextStyle(fontSize: 12, color: AppColors.gray)),
-        const SizedBox(height: 16),
-        ...state.horarios.map((h) => _horarioCard(context, state, h)),
-      ],
+    if (standalone) {
+      return AdminStandalonePage(
+        title: 'Horários',
+        subtitle: 'Configure turmas, dias e vagas por horário.',
+        actionLabel: '+ Novo',
+        onAction: () => _abrirModal(context, state),
+        children: content,
+      );
+    }
+
+    return AdminTabPage(
+      title: 'HORÁRIOS',
+      subtitle: 'Configure turmas, dias e vagas por horário.',
+      actionLabel: '+ Novo',
+      onAction: () => _abrirModal(context, state),
+      children: content,
     );
   }
 
@@ -45,15 +50,15 @@ class AdminHorariosScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(h.hora, style: const TextStyle(color: AppColors.neon, fontWeight: FontWeight.w900, fontSize: 13)),
+              child: Text(h.hora, style: const TextStyle(color: AppColors.neon, fontWeight: FontWeight.w900, fontSize: 13, decoration: TextDecoration.none)),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(h.dias, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
-                  Text('Capacidade: ${h.capacidade} vagas', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                  Text(h.dias, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white, decoration: TextDecoration.none)),
+                  Text('Capacidade: ${h.capacidade} vagas', style: const TextStyle(fontSize: 11, color: AppColors.gray, decoration: TextDecoration.none)),
                 ],
               ),
             ),

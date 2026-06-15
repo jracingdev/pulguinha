@@ -1,7 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
@@ -29,16 +29,14 @@ class _LojaScreenState extends State<LojaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('🛒 LOJA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 2)),
-        const Text('PLANOS & PRODUTOS', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.white)),
-        const Text('Funcional do Pulguinha', style: TextStyle(fontSize: 13, color: AppColors.gray)),
+        const Text('🛒 LOJA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 2, decoration: TextDecoration.none)),
+        const Text('PLANOS & PRODUTOS', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.white, decoration: TextDecoration.none)),
+        const Text('Funcional do Pulguinha', style: TextStyle(fontSize: 13, color: AppColors.gray, decoration: TextDecoration.none)),
         const SizedBox(height: 20),
         _tabBar(),
         const SizedBox(height: 20),
         if (tab == 'planos') ...planos.map((p) => _planoCard(p)),
         if (tab == 'produtos') ...produtos.map((p) => _produtoCard(p)),
-        const SizedBox(height: 24),
-        _linkPublico(),
       ],
     );
   }
@@ -65,7 +63,7 @@ class _LojaScreenState extends State<LojaScreen> {
           padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: BoxDecoration(color: selected ? AppColors.neon : Colors.transparent, borderRadius: BorderRadius.circular(10)),
           alignment: Alignment.center,
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: selected ? const Color(0xFF111111) : AppColors.gray)),
+          child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: selected ? const Color(0xFF111111) : AppColors.gray, decoration: TextDecoration.none)),
         ),
       ),
     );
@@ -92,15 +90,15 @@ class _LojaScreenState extends State<LojaScreen> {
                         children: [
                           Text(p.emoji, style: const TextStyle(fontSize: 22)),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(p.nome, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.white))),
+                          Expanded(child: Text(p.nome, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.white, decoration: TextDecoration.none))),
                           if (isAtual) const PulguinhaBadge(label: 'Seu plano'),
                         ],
                       ),
-                      Text(p.desc, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+                      Text(p.desc, style: const TextStyle(fontSize: 12, color: AppColors.gray, decoration: TextDecoration.none)),
                     ],
                   ),
                 ),
-                Text('R\$${p.preco.toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon)),
+                Text('R\$${p.preco.toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon, decoration: TextDecoration.none)),
               ],
             ),
             const SizedBox(height: 10),
@@ -123,25 +121,17 @@ class _LojaScreenState extends State<LojaScreen> {
       child: PulguinhaCard(
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.neon.withValues(alpha: 0.08),
-                border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              alignment: Alignment.center,
-              child: Text(p.emoji, style: const TextStyle(fontSize: 26)),
-            ),
+            _produtoThumb(p),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(p.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
-                  Text(p.desc, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
-                  Text('R\$ ${p.preco.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.neon)),
+                  Text(p.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white, decoration: TextDecoration.none)),
+                  Text(p.desc, style: const TextStyle(fontSize: 11, color: AppColors.gray, decoration: TextDecoration.none)),
+                  if (p.grades.isNotEmpty)
+                    Text('Tamanhos: ${p.grades.join(' · ')}', style: const TextStyle(fontSize: 10, color: AppColors.neon, decoration: TextDecoration.none)),
+                  Text('R\$ ${p.preco.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.neon, decoration: TextDecoration.none)),
                 ],
               ),
             ),
@@ -160,57 +150,59 @@ class _LojaScreenState extends State<LojaScreen> {
     );
   }
 
-  Widget _linkPublico() {
-    final link = MercadoPagoConfig.paymentLinkForProduct(1).isNotEmpty
-        ? MercadoPagoConfig.paymentLinkForProduct(1)
-        : 'https://www.mercadopago.com.br/ (configure MP_LINK_PLANO_MENSAL)';
-    final isConfigured = MercadoPagoConfig.paymentLinkForProduct(1).isNotEmpty;
+  Widget _produtoThumb(Produto p) {
+    if (p.foto != null && p.foto!.isNotEmpty) {
+      try {
+        final bytes = base64Decode(p.foto!.contains(',') ? p.foto!.split(',').last : p.foto!);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.memory(bytes, width: 56, height: 56, fit: BoxFit.cover),
+        );
+      } catch (_) {}
+    }
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        color: AppColors.mercadoPago.withValues(alpha: 0.08),
-        border: Border.all(color: AppColors.mercadoPago.withValues(alpha: 0.2)),
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.neon.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('🔗 LINK PÚBLICO DE PAGAMENTO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.mercadoPago, letterSpacing: 1)),
-          const SizedBox(height: 6),
-          Text(
-            isConfigured ? 'Compartilhe com novos alunos sem precisar de login' : 'Configure MP_LINK_PLANO_MENSAL para link real',
-            style: const TextStyle(fontSize: 12, color: AppColors.gray),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppColors.card2, borderRadius: BorderRadius.circular(8)),
-            child: Text(link, style: const TextStyle(fontSize: 11, color: AppColors.neon, fontFamily: 'monospace')),
-          ),
-          const SizedBox(height: 10),
-          GhostButton(
-            label: '📋 Copiar link público',
-            fullWidth: true,
-            borderColor: AppColors.mercadoPago.withValues(alpha: 0.3),
-            textColor: AppColors.mercadoPago,
-            onPressed: isConfigured
-                ? () {
-                    Clipboard.setData(ClipboardData(text: link));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copiado!')));
-                  }
-                : null,
-          ),
-        ],
-      ),
+      alignment: Alignment.center,
+      child: Text(p.emoji, style: const TextStyle(fontSize: 26)),
     );
   }
 
-  void _comprar(Produto item) {
+  Future<void> _comprar(Produto item) async {
+    String? grade;
+    if (item.grades.isNotEmpty) {
+      grade = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text('Escolha o tamanho', style: TextStyle(color: AppColors.white)),
+          content: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: item.grades.map((g) {
+              return ChoiceChip(
+                label: Text(g),
+                selected: false,
+                onSelected: (_) => Navigator.pop(ctx, g),
+              );
+            }).toList(),
+          ),
+        ),
+      );
+      if (grade == null) return;
+    }
+
+    if (!mounted) return;
     MercadoPagoModal.show(
       context,
       item: item,
       aluno: widget.usuario.isAluno ? widget.usuario : null,
+      gradeSelecionada: grade,
       onSuccess: () {
         if (item.tipo == 'plano' && widget.usuario.isAluno && widget.usuario.id != null) {
           context.read<AppState>().ativarPlanoAluno(widget.usuario.id!, item);

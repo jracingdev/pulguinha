@@ -102,7 +102,7 @@ class MockData {
     const Produto(id: 2, nome: 'Plano Trimestral', desc: '3 meses com 10% de desconto', preco: 400, tipo: 'plano', emoji: '🗓️'),
     const Produto(id: 3, nome: 'Plano Semestral', desc: '6 meses com 20% de desconto', preco: 720, tipo: 'plano', emoji: '📆'),
     const Produto(id: 4, nome: 'Plano Anual', desc: '12 meses com 30% de desconto', preco: 1300, tipo: 'plano', emoji: '🏆'),
-    const Produto(id: 5, nome: 'Camiseta Pulguinha', desc: 'Dry-fit tamanhos P/M/G/GG', preco: 69, tipo: 'produto', emoji: '👕'),
+    const Produto(id: 5, nome: 'Camiseta Pulguinha', desc: 'Dry-fit com logo bordado', preco: 69, tipo: 'produto', emoji: '👕', grades: ['P', 'M', 'G', 'GG']),
     const Produto(id: 6, nome: 'Squeeze 700ml', desc: 'Alumínio com logo bordado', preco: 49, tipo: 'produto', emoji: '🥤'),
     const Produto(id: 7, nome: 'Aula Avulsa', desc: '1 treino funcional à la carte', preco: 40, tipo: 'avulso', emoji: '🎟️'),
   ];

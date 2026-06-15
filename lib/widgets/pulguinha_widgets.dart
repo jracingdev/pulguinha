@@ -603,34 +603,44 @@ Future<T?> showPulguinhaModal<T>({
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (ctx) => Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.white)),
+    builder: (ctx) {
+      final bottom = MediaQuery.paddingOf(ctx).bottom;
+      return SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom + bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.white, decoration: TextDecoration.none)),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close, color: AppColors.gray, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.card2,
+                        side: const BorderSide(color: AppColors.border),
+                        minimumSize: const Size(28, 28),
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close, color: AppColors.gray, size: 18),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.card2,
-                    side: const BorderSide(color: AppColors.border),
-                    minimumSize: const Size(28, 28),
-                  ),
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: child,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const Divider(height: 1, color: AppColors.border),
-          Padding(padding: const EdgeInsets.all(20), child: child),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   );
 }

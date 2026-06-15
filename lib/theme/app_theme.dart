@@ -32,10 +32,22 @@ class AppTheme {
     required Color hint,
   }) {
     final isDark = brightness == Brightness.dark;
+    final baseText = TextStyle(decoration: TextDecoration.none, color: onSurface);
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: bg,
+      textTheme: TextTheme(
+        bodyLarge: baseText,
+        bodyMedium: baseText,
+        bodySmall: baseText,
+        titleLarge: baseText.copyWith(fontWeight: FontWeight.w900),
+        titleMedium: baseText.copyWith(fontWeight: FontWeight.w800),
+        titleSmall: baseText.copyWith(fontWeight: FontWeight.w700),
+        labelLarge: baseText,
+        labelMedium: baseText,
+        labelSmall: baseText,
+      ),
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: AppColors.neon,

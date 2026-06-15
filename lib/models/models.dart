@@ -16,6 +16,7 @@ class Usuario {
     this.foto,
     this.streakPresenca,
     this.pulguinhaPoints,
+    this.horarioId,
   });
 
   final UserType tipo;
@@ -32,6 +33,7 @@ class Usuario {
   final String? foto;
   final int? streakPresenca;
   final int? pulguinhaPoints;
+  final int? horarioId;
 
   bool get isAdmin => tipo == UserType.admin;
   bool get isAluno => tipo == UserType.aluno;
@@ -51,6 +53,7 @@ class Usuario {
     String? foto,
     int? streakPresenca,
     int? pulguinhaPoints,
+    int? horarioId,
   }) {
     return Usuario(
       tipo: tipo ?? this.tipo,
@@ -67,6 +70,7 @@ class Usuario {
       foto: foto ?? this.foto,
       streakPresenca: streakPresenca ?? this.streakPresenca,
       pulguinhaPoints: pulguinhaPoints ?? this.pulguinhaPoints,
+      horarioId: horarioId ?? this.horarioId,
     );
   }
 }
@@ -205,6 +209,7 @@ class Aluno {
     this.streakPresenca = 0,
     this.pulguinhaPoints = 0,
     this.dataCadastro,
+    this.horarioId,
   });
 
   final int id;
@@ -222,6 +227,7 @@ class Aluno {
   final int streakPresenca;
   final int pulguinhaPoints;
   final String? dataCadastro;
+  final int? horarioId;
 
   Aluno copyWith({
     int? id,
@@ -239,6 +245,7 @@ class Aluno {
     int? streakPresenca,
     int? pulguinhaPoints,
     String? dataCadastro,
+    int? horarioId,
   }) {
     return Aluno(
       id: id ?? this.id,
@@ -256,6 +263,7 @@ class Aluno {
       streakPresenca: streakPresenca ?? this.streakPresenca,
       pulguinhaPoints: pulguinhaPoints ?? this.pulguinhaPoints,
       dataCadastro: dataCadastro ?? this.dataCadastro,
+      horarioId: horarioId ?? this.horarioId,
     );
   }
 
@@ -275,6 +283,7 @@ class Aluno {
         streakPresenca: json['streak_presenca'] as int? ?? 0,
         pulguinhaPoints: json['pulguinha_points'] as int? ?? 0,
         dataCadastro: json['data_cadastro'] != null ? _formatDate(json['data_cadastro']) : null,
+        horarioId: json['horario_id'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -292,6 +301,7 @@ class Aluno {
         'streak_presenca': streakPresenca,
         'pulguinha_points': pulguinhaPoints,
         if (dataCadastro != null) 'data_cadastro': dataCadastro,
+        if (horarioId != null) 'horario_id': horarioId,
       };
 
   Usuario toUsuario() => Usuario(
@@ -309,6 +319,7 @@ class Aluno {
         foto: foto,
         streakPresenca: streakPresenca,
         pulguinhaPoints: pulguinhaPoints,
+        horarioId: horarioId,
       );
 }
 
@@ -400,6 +411,8 @@ class Produto {
     required this.preco,
     required this.tipo,
     required this.emoji,
+    this.foto,
+    this.grades = const [],
   });
 
   final int id;
@@ -408,6 +421,8 @@ class Produto {
   final double preco;
   final String tipo;
   final String emoji;
+  final String? foto;
+  final List<String> grades;
 
   Produto copyWith({
     int? id,
@@ -416,6 +431,8 @@ class Produto {
     double? preco,
     String? tipo,
     String? emoji,
+    String? foto,
+    List<String>? grades,
   }) {
     return Produto(
       id: id ?? this.id,
@@ -424,17 +441,30 @@ class Produto {
       preco: preco ?? this.preco,
       tipo: tipo ?? this.tipo,
       emoji: emoji ?? this.emoji,
+      foto: foto ?? this.foto,
+      grades: grades ?? this.grades,
     );
   }
 
-  factory Produto.fromJson(Map<String, dynamic> json) => Produto(
-        id: json['id'] as int,
-        nome: json['nome'] as String,
-        desc: json['descricao'] as String? ?? '',
-        preco: (json['preco'] as num).toDouble(),
-        tipo: json['tipo'] as String,
-        emoji: json['emoji'] as String? ?? '📦',
-      );
+  factory Produto.fromJson(Map<String, dynamic> json) {
+    final rawGrades = json['grades'];
+    List<String> grades = const [];
+    if (rawGrades is List) {
+      grades = rawGrades.map((e) => e.toString()).toList();
+    } else if (rawGrades is String && rawGrades.isNotEmpty) {
+      grades = rawGrades.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+    return Produto(
+      id: json['id'] as int,
+      nome: json['nome'] as String,
+      desc: json['descricao'] as String? ?? '',
+      preco: (json['preco'] as num).toDouble(),
+      tipo: json['tipo'] as String,
+      emoji: json['emoji'] as String? ?? '📦',
+      foto: json['foto'] as String?,
+      grades: grades,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'nome': nome,
@@ -442,6 +472,113 @@ class Produto {
         'preco': preco,
         'tipo': tipo,
         'emoji': emoji,
+        if (foto != null && foto!.isNotEmpty) 'foto': foto,
+        'grades': grades,
+      };
+}
+
+class ComentarioTurma {
+  const ComentarioTurma({
+    required this.id,
+    required this.alunoId,
+    required this.nomeAluno,
+    required this.texto,
+    required this.dataHora,
+  });
+
+  final int id;
+  final int alunoId;
+  final String nomeAluno;
+  final String texto;
+  final DateTime dataHora;
+
+  factory ComentarioTurma.fromJson(Map<String, dynamic> json) => ComentarioTurma(
+        id: json['id'] as int,
+        alunoId: json['aluno_id'] as int,
+        nomeAluno: json['nome_aluno'] as String,
+        texto: json['texto'] as String,
+        dataHora: DateTime.parse(json['data_hora'] as String),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'aluno_id': alunoId,
+        'nome_aluno': nomeAluno,
+        'texto': texto,
+        'data_hora': dataHora.toIso8601String(),
+      };
+}
+
+class PostTurma {
+  const PostTurma({
+    required this.id,
+    required this.alunoId,
+    required this.nomeAluno,
+    required this.horarioId,
+    required this.texto,
+    required this.dataHora,
+    this.reacoes = const [],
+    this.comentarios = const [],
+  });
+
+  final int id;
+  final int alunoId;
+  final String nomeAluno;
+  final int horarioId;
+  final String texto;
+  final DateTime dataHora;
+  final List<int> reacoes;
+  final List<ComentarioTurma> comentarios;
+
+  int get totalReacoes => reacoes.length;
+  bool reagiuPor(int alunoId) => reacoes.contains(alunoId);
+
+  PostTurma copyWith({
+    int? id,
+    int? alunoId,
+    String? nomeAluno,
+    int? horarioId,
+    String? texto,
+    DateTime? dataHora,
+    List<int>? reacoes,
+    List<ComentarioTurma>? comentarios,
+  }) {
+    return PostTurma(
+      id: id ?? this.id,
+      alunoId: alunoId ?? this.alunoId,
+      nomeAluno: nomeAluno ?? this.nomeAluno,
+      horarioId: horarioId ?? this.horarioId,
+      texto: texto ?? this.texto,
+      dataHora: dataHora ?? this.dataHora,
+      reacoes: reacoes ?? this.reacoes,
+      comentarios: comentarios ?? this.comentarios,
+    );
+  }
+
+  factory PostTurma.fromJson(Map<String, dynamic> json) {
+    final rawReacoes = json['reacoes'];
+    final rawComentarios = json['comentarios'];
+    return PostTurma(
+      id: json['id'] as int,
+      alunoId: json['aluno_id'] as int,
+      nomeAluno: json['nome_aluno'] as String,
+      horarioId: json['horario_id'] as int,
+      texto: json['texto'] as String,
+      dataHora: DateTime.parse(json['data_hora'] as String),
+      reacoes: rawReacoes is List ? rawReacoes.map((e) => e as int).toList() : const [],
+      comentarios: rawComentarios is List
+          ? rawComentarios.map((c) => ComentarioTurma.fromJson(Map<String, dynamic>.from(c as Map))).toList()
+          : const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'aluno_id': alunoId,
+        'nome_aluno': nomeAluno,
+        'horario_id': horarioId,
+        'texto': texto,
+        'data_hora': dataHora.toIso8601String(),
+        'reacoes': reacoes,
+        'comentarios': comentarios.map((c) => c.toJson()).toList(),
       };
 }
 

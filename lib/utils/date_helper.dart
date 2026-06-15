@@ -2,10 +2,30 @@ import 'package:intl/intl.dart';
 import 'package:pulguinha/data/mock_data.dart';
 
 class DateHelper {
+  static final _br = DateFormat('dd-MM-yyyy');
+  static final _iso = DateFormat('yyyy-MM-dd');
+
+  static DateTime parseData(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return DateTime.now();
+    if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(trimmed)) {
+      return DateTime.parse(trimmed.split('T').first);
+    }
+    if (RegExp(r'^\d{2}-\d{2}-\d{4}').hasMatch(trimmed)) {
+      return _br.parse(trimmed);
+    }
+    if (RegExp(r'^\d{2}/\d{2}/\d{4}').hasMatch(trimmed)) {
+      return DateFormat('dd/MM/yyyy').parse(trimmed);
+    }
+    return DateTime.parse(trimmed.split('T').first);
+  }
+
+  static String paraIso(String value) => _iso.format(parseData(value));
+
   static int diasAteVencimento(String vencimento) {
-    final hoje = DateTime.parse(MockData.today);
-    final venc = DateTime.parse(vencimento);
-    return venc.difference(hoje).inDays;
+    final hoje = parseData(MockData.today);
+    final venc = parseData(vencimento);
+    return DateTime(venc.year, venc.month, venc.day).difference(DateTime(hoje.year, hoje.month, hoje.day)).inDays;
   }
 
   static List<DiaSemana> diasDaSemana(int semanaOffset) {
@@ -14,12 +34,13 @@ class DateHelper {
     final base = monday.add(Duration(days: semanaOffset * 7));
     return List.generate(7, (i) {
       final d = base.add(Duration(days: i));
-      final iso = DateFormat('yyyy-MM-dd').format(d);
+      final iso = _iso.format(d);
       return DiaSemana(
         iso: iso,
         num: d.day,
         nome: DateFormat('EEEE', 'pt_BR').format(d).toUpperCase(),
         mes: DateFormat('MMMM', 'pt_BR').format(d),
+        label: _br.format(d),
       );
     });
   }
@@ -27,31 +48,34 @@ class DateHelper {
   static String labelSemana(List<DiaSemana> dias) {
     final ini = dias.first;
     final fim = dias.last;
-    final ano = DateTime.parse(fim.iso).year;
-    return '${ini.num} ${ini.mes.substring(0, 3)} — ${fim.num} ${fim.mes.substring(0, 3)} $ano';
+    return '${ini.label} — ${fim.label}';
   }
 
-  static String formatarData(String iso) {
-    return DateFormat('dd/MM/yyyy').format(DateTime.parse(iso));
+  static String formatarData(String value) {
+    return _br.format(parseData(value));
   }
 
-  static String formatarDataLonga(String iso) {
-    return DateFormat("EEEE, d 'de' MMM", 'pt_BR').format(DateTime.parse('${iso}T12:00:00'));
+  static String formatarDataLonga(String value) {
+    final d = parseData(value);
+    final dia = DateFormat('EEEE', 'pt_BR').format(d);
+    return '$dia, ${formatarData(value)}';
   }
 
   static String hojeFormatado() {
-    return DateFormat("EEEE, d 'de' MMMM 'de' yyyy", 'pt_BR').format(DateTime.now());
+    return formatarDataLonga(_iso.format(DateTime.now()));
   }
+
+  static String hojeIso() => _iso.format(DateTime.now());
 
   static bool isAniversarioHoje(String? dataNascimento) {
     if (dataNascimento == null || dataNascimento.isEmpty) return false;
-    final nasc = DateTime.parse(dataNascimento);
+    final nasc = parseData(dataNascimento);
     final hoje = DateTime.now();
     return nasc.month == hoje.month && nasc.day == hoje.day;
   }
 
   static int diasAteAniversario(String dataNascimento) {
-    final nasc = DateTime.parse(dataNascimento);
+    final nasc = parseData(dataNascimento);
     final hoje = DateTime.now();
     var proximo = DateTime(hoje.year, nasc.month, nasc.day);
     if (proximo.isBefore(DateTime(hoje.year, hoje.month, hoje.day))) {
@@ -62,11 +86,11 @@ class DateHelper {
 
   static bool aniversarioNoMes(String? dataNascimento, int mes) {
     if (dataNascimento == null || dataNascimento.isEmpty) return false;
-    return DateTime.parse(dataNascimento).month == mes;
+    return parseData(dataNascimento).month == mes;
   }
 
   static String formatarAniversario(String dataNascimento) {
-    return DateFormat("d 'de' MMMM", 'pt_BR').format(DateTime.parse(dataNascimento));
+    return _br.format(parseData(dataNascimento));
   }
 }
 
@@ -76,10 +100,12 @@ class DiaSemana {
     required this.num,
     required this.nome,
     required this.mes,
+    required this.label,
   });
 
   final String iso;
   final int num;
   final String nome;
   final String mes;
+  final String label;
 }
