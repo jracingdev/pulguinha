@@ -133,6 +133,26 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 icon: const Text('✅'),
                 tooltip: 'Aprovar cadastro',
                 style: IconButton.styleFrom(backgroundColor: AppColors.neon.withValues(alpha: 0.15)),
+              )
+            else if (a.status == 'Ativo' && DateHelper.diasAteVencimento(a.vencimento) <= 7)
+              IconButton(
+                onPressed: () {
+                  state.marcarPago(a.id);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pagamento registrado — ${a.nome}')));
+                },
+                icon: const Text('💰'),
+                tooltip: 'Dar baixa manual',
+                style: IconButton.styleFrom(backgroundColor: AppColors.neon.withValues(alpha: 0.1)),
+              )
+            else if (a.status == 'Inadimplente')
+              IconButton(
+                onPressed: () {
+                  state.marcarPago(a.id);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pagamento registrado — ${a.nome}')));
+                },
+                icon: const Text('💰'),
+                tooltip: 'Dar baixa manual',
+                style: IconButton.styleFrom(backgroundColor: AppColors.neon.withValues(alpha: 0.1)),
               ),
             IconButton(
               onPressed: () => _confirmarExclusao(context, state, a),
@@ -149,7 +169,11 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     final nomeCtrl = TextEditingController(text: editando?.nome ?? '');
     final emailCtrl = TextEditingController(text: editando?.email ?? '');
     final telCtrl = TextEditingController(text: editando?.telefone ?? '');
-    final vencCtrl = TextEditingController(text: editando != null && editando.status != 'Pendente' ? DateHelper.formatarData(editando.vencimento) : '');
+    final vencCtrl = TextEditingController(
+      text: editando != null && editando.status != 'Pendente'
+          ? DateHelper.formatarData(editando.vencimento)
+          : DateHelper.formatarData(state.calcularVencimentoParaPlano(editando?.plano ?? 'Mensal')),
+    );
     final alunoDesdeCtrl = TextEditingController(
       text: editando?.alunoDesde != null && editando!.alunoDesde!.isNotEmpty
           ? DateHelper.formatarData(editando.alunoDesde!)
@@ -184,14 +208,27 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
                 FieldLabel(label: 'Data nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
                 FieldLabel(label: 'Aluno desde', child: TextField(controller: alunoDesdeCtrl, decoration: const InputDecoration(hintText: '15-06-2026'))),
-                FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: 'Definido na aprovação se Pendente'))),
+                FieldLabel(
+                  label: 'Vencimento da mensalidade',
+                  child: TextField(
+                    controller: vencCtrl,
+                    decoration: InputDecoration(
+                      hintText: VencimentoHelper.hintVencimento(plano, state.diaVencimentoPadrao),
+                    ),
+                  ),
+                ),
                 FieldLabel(label: 'Senha do app', child: TextField(controller: senhaCtrl, obscureText: true)),
                 FieldLabel(
                   label: 'Plano',
                   child: DropdownButtonFormField<String>(
                     value: plano,
                     items: ['Mensal', 'Trimestral', 'Semestral', 'Anual'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                    onChanged: (v) => setModalState(() => plano = v ?? plano),
+                    onChanged: (v) => setModalState(() {
+                      plano = v ?? plano;
+                      if (status != 'Pendente') {
+                        vencCtrl.text = DateHelper.formatarData(state.calcularVencimentoParaPlano(plano));
+                      }
+                    }),
                   ),
                 ),
                 FieldLabel(
@@ -199,11 +236,18 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                   child: DropdownButtonFormField<String>(
                     value: status,
                     items: ['Ativo', 'Pendente', 'Inadimplente', 'Inativo'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                    onChanged: (v) => setModalState(() => status = v ?? status),
+                    onChanged: (v) => setModalState(() {
+                      status = v ?? status;
+                      if (status == 'Pendente') {
+                        vencCtrl.clear();
+                      } else if (vencCtrl.text.trim().isEmpty) {
+                        vencCtrl.text = DateHelper.formatarData(state.calcularVencimentoParaPlano(plano));
+                      }
+                    }),
                   ),
                 ),
                 FieldLabel(
-                  label: 'Turma (horário fixo)',
+                  label: 'Turma principal (controle — não restringe agendamentos)',
                   child: DropdownButtonFormField<int?>(
                     value: turmaId,
                     items: [
@@ -289,7 +333,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                           if (status == 'Pendente') {
                             vencimento = MockData.vencimentoPendente;
                           } else if (vencCtrl.text.trim().isEmpty) {
-                            vencimento = VencimentoHelper.calcularVencimentoInicial(plano);
+                            vencimento = state.calcularVencimentoParaPlano(plano);
                           } else {
                             vencimento = DateHelper.paraIso(vencCtrl.text.trim());
                           }
@@ -336,9 +380,66 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     };
   }
 
-  void _validar(BuildContext context, AppState state, Aluno a) {
-    state.validarAluno(a.id);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${a.nome} aprovado com sucesso!')));
+  Future<void> _validar(BuildContext context, AppState state, Aluno a) async {
+    final vencCtrl = TextEditingController(text: DateHelper.formatarData(state.calcularVencimentoParaPlano(a.plano)));
+    var jaPagou = false;
+
+    await showPulguinhaModal(
+      context: context,
+      title: 'Aprovar ${a.nome}',
+      child: StatefulBuilder(
+        builder: (ctx, setModal) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Plano ${a.plano} · vencimento padrão dia ${state.diaVencimentoPadrao}',
+                style: const TextStyle(fontSize: 12, color: AppColors.gray),
+              ),
+              const SizedBox(height: 12),
+              FieldLabel(
+                label: 'Primeiro vencimento',
+                child: TextField(
+                  controller: vencCtrl,
+                  decoration: InputDecoration(hintText: VencimentoHelper.hintVencimento(a.plano, state.diaVencimentoPadrao)),
+                ),
+              ),
+              CheckboxListTile(
+                value: jaPagou,
+                onChanged: (v) => setModal(() => jaPagou = v ?? false),
+                title: const Text('Primeira mensalidade já recebida', style: TextStyle(fontSize: 12, color: AppColors.white)),
+                subtitle: const Text('Avança o vencimento para o próximo ciclo', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppColors.neon,
+              ),
+              const SizedBox(height: 8),
+              NeonButton(
+                label: '✅ Aprovar aluno',
+                fullWidth: true,
+                onPressed: () {
+                  var venc = vencCtrl.text.trim().isEmpty
+                      ? state.calcularVencimentoParaPlano(a.plano)
+                      : DateHelper.paraIso(vencCtrl.text.trim());
+                  if (jaPagou) {
+                    venc = VencimentoHelper.proximoVencimentoAposPagamento(
+                      plano: a.plano,
+                      diaVencimento: state.diaVencimentoPadrao,
+                      vencimentoAtual: venc,
+                    );
+                  }
+                  state.validarAluno(a.id, vencimento: venc);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${a.nome} aprovado com sucesso!')));
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    vencCtrl.dispose();
   }
 
   Future<void> _confirmarExclusao(BuildContext context, AppState state, Aluno a) async {

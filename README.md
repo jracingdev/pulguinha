@@ -211,6 +211,29 @@ $env:SUPABASE_ANON_KEY="eyJ..."
 .\scripts\build_apk.ps1
 ```
 
+Gera também `pulguinha-1.1.0-build2.apk` (nome com versão).
+
+## Versionamento
+
+A versão oficial fica em **`pubspec.yaml`** (`version: 1.1.0+2` → nome `1.1.0`, build `2`).
+
+| Onde aparece | Exemplo |
+|--------------|---------|
+| Header do app (admin/aluno) | `v1.1.0 (2)` |
+| Sobre o app | Versão completa |
+| Nome do APK | `pulguinha-1.1.0-build2.apk` |
+| GitHub Actions artifact | `pulguinha-1.1.0-build2` |
+
+**Incrementar versão:**
+
+```powershell
+.\scripts\bump_version.ps1 patch   # 1.1.0 → 1.1.1
+.\scripts\bump_version.ps1 minor   # 1.1.0 → 1.2.0
+.\scripts\bump_version.ps1 build   # só incrementa build (+3)
+```
+
+Atualize `CHANGELOG.md` a cada release.
+
 ### Build web manual
 
 ```bash

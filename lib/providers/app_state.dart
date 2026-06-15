@@ -6,7 +6,9 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/services/supabase_bootstrap.dart';
 import 'package:pulguinha/services/supabase_service.dart';
+import 'package:pulguinha/services/finance_settings_storage.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/vencimento_helper.dart';
 
 enum AppScreen { public, login, admin, aluno }
 
@@ -40,6 +42,7 @@ class AppState extends ChangeNotifier {
   String adminTab = 'dashboard';
   String alunoTab = 'home';
   ThemeMode themeMode = ThemeMode.dark;
+  int diaVencimentoPadrao = FinanceSettingsStorage.defaultDiaVencimento;
 
   bool loading = true;
   bool useMock = true;
@@ -59,6 +62,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     await _loadThemeMode();
+    await _loadFinanceSettings();
 
     if (SupabaseConfig.isConfigured) {
       try {
@@ -82,6 +86,7 @@ class AppState extends ChangeNotifier {
         presencas = results[4] as List<Presenca>;
         postsTurma = results[5] as List<PostTurma>;
         useMock = false;
+        _atualizarInadimplentes();
         try {
           _subscribeRealtime();
         } catch (e) {
@@ -277,18 +282,61 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void validarAluno(int id) {
+  void validarAluno(int id, {String? vencimento}) {
     alunos = alunos.map((a) {
       if (a.id != id) return a;
-      final meses = MockData.mesesPlano[a.plano] ?? 1;
-      final novaData = DateTime.parse(MockData.today).add(Duration(days: meses * 30));
       return a.copyWith(
         status: 'Ativo',
-        vencimento: _formatDate(novaData),
+        vencimento: vencimento ?? calcularVencimentoParaPlano(a.plano),
       );
     }).toList();
     notifyListeners();
     _syncAluno(id);
+  }
+
+  String calcularVencimentoParaPlano(String plano, [String? baseIso]) {
+    return VencimentoHelper.calcularVencimentoInicial(plano, diaVencimentoPadrao, baseIso);
+  }
+
+  Future<void> setDiaVencimentoPadrao(int dia) async {
+    diaVencimentoPadrao = dia.clamp(1, 28);
+    await FinanceSettingsStorage.instance.saveDiaVencimento(diaVencimentoPadrao);
+    notifyListeners();
+  }
+
+  Future<void> _loadFinanceSettings() async {
+    diaVencimentoPadrao = await FinanceSettingsStorage.instance.loadDiaVencimento();
+  }
+
+  void _atualizarInadimplentes() {
+    final idsAlterados = <int>[];
+    alunos = alunos.map((a) {
+      if (a.status == 'Ativo' && VencimentoHelper.temPlanoAtivo(a) && DateHelper.diasAteVencimento(a.vencimento) < 0) {
+        idsAlterados.add(a.id);
+        return a.copyWith(status: 'Inadimplente');
+      }
+      return a;
+    }).toList();
+    for (final id in idsAlterados) {
+      _syncAluno(id);
+    }
+    if (idsAlterados.isNotEmpty) notifyListeners();
+  }
+
+  void marcarPago(int alunoId) {
+    alunos = alunos.map((a) {
+      if (a.id != alunoId) return a;
+      return a.copyWith(
+        status: 'Ativo',
+        vencimento: VencimentoHelper.proximoVencimentoAposPagamento(
+          plano: a.plano,
+          diaVencimento: diaVencimentoPadrao,
+          vencimentoAtual: a.vencimento,
+        ),
+      );
+    }).toList();
+    notifyListeners();
+    _syncAluno(alunoId);
   }
 
   void salvarHorario({Horario? editando, required Horario dados}) {
@@ -422,42 +470,34 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void marcarPago(int alunoId) {
-    alunos = alunos.map((a) {
-      if (a.id != alunoId) return a;
-      final meses = MockData.mesesPlano[a.plano] ?? 1;
-      final novaData = DateTime.parse(MockData.today).add(Duration(days: meses * 30));
-      return a.copyWith(
-        status: 'Ativo',
-        vencimento: _formatDate(novaData),
-      );
-    }).toList();
-    notifyListeners();
-    _syncAluno(alunoId);
-  }
-
   void renovarPlano(Aluno aluno) {
-    final meses = MockData.mesesPlano[aluno.plano] ?? 1;
-    final base = DateTime.parse(aluno.vencimento);
-    final novaData = DateTime(base.year, base.month + meses, base.day);
     alunos = alunos.map((a) {
       if (a.id != aluno.id) return a;
-      return a.copyWith(vencimento: _formatDate(novaData));
+      return a.copyWith(
+        status: 'Ativo',
+        vencimento: VencimentoHelper.proximoVencimentoAposPagamento(
+          plano: aluno.plano,
+          diaVencimento: diaVencimentoPadrao,
+          vencimentoAtual: aluno.vencimento,
+        ),
+      );
     }).toList();
     notifyListeners();
     _syncAluno(aluno.id);
   }
 
   void ativarPlanoAluno(int alunoId, Produto produto) {
-    final meses = MockData.mesesPorNomePlano[produto.nome] ?? 1;
-    final novaData = DateTime.parse(MockData.today).add(Duration(days: meses * 30));
     final plano = produto.nome.replaceFirst('Plano ', '');
     alunos = alunos.map((a) {
       if (a.id != alunoId) return a;
       return a.copyWith(
         plano: plano,
         status: 'Ativo',
-        vencimento: _formatDate(novaData),
+        vencimento: VencimentoHelper.proximoVencimentoAposPagamento(
+          plano: plano,
+          diaVencimento: diaVencimentoPadrao,
+          vencimentoAtual: a.vencimento,
+        ),
       );
     }).toList();
     if (usuario?.id == alunoId) {
@@ -501,6 +541,7 @@ class AppState extends ChangeNotifier {
       postsTurma = results[5] as List<PostTurma>;
       useMock = false;
       initError = null;
+      _atualizarInadimplentes();
       try {
         _subscribeRealtime();
       } catch (e) {

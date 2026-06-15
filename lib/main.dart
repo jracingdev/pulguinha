@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:pulguinha/app.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
+import 'package:pulguinha/services/app_version_service.dart';
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/services/supabase_bootstrap.dart';
 
@@ -15,6 +16,7 @@ Future<void> main() async {
   }
   await initializeDateFormatting('pt_BR');
   await SupabaseConfig.initialize();
+  await AppVersionService.initialize();
   await MercadoPagoConfig.initialize();
   await PagBankConfig.initialize();
 

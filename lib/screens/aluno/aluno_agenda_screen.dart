@@ -58,6 +58,22 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
             NeonButton(label: '+ Agendar', onPressed: () => _modalAgendar(context, state, aluno)),
           ],
         ),
+        if (aluno.horarioId != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.neon.withValues(alpha: 0.06),
+              border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Sua turma principal é ${state.labelTurma(aluno)} — para controle e mural. Você pode agendar qualquer horário com vaga disponível.',
+              style: const TextStyle(fontSize: 11, color: AppColors.neon, height: 1.4, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -106,10 +122,12 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
                 final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
                 final lotado = ags.length >= h.capacidade;
                 final eu = state.agendamentos.where((ag) => ag.alunoId == aluno.id && ag.data == dia.iso && ag.horarioId == h.id).firstOrNull;
+                final turmaPrincipal = aluno.horarioId == h.id;
                 return HorarioSlotCard(
                   hora: h.hora,
                   ocupados: ags.length,
                   capacidade: h.capacidade,
+                  subtitle: turmaPrincipal ? 'Sua turma principal' : null,
                   selected: eu != null,
                   enabled: eu != null || !lotado,
                   onTap: eu != null || lotado ? null : () => _agendarDireto(state, aluno, dia.iso, h),

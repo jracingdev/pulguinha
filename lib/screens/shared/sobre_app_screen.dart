@@ -1,35 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
+import 'package:pulguinha/services/app_version_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class SobreAppScreen extends StatefulWidget {
+class SobreAppScreen extends StatelessWidget {
   const SobreAppScreen({super.key});
-
-  @override
-  State<SobreAppScreen> createState() => _SobreAppScreenState();
-}
-
-class _SobreAppScreenState extends State<SobreAppScreen> {
-  String _version = '1.0.0';
-  String _buildNumber = '1';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  Future<void> _loadVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    if (!mounted) return;
-    setState(() {
-      _version = info.version;
-      _buildNumber = info.buildNumber;
-    });
-  }
 
   Future<void> _openDeveloperSite() async {
     final uri = Uri.parse('https://jracing.dev.br');
@@ -60,7 +37,7 @@ class _SobreAppScreenState extends State<SobreAppScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Versão $_version (build $_buildNumber)',
+                  'Versão ${AppVersionService.version} (build ${AppVersionService.buildNumber})',
                   style: const TextStyle(fontSize: 13, color: AppColors.gray),
                 ),
               ],
@@ -74,7 +51,7 @@ class _SobreAppScreenState extends State<SobreAppScreen> {
                 const SectionTitle(icon: '🏋️', title: 'Sobre'),
                 const Text(
                   'App de gestão e agendamento para o estúdio Funcional do Pulguinha. '
-                  'Inclui check-in por QR, controle de presença, planos, loja com Mercado Pago, '
+                  'Inclui check-in por QR, controle de presença, planos, loja com Mercado Pago e PagBank, '
                   'anamnese e gamificação com Pulguinha Points.',
                   style: TextStyle(fontSize: 13, color: AppColors.white, height: 1.5),
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/widgets/app_version_label.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class TabItem {
@@ -67,6 +68,7 @@ class AppShell extends StatelessWidget {
                     children: [
                       Text('FUNCIONAL DO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 1.5, decoration: TextDecoration.none)),
                       Text('PULGUINHA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 1, decoration: TextDecoration.none)),
+                      AppVersionLabel(),
                     ],
                   ),
                   const Spacer(),

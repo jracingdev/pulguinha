@@ -93,8 +93,12 @@ class _AlunoTurmaScreenState extends State<AlunoTurmaScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Turma ${turma.hora}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.white)),
+                    Text('Turma principal ${turma.hora}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.white)),
                     Text(turma.dias, style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+                    const Text(
+                      'Para mural e colegas. Outros horários: use a Agenda.',
+                      style: TextStyle(fontSize: 10, color: AppColors.grayDim, height: 1.3),
+                    ),
                     Text('${colegas.length + 1} alunos na turma', style: const TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w600)),
                   ],
                 ),

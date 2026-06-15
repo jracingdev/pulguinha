@@ -36,20 +36,37 @@ jobs:
       - name: Instalar dependências
         run: flutter pub get
 
+      - name: Ler versão
+        id: ver
+        run: |
+          V=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          NAME="${V%%+*}"
+          BUILD="${V##*+}"
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "build=$BUILD" >> $GITHUB_OUTPUT
+          echo "Versão: $NAME (build $BUILD)"
+
       - name: Build APK release
         run: |
-          ARGS=""
+          ARGS="--build-name=${{ steps.ver.outputs.name }} --build-number=${{ steps.ver.outputs.build }}"
           if [ -n "${{ secrets.SUPABASE_URL }}" ] && [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
             echo "Secrets GitHub detectados — usando dart-define no build."
-            ARGS="--dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+            ARGS="$ARGS --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
           else
             echo "Sem secrets — APK usará credenciais embutidas em lib/config/supabase_config.dart."
           fi
           flutter build apk --release $ARGS
 
+      - name: Nomear APK com versão
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/flutter-apk/pulguinha-${{ steps.ver.outputs.name }}-build${{ steps.ver.outputs.build }}.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pulguinha-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
+          name: pulguinha-${{ steps.ver.outputs.name }}-build${{ steps.ver.outputs.build }}
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/pulguinha-${{ steps.ver.outputs.name }}-build${{ steps.ver.outputs.build }}.apk
+          retention-days: 90

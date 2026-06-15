@@ -24,7 +24,7 @@ class MockModeBanner extends StatelessWidget {
     final semConexao = SupabaseConfig.isConfigured;
     final texto = semConexao
         ? 'ℹ️ Sem conexão com o banco no momento. Verifique a internet e puxe a tela para atualizar.'
-        : 'ℹ️ Modo local — credenciais Supabase não encontradas. Reinstale o APK oficial ou configure em Configurações → Conexão Supabase (avançado).';
+        : 'ℹ️ Modo local — reinstale o APK oficial do Pulguinha.';
 
     if (compact) {
       return Container(
@@ -39,7 +39,7 @@ class MockModeBanner extends StatelessWidget {
         child: Text(
           semConexao
               ? 'Sem conexão — verifique internet'
-              : 'Modo local — reinstale APK ou configure Supabase',
+              : 'Modo local — reinstale o APK oficial',
           style: const TextStyle(fontSize: 11, color: AppColors.yellow, fontWeight: FontWeight.w700),
         ),
       );

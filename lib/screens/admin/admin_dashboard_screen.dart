@@ -7,7 +7,6 @@ import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/screens/admin/admin_horarios_screen.dart';
-import 'package:pulguinha/screens/admin/admin_supabase_config_screen.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
@@ -75,7 +74,7 @@ class AdminDashboardScreen extends StatelessWidget {
             child: Text(
               SupabaseConfig.isConfigured
                   ? '⚠️ Sem conexão com o banco — cadastros do site não sincronizam até a internet voltar. Puxe a tela para baixo para tentar de novo.'
-                  : '⚠️ Modo local — reinstale o APK oficial ou configure Supabase em Configurações → Conexão Supabase (avançado).',
+                  : '⚠️ Modo local — reinstale o APK oficial do Pulguinha.',
               style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.4, decoration: TextDecoration.none),
             ),
           ),
@@ -110,19 +109,6 @@ class AdminDashboardScreen extends StatelessWidget {
         const SectionTitle(icon: '⚙️', title: 'Configurações'),
         const SizedBox(height: 10),
         const ThemeSettingsTile(),
-        const SizedBox(height: 10),
-        _configTile(
-          context,
-          icon: '☁️',
-          title: 'Conexão Supabase',
-          subtitle: state.useMock
-              ? (SupabaseConfig.isConfigured ? 'Sem conexão — verifique internet' : 'Modo local — avançado')
-              : 'Conectado ao banco na nuvem',
-          color: state.useMock ? AppColors.yellow : AppColors.blue,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const AdminSupabaseConfigScreen()),
-          ),
-        ),
         const SizedBox(height: 10),
         _configTile(
           context,

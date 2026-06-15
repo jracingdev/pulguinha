@@ -28,6 +28,8 @@ class AdminFinanceiroScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('FINANCEIRO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.white)),
+        const SizedBox(height: 16),
+        _configVencimentoCard(context, state),
         const SizedBox(height: 20),
         Row(
           children: [
@@ -219,8 +221,14 @@ class AdminFinanceiroScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (tipo == 'inad')
-              TextButton(onPressed: () => state.marcarPago(a.id), child: const Text('✓ Pago', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w800)))
+            if (tipo == 'inad' || (a.status == 'Ativo' && DateHelper.diasAteVencimento(a.vencimento) <= 0))
+              TextButton(
+                onPressed: () {
+                  state.marcarPago(a.id);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pagamento registrado — ${a.nome}')));
+                },
+                child: const Text('✓ Baixa', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w800)),
+              )
             else if (a.status == 'Ativo')
               OutlinedButton(
                 onPressed: () => state.renovarPlano(a),
@@ -229,6 +237,33 @@ class AdminFinanceiroScreen extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _configVencimentoCard(BuildContext context, AppState state) {
+    return PulguinhaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Dia de vencimento das mensalidades', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
+          const SizedBox(height: 4),
+          const Text(
+            'Novos alunos e renovações usam este dia. Pagamentos pela loja (MP/PagBank) dão baixa automática.',
+            style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            value: state.diaVencimentoPadrao,
+            decoration: const InputDecoration(hintText: 'Dia do mês'),
+            items: List.generate(28, (i) => i + 1)
+                .map((d) => DropdownMenuItem(value: d, child: Text('Todo dia $d')))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) state.setDiaVencimentoPadrao(v);
+            },
+          ),
+        ],
       ),
     );
   }

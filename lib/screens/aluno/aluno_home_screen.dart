@@ -161,6 +161,11 @@ class AlunoHomeScreen extends StatelessWidget {
                     colegas.isEmpty ? 'Você é o único aluno ativo na turma' : '${colegas.length} colega(s) na mesma turma',
                     style: const TextStyle(fontSize: 11, color: AppColors.gray),
                   ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Turma principal para controle. Na Agenda você pode treinar em outros horários com vaga.',
+                    style: TextStyle(fontSize: 10, color: AppColors.grayDim, height: 1.3),
+                  ),
                   if (colegas.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Wrap(

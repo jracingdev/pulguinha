@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
         title: const Text('Conectar ao servidor', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
         content: const Text(
-          'Você entrou no modo local. Para ver cadastros feitos no site (como alunos pendentes), vá em Configurações → Conexão Supabase e salve a mesma URL e chave anon do projeto Supabase.',
+          'Você entrou no modo local. Verifique a internet e puxe a tela para baixo para sincronizar cadastros do site.',
           style: TextStyle(color: AppColors.gray, fontSize: 13, height: 1.5),
         ),
         actions: [
@@ -311,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text(
-                'Modo offline: admin@pulguinha.com · senha admin123. Depois configure Supabase em Configurações.',
+                'Modo offline: admin@pulguinha.com · senha admin123. Com internet, os dados sincronizam automaticamente.',
                 style: TextStyle(fontSize: 11, color: AppColors.yellow, fontWeight: FontWeight.w600, height: 1.4),
               ),
             ),
