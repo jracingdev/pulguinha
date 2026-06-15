@@ -34,7 +34,7 @@ class PulguinhaLogo extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: Image.asset(
-          'assets/images/pulguinha_logo.png',
+          'assets/images/logo1.png',
           width: size,
           height: size,
           fit: BoxFit.contain,

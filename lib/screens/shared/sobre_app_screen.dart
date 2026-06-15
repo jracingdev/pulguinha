@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -108,6 +109,28 @@ class _SobreAppScreenState extends State<SobreAppScreen> {
                   const Icon(Icons.open_in_new, color: AppColors.grayDim, size: 18),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          PulguinhaCard(
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Text('📄', style: TextStyle(fontSize: 22)),
+                  title: const Text('Termos de Uso', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.white)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.grayDim),
+                  onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.termos))),
+                ),
+                const Divider(height: 1, color: AppColors.card2),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Text('🔒', style: TextStyle(fontSize: 22)),
+                  title: const Text('Política de Privacidade', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.white)),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.grayDim),
+                  onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.privacidade))),
+                ),
+              ],
             ),
           ),
         ],

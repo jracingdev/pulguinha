@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
+import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
+import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -122,6 +124,18 @@ class _LoginScreenState extends State<LoginScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 700));
 
     if (!mounted) return;
+
+    if (rl == UserType.aluno) {
+      final candidato = appState.buscarAlunoPorEmail(em);
+      if (candidato != null && candidato.senha == sn && candidato.status == 'Pendente') {
+        setState(() {
+          loading = false;
+          erro = 'Cadastro aguardando aprovação do professor.';
+        });
+        return;
+      }
+    }
+
     final user = await appState.autenticar(em, sn, rl);
     if (user == null) {
       setState(() {
@@ -249,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: TextField(
             controller: emailCtrl,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(hintText: role == UserType.admin ? MockData.adminEmail : 'seu@email.com'),
+            decoration: InputDecoration(hintText: role == UserType.admin ? 'admin@pulguinha.com' : 'seu@email.com'),
           ),
         ),
         FieldLabel(
@@ -319,40 +333,30 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: loading ? null : _biometria,
           ),
         ],
-        const SizedBox(height: 16),
-        PulguinhaCard(
-          backgroundColor: AppColors.card2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('🧪 ACESSO DEMONSTRAÇÃO', style: TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              const Text('Admin: admin@pulguinha.com / admin123\nAluno: ana@email.com / 1234', style: TextStyle(fontSize: 11, color: AppColors.grayDim, height: 1.8)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: GhostButton(
-                      label: '⚡ Demo Admin',
-                      onPressed: () => _tentarLogin(email: MockData.adminEmail, senha: MockData.adminSenha, tipo: UserType.admin),
-                      borderColor: AppColors.neon.withValues(alpha: 0.2),
-                      textColor: AppColors.neon,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: GhostButton(
-                      label: '👤 Demo Aluno',
-                      onPressed: () {
-                        setState(() => role = UserType.aluno);
-                        _tentarLogin(email: 'ana@email.com', senha: '1234', tipo: UserType.aluno);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        if (role == UserType.aluno) ...[
+          const SizedBox(height: 20),
+          GhostButton(
+            label: '📝 Criar conta de aluno',
+            fullWidth: true,
+            borderColor: AppColors.neon.withValues(alpha: 0.25),
+            textColor: AppColors.neon,
+            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const CadastroAlunoScreen())),
           ),
+        ],
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.termos))),
+              child: const Text('Termos', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+            ),
+            const Text('·', style: TextStyle(color: AppColors.grayDim)),
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.privacidade))),
+              child: const Text('Privacidade', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+            ),
+          ],
         ),
       ],
     );

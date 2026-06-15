@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
+import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/screens/shared/loja_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
@@ -68,13 +70,14 @@ class _PublicScreenState extends State<PublicScreen> {
   }
 
   Widget _buildHome(AppState state) {
+    final precoMensal = state.precoPlano('Mensal').toStringAsFixed(0);
     return Column(
       children: [
         Row(
           children: [
             Expanded(child: _homeCard('📅', 'Agendar Aula', 'Escolha horário e garanta sua vaga', AppColors.neon, () => setState(() => step = 'agendar'))),
             const SizedBox(width: 12),
-            Expanded(child: _homeCard('💳', 'Assinar Plano', 'Planos mensais a partir de R\$150', AppColors.mercadoPago, () => setState(() => step = 'loja'))),
+            Expanded(child: _homeCard('💳', 'Assinar Plano', 'Planos mensais a partir de R\$$precoMensal', AppColors.mercadoPago, () => setState(() => step = 'loja'))),
           ],
         ),
         const SizedBox(height: 24),
@@ -109,6 +112,27 @@ class _PublicScreenState extends State<PublicScreen> {
           borderColor: AppColors.neon.withValues(alpha: 0.2),
           textColor: AppColors.neon,
           onPressed: () => state.irParaLogin(),
+        ),
+        const SizedBox(height: 12),
+        GhostButton(
+          label: '📝 Criar conta de aluno',
+          fullWidth: true,
+          onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const CadastroAlunoScreen())),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.termos))),
+              child: const Text('Termos de Uso', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+            ),
+            const Text('·', style: TextStyle(color: AppColors.grayDim)),
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.privacidade))),
+              child: const Text('Privacidade', style: TextStyle(fontSize: 11, color: AppColors.gray)),
+            ),
+          ],
         ),
       ],
     );

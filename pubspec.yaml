@@ -63,10 +63,10 @@ dev_dependencies:
 
 flutter_native_splash:
   color: "#111111"
-  image: assets/images/pulguinha_splash.png
+  image: assets/images/logo1.png
   android_12:
     color: "#111111"
-    image: assets/images/pulguinha_splash.png
+    image: assets/images/logo1.png
   web: true
   android: true
   ios: true
@@ -74,12 +74,12 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icon/pulguinha_icon.png
+  image_path: assets/images/logo1.png
   adaptive_icon_background: "#111111"
-  adaptive_icon_foreground: assets/icon/pulguinha_icon.png
+  adaptive_icon_foreground: assets/images/logo1.png
   web:
     generate: true
-    image_path: assets/icon/pulguinha_icon.png
+    image_path: assets/images/logo1.png
     background_color: "#111111"
     theme_color: "#AAFF00"
 
@@ -95,9 +95,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/icon/pulguinha_icon.png
-    - assets/images/pulguinha_logo.png
-    - assets/images/pulguinha_splash.png
+    - assets/images/logo1.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

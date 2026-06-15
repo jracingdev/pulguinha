@@ -5,7 +5,9 @@ import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
+import 'package:pulguinha/screens/admin/admin_horarios_screen.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
+import 'package:pulguinha/screens/admin/admin_produtos_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/widgets/theme_settings_tile.dart';
 import 'package:pulguinha/widgets/admin_analytics.dart';
@@ -81,6 +83,7 @@ class AdminDashboardScreen extends StatelessWidget {
         const SizedBox(height: 20),
         const SectionTitle(icon: '🔔', title: 'Alertas'),
         ...state.alunos.where((a) => a.status == 'Inadimplente').map(_alertaInadimplente),
+        ...state.alunos.where((a) => a.status == 'Pendente').map(_alertaPendente),
         ...state.alunos.where((a) {
           final d = DateHelper.diasAteVencimento(a.vencimento);
           return d >= 0 && d <= 7 && a.status == 'Ativo';
@@ -89,6 +92,28 @@ class AdminDashboardScreen extends StatelessWidget {
         const SectionTitle(icon: '⚙️', title: 'Configurações'),
         const SizedBox(height: 10),
         const ThemeSettingsTile(),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🕐',
+          title: 'Horários e vagas',
+          subtitle: '${state.horarios.length} turmas configuradas',
+          color: AppColors.neon,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AdminHorariosScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🛒',
+          title: 'Planos e produtos',
+          subtitle: '${state.produtos.length} itens na loja',
+          color: AppColors.neon,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AdminProdutosScreen()),
+          ),
+        ),
         const SizedBox(height: 10),
         _configTile(
           context,
@@ -234,6 +259,36 @@ class AdminDashboardScreen extends StatelessWidget {
                   );
                 }).toList(),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _alertaPendente(dynamic a) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.neon.withValues(alpha: 0.08),
+          border: Border.all(color: AppColors.neon.withValues(alpha: 0.2)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm, fotoBase64: a.foto),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                  const Text('Cadastro aguardando aprovação', style: TextStyle(fontSize: 11, color: AppColors.neon)),
+                ],
+              ),
+            ),
+            const Text('⏳', style: TextStyle(fontSize: 18)),
           ],
         ),
       ),

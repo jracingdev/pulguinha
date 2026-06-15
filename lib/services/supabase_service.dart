@@ -76,4 +76,37 @@ class SupabaseService {
   Future<void> updateAlunoFields(int id, Map<String, dynamic> fields) async {
     await _db.from('alunos').update(fields).eq('id', id);
   }
+
+  Future<Horario> insertHorario(Horario h) async {
+    final rows = await _db.from('horarios').insert(h.toJson()).select().single();
+    return Horario.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Horario> updateHorario(Horario h) async {
+    final rows = await _db.from('horarios').update(h.toJson()).eq('id', h.id).select().single();
+    return Horario.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deleteHorario(int id) async {
+    await _db.from('horarios').delete().eq('id', id);
+  }
+
+  Future<Produto> insertProduto(Produto p) async {
+    final rows = await _db.from('produtos').insert(p.toJson()).select().single();
+    return Produto.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Produto> updateProduto(Produto p) async {
+    final rows = await _db.from('produtos').update(p.toJson()).eq('id', p.id).select().single();
+    return Produto.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deleteProduto(int id) async {
+    await _db.from('produtos').delete().eq('id', id);
+  }
+
+  Future<bool> emailAlunoExiste(String email) async {
+    final rows = await _db.from('alunos').select('id').eq('email', email).maybeSingle();
+    return rows != null;
+  }
 }

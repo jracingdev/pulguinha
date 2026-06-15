@@ -409,6 +409,24 @@ class Produto {
   final String tipo;
   final String emoji;
 
+  Produto copyWith({
+    int? id,
+    String? nome,
+    String? desc,
+    double? preco,
+    String? tipo,
+    String? emoji,
+  }) {
+    return Produto(
+      id: id ?? this.id,
+      nome: nome ?? this.nome,
+      desc: desc ?? this.desc,
+      preco: preco ?? this.preco,
+      tipo: tipo ?? this.tipo,
+      emoji: emoji ?? this.emoji,
+    );
+  }
+
   factory Produto.fromJson(Map<String, dynamic> json) => Produto(
         id: json['id'] as int,
         nome: json['nome'] as String,
@@ -417,6 +435,14 @@ class Produto {
         tipo: json['tipo'] as String,
         emoji: json['emoji'] as String? ?? '📦',
       );
+
+  Map<String, dynamic> toJson() => {
+        'nome': nome,
+        'descricao': desc,
+        'preco': preco,
+        'tipo': tipo,
+        'emoji': emoji,
+      };
 }
 
 String _formatDate(dynamic value) {

@@ -161,12 +161,134 @@ class AppState extends ChangeNotifier {
 
     if (!useMock) {
       final aluno = await SupabaseService.instance.autenticarAluno(email, senha);
-      return aluno?.toUsuario();
+      if (aluno == null) return null;
+      if (aluno.status == 'Pendente') return null;
+      return aluno.toUsuario();
     }
 
     final aluno = alunos.where((a) => a.email == email && a.senha == senha).firstOrNull;
-    return aluno?.toUsuario();
+    if (aluno == null) return null;
+    if (aluno.status == 'Pendente') return null;
+    return aluno.toUsuario();
   }
+
+  bool emailJaCadastrado(String email) {
+    return alunos.any((a) => a.email.toLowerCase() == email.toLowerCase());
+  }
+
+  Aluno? buscarAlunoPorEmail(String email) {
+    return alunos.where((a) => a.email.toLowerCase() == email.toLowerCase()).firstOrNull;
+  }
+
+  Future<String?> cadastrarAlunoPublico(Aluno dados) async {
+    if (emailJaCadastrado(dados.email)) {
+      return 'Este e-mail já está cadastrado.';
+    }
+    final novo = dados.copyWith(
+      status: 'Pendente',
+      plano: 'Mensal',
+      vencimento: MockData.today,
+      dataCadastro: MockData.today,
+    );
+    if (useMock) {
+      alunos = [...alunos, novo];
+      notifyListeners();
+      return null;
+    }
+    try {
+      final saved = await SupabaseService.instance.insertAluno(novo);
+      alunos = [...alunos, saved];
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return 'Erro ao cadastrar. Tente novamente.';
+    }
+  }
+
+  void validarAluno(int id) {
+    alunos = alunos.map((a) {
+      if (a.id != id) return a;
+      return a.copyWith(status: 'Ativo');
+    }).toList();
+    notifyListeners();
+    _syncAluno(id);
+  }
+
+  void salvarHorario({Horario? editando, required Horario dados}) {
+    if (editando != null) {
+      horarios = horarios.map((h) => h.id == editando.id ? dados : h).toList();
+      if (!useMock) {
+        SupabaseService.instance.updateHorario(dados).catchError((Object e) {
+          debugPrint('Erro ao atualizar horário: $e');
+          return dados;
+        });
+      }
+    } else {
+      final novo = dados.copyWith(id: DateTime.now().millisecondsSinceEpoch);
+      horarios = [...horarios, novo];
+      if (!useMock) {
+        SupabaseService.instance.insertHorario(novo).then((saved) {
+          horarios = horarios.map((h) => h.id == novo.id ? saved : h).toList();
+          notifyListeners();
+        }).catchError((Object e) {
+          debugPrint('Erro ao criar horário: $e');
+        });
+      }
+    }
+    notifyListeners();
+  }
+
+  void removerHorario(int id) {
+    horarios = horarios.where((h) => h.id != id).toList();
+    notifyListeners();
+    if (!useMock) {
+      SupabaseService.instance.deleteHorario(id).catchError((Object e) => debugPrint('Erro ao remover horário: $e'));
+    }
+  }
+
+  void salvarProduto({Produto? editando, required Produto dados}) {
+    if (editando != null) {
+      produtos = produtos.map((p) => p.id == editando.id ? dados : p).toList();
+      if (!useMock) {
+        SupabaseService.instance.updateProduto(dados).catchError((Object e) {
+          debugPrint('Erro ao atualizar produto: $e');
+          return dados;
+        });
+      }
+    } else {
+      final novo = dados.copyWith(id: DateTime.now().millisecondsSinceEpoch);
+      produtos = [...produtos, novo];
+      if (!useMock) {
+        SupabaseService.instance.insertProduto(novo).then((saved) {
+          produtos = produtos.map((p) => p.id == novo.id ? saved : p).toList();
+          notifyListeners();
+        }).catchError((Object e) {
+          debugPrint('Erro ao criar produto: $e');
+        });
+      }
+    }
+    notifyListeners();
+  }
+
+  void removerProduto(int id) {
+    produtos = produtos.where((p) => p.id != id).toList();
+    notifyListeners();
+    if (!useMock) {
+      SupabaseService.instance.deleteProduto(id).catchError((Object e) => debugPrint('Erro ao remover produto: $e'));
+    }
+  }
+
+  double precoPlano(String plano) {
+    final produto = produtos.where((p) => p.tipo == 'plano' && p.nome.replaceFirst('Plano ', '') == plano).firstOrNull;
+    if (produto != null) return produto.preco;
+    return MockData.valoresPlano[plano] ?? 0;
+  }
+
+  Produto? produtoPlano(String plano) {
+    return produtos.where((p) => p.tipo == 'plano' && p.nome.replaceFirst('Plano ', '') == plano).firstOrNull;
+  }
+
+  int get alunosPendentes => alunos.where((a) => a.status == 'Pendente').length;
 
   void salvarAluno({Aluno? editando, required Aluno dados}) {
     if (editando != null) {
@@ -546,7 +668,7 @@ class AppState extends ChangeNotifier {
 
   double get receitaMensalEstimada {
     return alunos.where((a) => a.status == 'Ativo').fold<double>(0, (s, a) {
-      final valor = MockData.valoresPlano[a.plano] ?? 0;
+      final valor = precoPlano(a.plano);
       final meses = MockData.mesesPlano[a.plano] ?? 1;
       return s + valor / meses;
     });

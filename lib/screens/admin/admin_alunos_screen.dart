@@ -46,7 +46,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
-          children: ['Todos', 'Ativo', 'Inadimplente'].map((f) {
+          children: ['Todos', 'Ativo', 'Pendente', 'Inadimplente'].map((f) {
             final selected = filtro == f;
             return ChoiceChip(
               label: Text(f),
@@ -93,7 +93,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
-                      PulguinhaBadge(label: a.status, variant: a.status == 'Ativo' ? BadgeVariant.neon : BadgeVariant.red),
+                      PulguinhaBadge(label: a.status, variant: _badgeVariant(a.status)),
                       if (isAniv) const PulguinhaBadge(label: '🎂 Hoje!', variant: BadgeVariant.yellow),
                       if (a.streakPresenca >= 3) PulguinhaBadge(label: '🔥 ${a.streakPresenca}', variant: BadgeVariant.yellow),
                     ],
@@ -109,6 +109,18 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
               onPressed: () => _abrirModal(context, state, editando: a),
               icon: const Text('✏️'),
               style: IconButton.styleFrom(backgroundColor: AppColors.neon.withValues(alpha: 0.1)),
+            ),
+            if (a.status == 'Pendente')
+              IconButton(
+                onPressed: () => _validar(context, state, a),
+                icon: const Text('✅'),
+                tooltip: 'Aprovar cadastro',
+                style: IconButton.styleFrom(backgroundColor: AppColors.neon.withValues(alpha: 0.15)),
+              ),
+            IconButton(
+              onPressed: () => _confirmarExclusao(context, state, a),
+              icon: const Text('🗑️'),
+              style: IconButton.styleFrom(backgroundColor: AppColors.red.withValues(alpha: 0.1)),
             ),
           ],
         ),
@@ -160,7 +172,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                   label: 'Status',
                   child: DropdownButtonFormField<String>(
                     value: status,
-                    items: ['Ativo', 'Inadimplente', 'Inativo'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    items: ['Ativo', 'Pendente', 'Inadimplente', 'Inativo'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) => setModalState(() => status = v ?? status),
                   ),
                 ),
@@ -262,5 +274,40 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
         },
       ),
     );
+  }
+
+  BadgeVariant _badgeVariant(String status) {
+    return switch (status) {
+      'Ativo' => BadgeVariant.neon,
+      'Pendente' => BadgeVariant.yellow,
+      'Inadimplente' => BadgeVariant.red,
+      _ => BadgeVariant.gray,
+    };
+  }
+
+  void _validar(BuildContext context, AppState state, Aluno a) {
+    state.validarAluno(a.id);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${a.nome} aprovado com sucesso!')));
+  }
+
+  Future<void> _confirmarExclusao(BuildContext context, AppState state, Aluno a) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Excluir aluno?', style: TextStyle(color: AppColors.white)),
+        content: Text('Remover ${a.nome} permanentemente?', style: const TextStyle(color: AppColors.gray)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Excluir', style: TextStyle(color: AppColors.red))),
+        ],
+      ),
+    );
+    if (ok == true) {
+      state.removerAluno(a.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${a.nome} removido.')));
+      }
+    }
   }
 }

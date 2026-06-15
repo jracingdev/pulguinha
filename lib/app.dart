@@ -7,6 +7,7 @@ import 'package:pulguinha/screens/admin/admin_alunos_screen.dart';
 import 'package:pulguinha/screens/admin/admin_dashboard_screen.dart';
 import 'package:pulguinha/screens/admin/admin_financeiro_screen.dart';
 import 'package:pulguinha/screens/admin/admin_presenca_screen.dart';
+import 'package:pulguinha/screens/admin/admin_produtos_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_agenda_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_checkin_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_home_screen.dart';
@@ -59,7 +60,7 @@ class _RootRouter extends StatelessWidget {
         backgroundColor: AppColors.bg,
         body: Center(
           child: Image.asset(
-            'assets/images/pulguinha_logo.png',
+            'assets/images/logo1.png',
             width: 280,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
@@ -93,14 +94,13 @@ class _AdminShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final usuario = state.usuario!;
     final body = switch (state.adminTab) {
       'dashboard' => const AdminDashboardScreen(),
       'alunos' => const AdminAlunosScreen(),
       'agenda' => const AdminAgendamentosScreen(),
       'presenca' => const AdminPresencaScreen(),
       'financeiro' => const AdminFinanceiroScreen(),
-      'loja' => LojaScreen(usuario: usuario),
+      'loja' => const AdminProdutosScreen(),
       _ => const AdminDashboardScreen(),
     };
 

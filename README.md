@@ -12,14 +12,22 @@ App Flutter de gestão e agendamento para o estúdio **Funcional do Pulguinha**,
 - **Anamnese, fotos, aniversariantes** — cadastro completo e gamificação (streak, Pulguinha Points)
 - **Loja + Mercado Pago** — Checkout Pro real (Payment Links ou Edge Function Supabase) com fallback demo
 - **Tema claro/escuro** — alternância persistida em Perfil e Admin
-- **Sobre o app** — versão, desenvolvedor e logo
+- **Sobre o app** — versão, desenvolvedor, termos e política de privacidade
+- **Auto-cadastro** — alunos se cadastram com foto; admin aprova cadastros pendentes
+- **Gestão admin** — horários/vagas, planos/preços e produtos da loja editáveis
 
-## Credenciais demo
+## Acesso administrativo
 
-| Perfil | E-mail | Senha |
-|--------|--------|-------|
-| Admin | admin@pulguinha.com | admin123 |
-| Aluno | ana@email.com | 1234 |
+O primeiro admin é criado pelo `supabase/schema.sql` ao configurar o banco. Em **modo demo** (sem Supabase), use as mesmas credenciais definidas no seed.
+
+| Campo | Valor inicial |
+|--------|----------------|
+| **E-mail** | `admin@pulguinha.com` |
+| **Senha** | `admin123` |
+
+Na tela de login, selecione o perfil **Admin** antes de entrar.
+
+> Altere a senha no banco (`admins`) antes de usar em produção. As credenciais não aparecem mais na interface do app.
 
 ## Executar localmente
 
@@ -166,3 +174,4 @@ supabase/
 - Supabase Auth (substituir senha em texto)
 - Políticas RLS mais restritivas em produção
 - Push notifications para lembretes de aula
+- Alteração de senha do admin pela interface

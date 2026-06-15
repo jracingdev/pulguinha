@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
 import 'package:pulguinha/widgets/theme_settings_tile.dart';
@@ -150,6 +151,14 @@ class AlunoPerfilScreen extends StatelessWidget {
               const SizedBox(height: 10),
               _settingsItem(context, 'ℹ️', 'Sobre o app', 'Versão, desenvolvedor e informações', () {
                 Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SobreAppScreen()));
+              }),
+              const SizedBox(height: 8),
+              _settingsItem(context, '📄', 'Termos de Uso', 'Leia os termos do serviço', () {
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.termos)));
+              }),
+              const SizedBox(height: 8),
+              _settingsItem(context, '🔒', 'Política de Privacidade', 'Como tratamos seus dados', () {
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.privacidade)));
               }),
             ],
           ),
