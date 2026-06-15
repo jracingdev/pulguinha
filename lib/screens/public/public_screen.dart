@@ -8,6 +8,7 @@ import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/screens/shared/loja_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class PublicScreen extends StatefulWidget {
@@ -51,6 +52,7 @@ class _PublicScreenState extends State<PublicScreen> {
           child: Column(
             children: [
               _buildHero(),
+              const MockModeBanner(),
               if (step == 'home') _buildHome(state),
               if (step == 'agendar') _buildAgendar(state),
               if (step == 'loja') _buildLoja(),

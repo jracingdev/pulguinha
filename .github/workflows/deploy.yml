@@ -34,6 +34,16 @@ jobs:
       - name: Instalar dependências
         run: flutter pub get
 
+      - name: Verificar secrets Supabase
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "::warning::SUPABASE_URL ou SUPABASE_ANON_KEY não configurados no GitHub."
+            echo "::warning::O site será publicado em MODO OFFLINE — cadastros de alunos NÃO sincronizam."
+            echo "Configure em: Repositório → Settings → Secrets and variables → Actions"
+          else
+            echo "Secrets Supabase detectados — build web conectará ao banco."
+          fi
+
       - name: Build web
         env:
           CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN || 'funcionaldopulguinha.com.br' }}

@@ -52,8 +52,15 @@ class SupabaseService {
   }
 
   Future<Aluno> insertAluno(Aluno aluno) async {
-    final rows = await _db.from('alunos').insert(aluno.toJson()).select().single();
+    final payload = aluno.toInsertJson();
+    final rows = await _db.from('alunos').insert(payload).select().single();
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<bool> verificarAlunoSalvo(String email) async {
+    final normalizado = email.trim().toLowerCase();
+    final rows = await _db.from('alunos').select('id, status').eq('email', normalizado).maybeSingle();
+    return rows != null;
   }
 
   Future<Aluno> updateAluno(Aluno aluno) async {

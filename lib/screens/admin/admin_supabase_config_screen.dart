@@ -62,11 +62,20 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
     );
     await SupabaseConfig.reload();
     if (!mounted) return;
+
+    final state = context.read<AppState>();
+    final conectou = await state.conectarSupabase();
+
+    if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Supabase salvo. Feche e abra o app para conectar. Depois puxe a tela para atualizar.'),
-        duration: Duration(seconds: 5),
+      SnackBar(
+        content: Text(
+          conectou
+              ? 'Supabase conectado! Cadastros da web já devem aparecer — puxe a tela para atualizar.'
+              : 'Credenciais salvas, mas não foi possível conectar. Verifique URL e chave anon.',
+        ),
+        duration: const Duration(seconds: 5),
       ),
     );
   }
@@ -163,7 +172,7 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            NeonButton(label: _saving ? 'Salvando...' : '💾 Salvar e reiniciar app', fullWidth: true, onPressed: _saving ? null : _save),
+            NeonButton(label: _saving ? 'Salvando...' : '💾 Salvar e conectar', fullWidth: true, onPressed: _saving ? null : _save),
           ],
         ],
       ),

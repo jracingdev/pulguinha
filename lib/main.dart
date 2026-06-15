@@ -6,7 +6,7 @@ import 'package:pulguinha/app.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/config/supabase_config.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pulguinha/services/supabase_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +19,9 @@ Future<void> main() async {
   await PagBankConfig.initialize();
 
   if (SupabaseConfig.isConfigured) {
-    await Supabase.initialize(
+    await SupabaseBootstrap.ensureInitialized(
       url: SupabaseConfig.url,
-      anonKey: SupabaseConfig.anonKey, // ignore: deprecated_member_use
+      anonKey: SupabaseConfig.anonKey,
     );
   }
 

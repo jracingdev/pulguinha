@@ -6,6 +6,7 @@ import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -178,6 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 40),
               _buildLogo(),
               const SizedBox(height: 36),
+              const MockModeBanner(compact: true),
               _buildRoleToggle(),
               const SizedBox(height: 28),
               SizedBox(width: 360, child: _buildForm()),

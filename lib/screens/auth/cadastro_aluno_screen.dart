@@ -7,6 +7,7 @@ import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
+import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class CadastroAlunoScreen extends StatefulWidget {
@@ -149,6 +150,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
               style: TextStyle(fontSize: 12, color: AppColors.gray),
             ),
             const SizedBox(height: 24),
+            const MockModeBanner(),
             FieldLabel(
               label: 'Foto',
               child: Column(
@@ -252,7 +254,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
               const Text('Cadastro enviado!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon)),
               const SizedBox(height: 12),
               const Text(
-                'Aguarde a validação do professor/administrador. Você receberá acesso ao app quando seu cadastro for aprovado.',
+                'Seu cadastro foi enviado ao servidor e aguarda aprovação do professor.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.gray, height: 1.5),
               ),

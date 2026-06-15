@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
+import 'package:pulguinha/services/supabase_bootstrap.dart';
 import 'package:pulguinha/services/supabase_service.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 
@@ -61,6 +62,10 @@ class AppState extends ChangeNotifier {
 
     if (SupabaseConfig.isConfigured) {
       try {
+        await SupabaseBootstrap.ensureInitialized(
+          url: SupabaseConfig.url,
+          anonKey: SupabaseConfig.anonKey,
+        );
         final svc = SupabaseService.instance;
         final results = await Future.wait([
           svc.fetchAlunos(),
@@ -112,6 +117,9 @@ class AppState extends ChangeNotifier {
     adminTab = 'dashboard';
     alunoTab = 'home';
     notifyListeners();
+    if (user.isAdmin && SupabaseConfig.isConfigured) {
+      recarregarDados();
+    }
   }
 
   void logout() {
@@ -199,6 +207,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<String?> cadastrarAlunoPublico(Aluno dados) async {
+    await garantirConexaoSupabase();
+
     if (await emailJaCadastradoRemoto(dados.email)) {
       return 'Este e-mail já está cadastrado.';
     }
@@ -209,17 +219,45 @@ class AppState extends ChangeNotifier {
       dataCadastro: MockData.today,
     );
     if (useMock) {
-      alunos = [...alunos, novo];
-      notifyListeners();
-      return null;
+      return 'Cadastro não enviado — servidor não conectado. Cadastros não sincronizam neste modo.';
     }
     try {
       final saved = await SupabaseService.instance.insertAluno(novo);
+      final confirmado = await SupabaseService.instance.verificarAlunoSalvo(saved.email);
+      if (!confirmado) {
+        return 'Cadastro não confirmado no servidor. Verifique a conexão e tente novamente.';
+      }
       alunos = [...alunos, saved];
       notifyListeners();
       return null;
     } catch (e) {
-      return 'Erro ao cadastrar. Tente novamente.';
+      debugPrint('Erro insertAluno: $e');
+      return 'Erro ao cadastrar: ${e.toString().split('\n').first}';
+    }
+  }
+
+  /// Tenta conectar ao Supabase quando há credenciais mas o app caiu em modo mock.
+  Future<bool> garantirConexaoSupabase() async {
+    if (!SupabaseConfig.isConfigured) return false;
+    if (!useMock) return true;
+    return conectarSupabase();
+  }
+
+  /// Reinicializa o cliente Supabase e recarrega dados (sem reiniciar o app).
+  Future<bool> conectarSupabase() async {
+    if (!SupabaseConfig.isConfigured) return false;
+    try {
+      await SupabaseBootstrap.ensureInitialized(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
+      await recarregarDados();
+      return !useMock;
+    } catch (e) {
+      debugPrint('Falha ao conectar Supabase: $e');
+      initError = 'Sem conexão com o banco';
+      notifyListeners();
+      return false;
     }
   }
 
@@ -417,6 +455,10 @@ class AppState extends ChangeNotifier {
   Future<void> recarregarDados() async {
     if (!SupabaseConfig.isConfigured) return;
     try {
+      await SupabaseBootstrap.ensureInitialized(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
       final svc = SupabaseService.instance;
       final results = await Future.wait([
         svc.fetchAlunos(),

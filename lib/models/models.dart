@@ -304,6 +304,9 @@ class Aluno {
         if (horarioId != null) 'horario_id': horarioId,
       };
 
+  /// Payload para INSERT — nunca envia `id` (BIGSERIAL no Postgres).
+  Map<String, dynamic> toInsertJson() => toJson();
+
   Usuario toUsuario() => Usuario(
         tipo: UserType.aluno,
         id: id,

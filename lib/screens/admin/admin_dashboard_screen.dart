@@ -71,7 +71,7 @@ class AdminDashboardScreen extends StatelessWidget {
             borderColor: AppColors.yellow.withValues(alpha: 0.35),
             backgroundColor: AppColors.yellow.withValues(alpha: 0.06),
             child: const Text(
-              '⚠️ Modo offline — cadastros feitos no site não aparecem aqui. Vá em Configurações → Conexão Supabase, salve a URL e a chave anon, reinicie o app e puxe a tela para baixo para atualizar.',
+              '⚠️ Modo offline — cadastros feitos no site não aparecem aqui. Vá em Configurações → Conexão Supabase, salve a URL e a chave anon (botão Salvar e conectar) e puxe a tela para baixo para atualizar.',
               style: TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.4, decoration: TextDecoration.none),
             ),
           ),
