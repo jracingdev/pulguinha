@@ -6,6 +6,7 @@ import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/screens/admin/admin_horarios_screen.dart';
+import 'package:pulguinha/screens/admin/admin_supabase_config_screen.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
@@ -64,6 +65,17 @@ class AdminDashboardScreen extends StatelessWidget {
             ],
           ),
         ),
+        if (state.useMock) ...[
+          const SizedBox(height: 12),
+          PulguinhaCard(
+            borderColor: AppColors.yellow.withValues(alpha: 0.35),
+            backgroundColor: AppColors.yellow.withValues(alpha: 0.06),
+            child: const Text(
+              '⚠️ Modo offline — cadastros feitos no site não aparecem aqui. Vá em Configurações → Conexão Supabase, salve a URL e a chave anon, reinicie o app e puxe a tela para baixo para atualizar.',
+              style: TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.4, decoration: TextDecoration.none),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Wrap(
           spacing: 10,
@@ -94,6 +106,17 @@ class AdminDashboardScreen extends StatelessWidget {
         const SectionTitle(icon: '⚙️', title: 'Configurações'),
         const SizedBox(height: 10),
         const ThemeSettingsTile(),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '☁️',
+          title: 'Conexão Supabase',
+          subtitle: state.useMock ? 'Offline — configure para ver cadastros da web' : 'Conectado ao banco na nuvem',
+          color: state.useMock ? AppColors.yellow : AppColors.blue,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AdminSupabaseConfigScreen()),
+          ),
+        ),
         const SizedBox(height: 10),
         _configTile(
           context,

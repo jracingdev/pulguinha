@@ -193,3 +193,9 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE alunos;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;

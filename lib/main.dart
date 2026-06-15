@@ -14,6 +14,7 @@ Future<void> main() async {
     usePathUrlStrategy();
   }
   await initializeDateFormatting('pt_BR');
+  await SupabaseConfig.initialize();
   await MercadoPagoConfig.initialize();
   await PagBankConfig.initialize();
 

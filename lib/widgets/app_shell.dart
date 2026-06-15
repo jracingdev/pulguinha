@@ -19,6 +19,7 @@ class AppShell extends StatelessWidget {
     required this.child,
     this.headerRight,
     this.onLogout,
+    this.onRefresh,
   });
 
   final List<TabItem> tabs;
@@ -27,6 +28,7 @@ class AppShell extends StatelessWidget {
   final Widget child;
   final Widget? headerRight;
   final VoidCallback? onLogout;
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -72,10 +74,21 @@ class AppShell extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
-                child: child,
-              ),
+              child: onRefresh != null
+                  ? RefreshIndicator(
+                      color: AppColors.neon,
+                      backgroundColor: AppColors.card2,
+                      onRefresh: onRefresh!,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
+                        child: child,
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
+                      child: child,
+                    ),
             ),
           ],
         ),

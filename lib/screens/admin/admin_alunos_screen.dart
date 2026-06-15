@@ -60,6 +60,25 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
           }).toList(),
         ),
         const SizedBox(height: 16),
+        if (state.alunosPendentes > 0) ...[
+          PulguinhaCard(
+            borderColor: AppColors.neon.withValues(alpha: 0.35),
+            backgroundColor: AppColors.neon.withValues(alpha: 0.06),
+            child: Row(
+              children: [
+                const Text('⏳', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${state.alunosPendentes} cadastro(s) aguardando aprovação — filtre por "Pendente" ou puxe a tela para atualizar.',
+                    style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w600, decoration: TextDecoration.none),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         ...lista.map((a) => _alunoCard(context, state, a)),
       ],
     );

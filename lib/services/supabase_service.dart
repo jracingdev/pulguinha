@@ -45,6 +45,12 @@ class SupabaseService {
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }
 
+  Future<bool> emailExiste(String email) async {
+    final normalizado = email.trim().toLowerCase();
+    final rows = await _db.from('alunos').select('id').eq('email', normalizado).maybeSingle();
+    return rows != null;
+  }
+
   Future<Aluno> insertAluno(Aluno aluno) async {
     final rows = await _db.from('alunos').insert(aluno.toJson()).select().single();
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));

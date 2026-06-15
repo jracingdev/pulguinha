@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/config/app_links.dart';
+import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/screens/admin/admin_agendamentos_screen.dart';
 import 'package:pulguinha/screens/admin/admin_alunos_screen.dart';
@@ -120,6 +121,7 @@ class _AdminShell extends StatelessWidget {
         ),
         child: const Text('ADMIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.neon)),
       ),
+      onRefresh: SupabaseConfig.isConfigured ? state.recarregarDados : null,
       child: body,
     );
   }
@@ -163,6 +165,7 @@ class _AlunoShell extends StatelessWidget {
         'Olá, ${usuario.nome.split(' ').first}',
         style: const TextStyle(fontSize: 12, color: AppColors.gray, fontWeight: FontWeight.w600),
       ),
+      onRefresh: SupabaseConfig.isConfigured ? state.recarregarDados : null,
       child: body,
     );
   }

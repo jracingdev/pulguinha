@@ -44,7 +44,7 @@ class AppState extends ChangeNotifier {
   bool useMock = true;
   String? initError;
 
-  RealtimeChannel? _agendamentosChannel;
+  RealtimeChannel? _realtimeChannel;
 
   AppState() {
     init();
@@ -77,7 +77,7 @@ class AppState extends ChangeNotifier {
         presencas = results[4] as List<Presenca>;
         postsTurma = results[5] as List<PostTurma>;
         useMock = false;
-        _subscribeAgendamentosRealtime();
+        _subscribeRealtime();
       } catch (e) {
         debugPrint('Supabase indisponível, usando mock: $e');
         initError = 'Modo offline (dados locais)';
@@ -123,6 +123,9 @@ class AppState extends ChangeNotifier {
   void setAdminTab(String tab) {
     adminTab = tab;
     notifyListeners();
+    if (!useMock && (tab == 'alunos' || tab == 'dashboard')) {
+      recarregarDados();
+    }
   }
 
   void setAlunoTab(String tab) {
@@ -184,12 +187,19 @@ class AppState extends ChangeNotifier {
     return alunos.any((a) => a.email.toLowerCase() == email.toLowerCase());
   }
 
+  Future<bool> emailJaCadastradoRemoto(String email) async {
+    if (!useMock && SupabaseConfig.isConfigured) {
+      return SupabaseService.instance.emailExiste(email);
+    }
+    return emailJaCadastrado(email);
+  }
+
   Aluno? buscarAlunoPorEmail(String email) {
     return alunos.where((a) => a.email.toLowerCase() == email.toLowerCase()).firstOrNull;
   }
 
   Future<String?> cadastrarAlunoPublico(Aluno dados) async {
-    if (emailJaCadastrado(dados.email)) {
+    if (await emailJaCadastradoRemoto(dados.email)) {
       return 'Este e-mail já está cadastrado.';
     }
     final novo = dados.copyWith(
@@ -404,23 +414,65 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  Future<void> recarregarDados() async {
+    if (!SupabaseConfig.isConfigured) return;
+    try {
+      final svc = SupabaseService.instance;
+      final results = await Future.wait([
+        svc.fetchAlunos(),
+        svc.fetchHorarios(),
+        svc.fetchAgendamentos(),
+        svc.fetchProdutos(),
+        svc.fetchPresencas(),
+        svc.fetchPostsTurma(),
+      ]);
+      alunos = results[0] as List<Aluno>;
+      horarios = results[1] as List<Horario>;
+      agendamentos = results[2] as List<Agendamento>;
+      produtos = results[3] as List<Produto>;
+      presencas = results[4] as List<Presenca>;
+      postsTurma = results[5] as List<PostTurma>;
+      useMock = false;
+      initError = null;
+      _subscribeRealtime();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao recarregar dados: $e');
+    }
+  }
+
   Future<void> recarregarAgendamentos() async {
     if (useMock || !SupabaseConfig.isConfigured) return;
     await _syncAgendamentosFromServer();
   }
 
-  void _subscribeAgendamentosRealtime() {
+  void _subscribeRealtime() {
     if (!SupabaseConfig.isConfigured || useMock) return;
-    _agendamentosChannel?.unsubscribe();
-    _agendamentosChannel = Supabase.instance.client
-        .channel('pulguinha-agendamentos')
+    _realtimeChannel?.unsubscribe();
+    _realtimeChannel = Supabase.instance.client
+        .channel('pulguinha-sync')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'agendamentos',
           callback: (_) => _syncAgendamentosFromServer(),
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'alunos',
+          callback: (_) => _syncAlunosFromServer(),
+        )
         .subscribe();
+  }
+
+  Future<void> _syncAlunosFromServer() async {
+    try {
+      alunos = await SupabaseService.instance.fetchAlunos();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar alunos: $e');
+    }
   }
 
   Future<void> _syncAgendamentosFromServer() async {
