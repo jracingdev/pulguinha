@@ -118,7 +118,11 @@ class AppState extends ChangeNotifier {
     alunoTab = 'home';
     notifyListeners();
     if (user.isAdmin && SupabaseConfig.isConfigured) {
-      recarregarDados();
+      if (useMock) {
+        conectarSupabase();
+      } else {
+        recarregarDados();
+      }
     }
   }
 
@@ -167,25 +171,32 @@ class AppState extends ChangeNotifier {
     setThemeMode(themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark);
   }
 
+  bool get precisaConfigurarSupabase => useMock && !SupabaseConfig.isConfigured;
+
   Future<Usuario?> autenticar(String email, String senha, UserType tipo) async {
+    final em = email.trim().toLowerCase();
+    final sn = senha;
+
     if (tipo == UserType.admin) {
       if (!useMock) {
-        return SupabaseService.instance.autenticarAdmin(email, senha);
+        return SupabaseService.instance.autenticarAdmin(em, sn);
       }
-      if (email == MockData.adminEmail && senha == MockData.adminSenha) {
-        return Usuario(tipo: UserType.admin, nome: MockData.adminNome, email: email);
+      if (em == MockData.adminEmail && sn == MockData.adminSenha) {
+        return Usuario(tipo: UserType.admin, nome: MockData.adminNome, email: MockData.adminEmail);
       }
       return null;
     }
 
     if (!useMock) {
-      final aluno = await SupabaseService.instance.autenticarAluno(email, senha);
+      final aluno = await SupabaseService.instance.autenticarAluno(em, sn);
       if (aluno == null) return null;
       if (aluno.status == 'Pendente') return null;
       return aluno.toUsuario();
     }
 
-    final aluno = alunos.where((a) => a.email == email && a.senha == senha).firstOrNull;
+    final aluno = alunos
+        .where((a) => a.email.toLowerCase() == em && a.senha == sn)
+        .firstOrNull;
     if (aluno == null) return null;
     if (aluno.status == 'Pendente') return null;
     return aluno.toUsuario();

@@ -187,6 +187,26 @@ O app passará a abrir em `https://app.seudominio.com.br/` (sem `/pulguinha/` no
   - De: `loja.funcionaldopulguinha.com.br`
   - Para: `https://funcionaldopulguinha.com.br/loja`
 
+### APK (Android) e Supabase
+
+O APK publicado **não embute** credenciais Supabase (diferente do site, que recebe `--dart-define` no GitHub Actions). Na primeira instalação o app roda em **modo local** até o admin configurar a conexão.
+
+**No celular (uma vez por aparelho):**
+
+1. Abra o app → **Entrar** → perfil **Admin**
+2. Login offline: `admin@pulguinha.com` / `admin123`
+3. **Início → Configurações → Conexão Supabase**
+4. Desbloqueie com a senha de admin e cole a **Project URL** e a **anon public key** (as mesmas dos secrets `SUPABASE_URL` e `SUPABASE_ANON_KEY` no GitHub)
+5. Toque em **Salvar e conectar** — cadastros da web (ex.: alunos pendentes) passam a aparecer sem reiniciar o app
+
+**Build APK com Supabase embutido (opcional, white-label):**
+
+```bash
+flutter build apk --release \
+  --dart-define=SUPABASE_URL=https://SEU_PROJETO.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=sua_chave_anon_aqui
+```
+
 ### Build web manual
 
 ```bash

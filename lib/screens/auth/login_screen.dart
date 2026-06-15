@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
@@ -18,6 +19,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _offlineAdminHintKey = 'pulg_offline_admin_hint_v1';
+
   UserType role = UserType.aluno;
   final emailCtrl = TextEditingController();
   final senhaCtrl = TextEditingController();
@@ -112,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _tentarLogin({String? email, String? senha, UserType? tipo}) async {
-    final em = email ?? emailCtrl.text.trim();
+    final em = (email ?? emailCtrl.text).trim().toLowerCase();
     final sn = senha ?? senhaCtrl.text;
     final rl = tipo ?? role;
 
@@ -141,7 +144,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user == null) {
       setState(() {
         loading = false;
-        erro = 'E-mail ou senha inválidos.';
+        if (rl == UserType.admin && appState.useMock && !SupabaseConfig.isConfigured) {
+          erro = 'Modo offline: use admin@pulguinha.com e senha admin123, ou configure Supabase no painel admin.';
+        } else if (rl == UserType.aluno && appState.useMock && !appState.emailJaCadastrado(em)) {
+          erro = 'Conta não encontrada neste aparelho. Cadastros feitos no site exigem Supabase — peça ao professor para configurar.';
+        } else {
+          erro = 'E-mail ou senha inválidos.';
+        }
       });
       return;
     }
@@ -158,6 +167,36 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => loading = false);
     appState.login(user);
+
+    if (user.isAdmin && appState.precisaConfigurarSupabase) {
+      await _mostrarDicaSupabaseOffline();
+    }
+  }
+
+  Future<void> _mostrarDicaSupabaseOffline() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_offlineAdminHintKey) == true) return;
+    await prefs.setBool(_offlineAdminHintKey, true);
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+        title: const Text('Conectar ao servidor', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+        content: const Text(
+          'Você entrou no modo local. Para ver cadastros feitos no site (como alunos pendentes), vá em Configurações → Conexão Supabase e salve a mesma URL e chave anon do projeto Supabase.',
+          style: TextStyle(color: AppColors.gray, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendi', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -249,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (role == UserType.admin)
+        if (role == UserType.admin) ...[
           Container(
             margin: const EdgeInsets.only(bottom: 14),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -260,6 +299,21 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: const Text('🔐 Acesso restrito — Painel Administrativo', style: TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w600)),
           ),
+          if (context.watch<AppState>().precisaConfigurarSupabase)
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.yellow.withValues(alpha: 0.06),
+                border: Border.all(color: AppColors.yellow.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'Modo offline: admin@pulguinha.com · senha admin123. Depois configure Supabase em Configurações.',
+                style: TextStyle(fontSize: 11, color: AppColors.yellow, fontWeight: FontWeight.w600, height: 1.4),
+              ),
+            ),
+        ],
         FieldLabel(
           label: 'E-mail',
           child: TextField(

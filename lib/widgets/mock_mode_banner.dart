@@ -18,8 +18,8 @@ class MockModeBanner extends StatelessWidget {
 
     final semConfig = !SupabaseConfig.isConfigured;
     final texto = semConfig
-        ? '⚠️ Cadastros não sincronizam — servidor não configurado. No site: configure os secrets SUPABASE_URL e SUPABASE_ANON_KEY no GitHub. No app admin: Configurações → Conexão Supabase.'
-        : '⚠️ Cadastros não sincronizam — sem conexão com o banco. Verifique a internet ou as credenciais em Configurações → Conexão Supabase.';
+        ? 'ℹ️ Modo local — cadastros do site ainda não aparecem aqui. Professor: entre como Admin e configure em Configurações → Conexão Supabase (mesma URL e chave do GitHub).'
+        : 'ℹ️ Sem conexão com o banco no momento. Verifique a internet ou as credenciais em Configurações → Conexão Supabase.';
 
     if (compact) {
       return Container(
@@ -32,7 +32,9 @@ class MockModeBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          'Cadastros não sincronizam (modo offline)',
+          semConfig
+              ? 'Modo local — Admin: configure Supabase em Configurações'
+              : 'Sem conexão — verifique internet ou credenciais',
           style: const TextStyle(fontSize: 11, color: AppColors.yellow, fontWeight: FontWeight.w700),
         ),
       );
