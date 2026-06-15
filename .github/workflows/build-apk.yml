@@ -36,20 +36,16 @@ jobs:
       - name: Instalar dependências
         run: flutter pub get
 
-      - name: Verificar secrets Supabase
-        run: |
-          if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-            echo "::warning::SUPABASE_URL ou SUPABASE_ANON_KEY não configurados."
-            echo "::warning::APK será buildado em MODO OFFLINE — configure secrets no GitHub Actions."
-          else
-            echo "Secrets Supabase detectados — APK conectará ao banco via dart-define."
-          fi
-
       - name: Build APK release
         run: |
-          flutter build apk --release \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          ARGS=""
+          if [ -n "${{ secrets.SUPABASE_URL }}" ] && [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            echo "Secrets GitHub detectados — usando dart-define no build."
+            ARGS="--dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+          else
+            echo "Sem secrets — APK usará credenciais embutidas em lib/config/supabase_config.dart."
+          fi
+          flutter build apk --release $ARGS
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

@@ -49,17 +49,19 @@ flutter build web --release --base-href "/pulguinha/"
 ### Com Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com)
-2. No **SQL Editor**, execute o arquivo `supabase/schema.sql`
+2. No **SQL Editor**, execute `supabase/schema.sql` (estrutura). Dados demo opcionais: `supabase/seed.sql`. Banco já em produção: `supabase/migration_minimal.sql`
 3. Copie a **Project URL** e a **anon public key** (Settings → API)
-4. Execute com:
+4. (Opcional) Execute com `--dart-define` para override no build; senão o app usa os defaults em `lib/config/supabase_config.dart`:
 
 ```bash
+flutter run
+# ou com override:
 flutter run \
   --dart-define=SUPABASE_URL=https://SEU_PROJETO.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=sua_chave_anon_aqui
 ```
 
-> **Nunca** commite chaves reais no repositório. Use `--dart-define` ou secrets do CI.
+> A chave **anon** é pública no modelo Supabase (protegida por RLS). Para o Pulguinha single-tenant, está commitada no código. **Nunca** commite a `service_role` key.
 
 > **Fotos:** armazenadas em base64 no campo `foto` do aluno (demo). Em produção, prefira Supabase Storage.
 
@@ -187,24 +189,26 @@ O app passará a abrir em `https://app.seudominio.com.br/` (sem `/pulguinha/` no
   - De: `loja.funcionaldopulguinha.com.br`
   - Para: `https://funcionaldopulguinha.com.br/loja`
 
-### APK (Android) e Supabase
+### APK (Android) — zero configuração no celular
 
-O APK publicado **não embute** credenciais Supabase (diferente do site, que recebe `--dart-define` no GitHub Actions). Na primeira instalação o app roda em **modo local** até o admin configurar a conexão.
+O APK **já vem com URL e chave anon do Supabase embutidas** em `lib/config/supabase_config.dart`. Qualquer celular conecta automaticamente — **não é necessário** colar credenciais em Configurações.
 
-**No celular (uma vez por aparelho):**
+| Onde | Configuração necessária |
+|------|-------------------------|
+| **Cada celular** | Nenhuma — instalar e usar |
+| **GitHub Actions (web)** | Secrets `SUPABASE_URL` + `SUPABASE_ANON_KEY` (opcional para APK; obrigatório só se quiser override no CI) |
+| **Build local** | `.\scripts\build_apk.ps1` — usa credenciais embutidas |
 
-1. Abra o app → **Entrar** → perfil **Admin**
-2. Login offline: `admin@pulguinha.com` / `admin123`
-3. **Início → Configurações → Conexão Supabase**
-4. Desbloqueie com a senha de admin e cole a **Project URL** e a **anon public key** (as mesmas dos secrets `SUPABASE_URL` e `SUPABASE_ANON_KEY` no GitHub)
-5. Toque em **Salvar e conectar** — cadastros da web (ex.: alunos pendentes) passam a aparecer sem reiniciar o app
-
-**Build APK com Supabase embutido (opcional, white-label):**
+**Tela Conexão Supabase (avançado):** só para trocar de projeto (white-label) ou ambiente de teste. O admin normal **não precisa** abrir essa tela.
 
 ```bash
-flutter build apk --release \
-  --dart-define=SUPABASE_URL=https://SEU_PROJETO.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=sua_chave_anon_aqui
+# Build local (credenciais já no código)
+.\scripts\build_apk.ps1
+
+# Override opcional no build
+$env:SUPABASE_URL="https://....supabase.co"
+$env:SUPABASE_ANON_KEY="eyJ..."
+.\scripts\build_apk.ps1
 ```
 
 ### Build web manual

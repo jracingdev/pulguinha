@@ -1,4 +1,6 @@
--- Schema do Pulguinha — execute no SQL Editor do Supabase
+-- Estrutura do Pulguinha — execute no SQL Editor do Supabase (idempotente).
+-- Dados demo opcionais: supabase/seed.sql
+-- Migração mínima (banco já em produção): supabase/migration_minimal.sql
 
 -- Admin
 CREATE TABLE IF NOT EXISTS admins (
@@ -136,58 +138,6 @@ ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS figurinha TEXT;
 ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS link_url TEXT;
 ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS enquete_opcoes JSONB NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS enquete_votos JSONB NOT NULL DEFAULT '{}'::jsonb;
-UPDATE alunos SET horario_id = 5 WHERE email IN ('ana@email.com', 'bruno@email.com');
-UPDATE alunos SET horario_id = 4 WHERE email = 'carla@email.com';
-UPDATE alunos SET horario_id = 6 WHERE email = 'diego@email.com';
-UPDATE alunos SET horario_id = 1 WHERE email = 'elisa@email.com';
-
--- Seed: admin padrão
-INSERT INTO admins (email, senha, nome) VALUES
-  ('admin@pulguinha.com', 'admin123', 'Pulguinha Admin')
-ON CONFLICT (email) DO NOTHING;
-
--- Seed: alunos demo
-INSERT INTO alunos (nome, email, senha, telefone, plano, vencimento, status, avatar, data_nascimento, anamnese, streak_presenca, pulguinha_points, horario_id) VALUES
-  ('Ana Costa', 'ana@email.com', '1234', '(11) 98765-0001', 'Mensal', '2026-06-20', 'Ativo', 'AC', '1995-06-13', '{"objetivo_treino":"Condicionamento","nivel_experiencia":"Intermediário"}', 5, 50, 5),
-  ('Bruno Lima', 'bruno@email.com', '1234', '(11) 98765-0002', 'Trimestral', '2026-08-10', 'Ativo', 'BL', '1990-03-22', '{"objetivo_treino":"Emagrecer","nivel_experiencia":"Iniciante"}', 3, 30, 5),
-  ('Carla Dias', 'carla@email.com', '1234', '(11) 98765-0003', 'Mensal', '2026-06-05', 'Inadimplente', 'CD', '1988-11-08', '{}', 0, 0, 4),
-  ('Diego Souza', 'diego@email.com', '1234', '(11) 98765-0004', 'Anual', '2027-01-15', 'Ativo', 'DS', '1992-07-04', '{"restricoes_medicas":"Joelho direito","nivel_experiencia":"Avançado"}', 8, 80, 6),
-  ('Elisa Rocha', 'elisa@email.com', '1234', '(11) 98765-0005', 'Mensal', '2026-06-28', 'Ativo', 'ER', '1998-06-18', '{"objetivo_treino":"Força","nivel_experiencia":"Intermediário"}', 2, 20, 1)
-ON CONFLICT (email) DO NOTHING;
-
--- Seed: horários
-INSERT INTO horarios (hora, dias, capacidade) VALUES
-  ('06:00', 'Seg/Qua/Sex', 12),
-  ('07:00', 'Seg/Qua/Sex', 12),
-  ('08:00', 'Ter/Qui', 10),
-  ('09:00', 'Seg a Sex', 8),
-  ('18:00', 'Seg a Sex', 15),
-  ('19:00', 'Seg a Sex', 15),
-  ('20:00', 'Seg/Qua/Sex', 12)
-ON CONFLICT DO NOTHING;
-
--- Seed: produtos
-INSERT INTO produtos (nome, descricao, preco, tipo, emoji) VALUES
-  ('Plano Mensal', 'Acesso ilimitado por 30 dias', 150, 'plano', '📅'),
-  ('Plano Trimestral', '3 meses com 10% de desconto', 400, 'plano', '🗓️'),
-  ('Plano Semestral', '6 meses com 20% de desconto', 720, 'plano', '📆'),
-  ('Plano Anual', '12 meses com 30% de desconto', 1300, 'plano', '🏆'),
-  ('Camiseta Pulguinha', 'Dry-fit tamanhos P/M/G/GG', 69, 'produto', '👕'),
-  ('Squeeze 700ml', 'Alumínio com logo bordado', 49, 'produto', '🥤'),
-  ('Aula Avulsa', '1 treino funcional à la carte', 40, 'avulso', '🎟️')
-ON CONFLICT DO NOTHING;
-
--- Seed: presenças demo (últimos dias)
-INSERT INTO presencas (aluno_id, horario_id, data, horario, tipo, nome_aluno) VALUES
-  (1, 5, CURRENT_DATE - 4, '18:00', 'scan_professor', 'Ana Costa'),
-  (1, 5, CURRENT_DATE - 3, '18:00', 'scan_aluno', 'Ana Costa'),
-  (1, 5, CURRENT_DATE - 2, '18:00', 'scan_professor', 'Ana Costa'),
-  (1, 5, CURRENT_DATE - 1, '18:00', 'scan_aluno', 'Ana Costa'),
-  (2, 5, CURRENT_DATE - 2, '18:00', 'scan_professor', 'Bruno Lima'),
-  (2, 6, CURRENT_DATE - 1, '19:00', 'scan_aluno', 'Bruno Lima'),
-  (4, 1, CURRENT_DATE - 1, '06:00', 'scan_professor', 'Diego Souza'),
-  (5, 1, CURRENT_DATE, '06:00', 'scan_aluno', 'Elisa Rocha')
-ON CONFLICT (aluno_id, horario_id, data) DO NOTHING;
 
 -- Realtime: atualizar agenda quando alguém agenda/cancela (habilitar no Supabase)
 DO $$ BEGIN

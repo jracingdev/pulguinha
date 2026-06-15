@@ -46,8 +46,8 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
     }
 
     final stored = await SupabaseSettingsStorage.instance.load();
-    _urlCtrl.text = stored.url;
-    _anonCtrl.text = stored.anonKey;
+    _urlCtrl.text = stored.url.isNotEmpty ? stored.url : SupabaseConfig.url;
+    _anonCtrl.text = stored.anonKey.isNotEmpty ? stored.anonKey : SupabaseConfig.anonKey;
 
     setState(() {
       _unlocked = true;
@@ -104,7 +104,7 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.card,
-        title: const Text('Conexão Supabase', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Conexão Supabase (avançado)', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -131,7 +131,7 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Cadastros feitos no site só aparecem no admin quando o app está conectado ao mesmo projeto Supabase.',
+                  'O APK oficial já vem com o banco configurado. Use esta tela só para trocar de projeto (white-label) ou testar outro ambiente.',
                   style: TextStyle(fontSize: 11, color: AppColors.gray, decoration: TextDecoration.none),
                 ),
               ],

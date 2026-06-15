@@ -37,11 +37,9 @@ jobs:
       - name: Verificar secrets Supabase
         run: |
           if [ -z "${{ secrets.SUPABASE_URL }}" ] || [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-            echo "::warning::SUPABASE_URL ou SUPABASE_ANON_KEY não configurados no GitHub."
-            echo "::warning::O site será publicado em MODO OFFLINE — cadastros de alunos NÃO sincronizam."
-            echo "Configure em: Repositório → Settings → Secrets and variables → Actions"
+            echo "Sem secrets GitHub — build web usará credenciais embutidas em lib/config/supabase_config.dart."
           else
-            echo "Secrets Supabase detectados — build web conectará ao banco."
+            echo "Secrets Supabase detectados — build web conectará ao banco via dart-define."
           fi
 
       - name: Build web

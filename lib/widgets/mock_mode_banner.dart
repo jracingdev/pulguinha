@@ -21,10 +21,10 @@ class MockModeBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final semConfig = !SupabaseConfig.isConfigured;
-    final texto = semConfig
-        ? 'ℹ️ Modo local — cadastros do site ainda não aparecem aqui. Professor: entre como Admin e configure em Configurações → Conexão Supabase (mesma URL e chave do GitHub).'
-        : 'ℹ️ Sem conexão com o banco no momento. Verifique a internet ou as credenciais em Configurações → Conexão Supabase.';
+    final semConexao = SupabaseConfig.isConfigured;
+    final texto = semConexao
+        ? 'ℹ️ Sem conexão com o banco no momento. Verifique a internet e puxe a tela para atualizar.'
+        : 'ℹ️ Modo local — credenciais Supabase não encontradas. Reinstale o APK oficial ou configure em Configurações → Conexão Supabase (avançado).';
 
     if (compact) {
       return Container(
@@ -37,9 +37,9 @@ class MockModeBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
-          semConfig
-              ? 'Modo local — Admin: configure Supabase em Configurações'
-              : 'Sem conexão — verifique internet ou credenciais',
+          semConexao
+              ? 'Sem conexão — verifique internet'
+              : 'Modo local — reinstale APK ou configure Supabase',
           style: const TextStyle(fontSize: 11, color: AppColors.yellow, fontWeight: FontWeight.w700),
         ),
       );

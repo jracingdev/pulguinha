@@ -145,9 +145,11 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         loading = false;
         if (rl == UserType.admin && appState.useMock && !SupabaseConfig.isConfigured) {
-          erro = 'Modo offline: use admin@pulguinha.com e senha admin123, ou configure Supabase no painel admin.';
+          erro = 'Modo local: use admin@pulguinha.com e senha admin123, ou reinstale o APK oficial.';
         } else if (rl == UserType.aluno && appState.useMock && !appState.emailJaCadastrado(em)) {
-          erro = 'Conta não encontrada neste aparelho. Cadastros feitos no site exigem Supabase — peça ao professor para configurar.';
+          erro = SupabaseConfig.isConfigured
+              ? 'Conta não encontrada. Verifique e-mail/senha ou aguarde a conexão com o banco.'
+              : 'Conta não encontrada neste aparelho. Reinstale o APK oficial ou peça ao professor.';
         } else {
           erro = 'E-mail ou senha inválidos.';
         }

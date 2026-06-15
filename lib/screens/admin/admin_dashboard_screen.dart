@@ -4,6 +4,7 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/screens/admin/admin_horarios_screen.dart';
 import 'package:pulguinha/screens/admin/admin_supabase_config_screen.dart';
@@ -71,9 +72,11 @@ class AdminDashboardScreen extends StatelessWidget {
           PulguinhaCard(
             borderColor: AppColors.yellow.withValues(alpha: 0.35),
             backgroundColor: AppColors.yellow.withValues(alpha: 0.06),
-            child: const Text(
-              '⚠️ Modo offline — cadastros feitos no site não aparecem aqui. Vá em Configurações → Conexão Supabase, salve a URL e a chave anon (botão Salvar e conectar) e puxe a tela para baixo para atualizar.',
-              style: TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.4, decoration: TextDecoration.none),
+            child: Text(
+              SupabaseConfig.isConfigured
+                  ? '⚠️ Sem conexão com o banco — cadastros do site não sincronizam até a internet voltar. Puxe a tela para baixo para tentar de novo.'
+                  : '⚠️ Modo local — reinstale o APK oficial ou configure Supabase em Configurações → Conexão Supabase (avançado).',
+              style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.4, decoration: TextDecoration.none),
             ),
           ),
         ],
@@ -112,7 +115,9 @@ class AdminDashboardScreen extends StatelessWidget {
           context,
           icon: '☁️',
           title: 'Conexão Supabase',
-          subtitle: state.useMock ? 'Offline — configure para ver cadastros da web' : 'Conectado ao banco na nuvem',
+          subtitle: state.useMock
+              ? (SupabaseConfig.isConfigured ? 'Sem conexão — verifique internet' : 'Modo local — avançado')
+              : 'Conectado ao banco na nuvem',
           color: state.useMock ? AppColors.yellow : AppColors.blue,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AdminSupabaseConfigScreen()),
