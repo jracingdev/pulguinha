@@ -67,7 +67,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
 
   Widget _mpCard(BuildContext context, double rec) {
     final configured = MercadoPagoConfig.isRealCheckoutAvailable;
-    final badgeLabel = configured ? 'Ativo' : 'Demo';
+    final badgeLabel = configured ? 'Ativo' : 'Não configurado';
     final badgeVariant = configured ? BadgeVariant.mercadoPago : BadgeVariant.yellow;
 
     return InkWell(

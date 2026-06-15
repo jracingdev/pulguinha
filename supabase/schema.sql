@@ -129,7 +129,11 @@ ALTER TABLE posts_turma ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "anon_all_posts_turma" ON posts_turma;
 CREATE POLICY "anon_all_posts_turma" ON posts_turma FOR ALL USING (true) WITH CHECK (true);
 
--- Atualizar turmas dos alunos demo
+ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'texto';
+ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS figurinha TEXT;
+ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS link_url TEXT;
+ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS enquete_opcoes JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE posts_turma ADD COLUMN IF NOT EXISTS enquete_votos JSONB NOT NULL DEFAULT '{}'::jsonb;
 UPDATE alunos SET horario_id = 5 WHERE email IN ('ana@email.com', 'bruno@email.com');
 UPDATE alunos SET horario_id = 4 WHERE email = 'carla@email.com';
 UPDATE alunos SET horario_id = 6 WHERE email = 'diego@email.com';

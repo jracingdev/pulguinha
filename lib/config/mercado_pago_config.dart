@@ -1,13 +1,10 @@
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/services/mp_config_storage.dart';
 
-/// Configuração do Mercado Pago via admin (SharedPreferences), `--dart-define`
-/// e Supabase Edge Function.
-///
-/// O **access token** nunca deve ir para o app — configure `MP_ACCESS_TOKEN`
-/// apenas como secret da Edge Function `create-mp-preference`.
+/// Configuração Mercado Pago por academia — salva localmente pelo admin.
 class MercadoPagoConfig {
   static const _envPublicKey = String.fromEnvironment('MP_PUBLIC_KEY');
+  static const _envAccessToken = String.fromEnvironment('MP_ACCESS_TOKEN');
 
   static const _envLinkPlanoMensal = String.fromEnvironment('MP_LINK_PLANO_MENSAL');
   static const _envLinkPlanoTrimestral = String.fromEnvironment('MP_LINK_PLANO_TRIMESTRAL');
@@ -26,12 +23,10 @@ class MercadoPagoConfig {
 
   static MpStoredConfig _stored = const MpStoredConfig();
 
-  /// Carrega valores salvos pelo admin (preferência sobre dart-define).
   static Future<void> initialize() async {
     _stored = await MpConfigStorage.instance.load();
   }
 
-  /// Recarrega após salvar na tela de configurações.
   static Future<void> reload() async {
     _stored = await MpConfigStorage.instance.load();
   }
@@ -40,6 +35,7 @@ class MercadoPagoConfig {
       stored.trim().isNotEmpty ? stored.trim() : env.trim();
 
   static String get publicKey => _effective(_stored.publicKey, _envPublicKey);
+  static String get accessToken => _effective(_stored.accessToken, _envAccessToken);
 
   static String get linkPlanoMensal => _effective(_stored.linkPlanoMensal, _envLinkPlanoMensal);
   static String get linkPlanoTrimestral => _effective(_stored.linkPlanoTrimestral, _envLinkPlanoTrimestral);
@@ -47,11 +43,10 @@ class MercadoPagoConfig {
   static String get linkPlanoAnual => _effective(_stored.linkPlanoAnual, _envLinkPlanoAnual);
 
   static bool get hasPublicKey => publicKey.isNotEmpty;
-
+  static bool get hasAccessToken => accessToken.isNotEmpty;
+  static bool get hasStoredAccessToken => _stored.accessToken.trim().isNotEmpty;
   static bool get hasStoredPublicKey => _stored.publicKey.trim().isNotEmpty;
-
   static bool get hasStoredPlanLinks => _stored.hasAnyPlanLink;
-
   static bool get canUseEdgeFunction => SupabaseConfig.isConfigured;
 
   static bool get hasStaticPaymentLinks =>
@@ -63,8 +58,7 @@ class MercadoPagoConfig {
       paymentLinkForProduct(6).isNotEmpty ||
       paymentLinkForProduct(7).isNotEmpty;
 
-  /// Checkout real disponível quando há links estáticos ou Supabase + Edge Function.
-  static bool get isRealCheckoutAvailable => hasStaticPaymentLinks || canUseEdgeFunction;
+  static bool get isRealCheckoutAvailable => hasAccessToken || hasStaticPaymentLinks || canUseEdgeFunction;
 
   static String paymentLinkForProduct(int productId) {
     return switch (productId) {
@@ -79,32 +73,35 @@ class MercadoPagoConfig {
     };
   }
 
-  /// Valida formato básico da Public Key (TEST- ou APP_USR-).
   static bool isValidPublicKeyFormat(String key) {
     final trimmed = key.trim();
     if (trimmed.isEmpty) return false;
     return trimmed.startsWith('TEST-') || trimmed.startsWith('APP_USR-');
   }
 
+  static bool isValidAccessTokenFormat(String token) {
+    final trimmed = token.trim();
+    if (trimmed.isEmpty) return false;
+    return trimmed.startsWith('TEST-') || trimmed.startsWith('APP_USR-');
+  }
+
   static String checkoutModeLabel() {
     if (!isRealCheckoutAvailable) return 'Não configurado';
-    if (hasStaticPaymentLinks && canUseEdgeFunction) return 'Payment Links + Edge Function';
+    if (hasAccessToken) return 'Checkout Pro (Access Token)';
     if (hasStaticPaymentLinks) return 'Payment Links';
-    if (canUseEdgeFunction) return 'Edge Function';
+    if (canUseEdgeFunction) return 'Edge Function Supabase';
     return 'Não configurado';
   }
 
   static String statusIndicatorLabel() {
-    if (isRealCheckoutAvailable) return '✅ Checkout real ativo';
+    if (isRealCheckoutAvailable) return '✅ Pagamentos ativos';
     return '⚠️ Configure Mercado Pago';
   }
 
   static String integrationLabel() {
-    if (!isRealCheckoutAvailable) return 'Configure Supabase + Edge Function ou Payment Links';
-    if (hasStaticPaymentLinks && canUseEdgeFunction) {
-      return 'Checkout Pro (links + Edge Function)';
-    }
-    if (canUseEdgeFunction) return 'Checkout Pro (Edge Function)';
-    return 'Payment Links Mercado Pago';
+    if (!isRealCheckoutAvailable) return 'Configure credenciais no painel admin';
+    if (hasAccessToken) return 'Checkout Pro — token no app';
+    if (hasStaticPaymentLinks) return 'Payment Links Mercado Pago';
+    return 'Checkout Pro via Supabase';
   }
 }

@@ -76,7 +76,7 @@ class AppState extends ChangeNotifier {
         useMock = false;
       } catch (e) {
         debugPrint('Supabase indisponível, usando mock: $e');
-        initError = 'Modo demo (Supabase indisponível)';
+        initError = 'Modo offline (dados locais)';
         _carregarMock();
       }
     } else {
@@ -708,15 +708,33 @@ class AppState extends ChangeNotifier {
       ..sort((a, b) => b.dataHora.compareTo(a.dataHora));
   }
 
-  void publicarPostTurma({required int alunoId, required String nomeAluno, required int horarioId, required String texto}) {
-    if (texto.trim().isEmpty) return;
+  void publicarPostTurma({
+    required int alunoId,
+    required String nomeAluno,
+    required int horarioId,
+    required String texto,
+    TipoPostTurma tipo = TipoPostTurma.texto,
+    String? figurinha,
+    String? linkUrl,
+    List<String> enqueteOpcoes = const [],
+  }) {
+    final trimmed = texto.trim();
+    if (tipo == TipoPostTurma.texto && trimmed.isEmpty) return;
+    if (tipo == TipoPostTurma.figurinha && (figurinha == null || figurinha.isEmpty)) return;
+    if (tipo == TipoPostTurma.link && (linkUrl == null || linkUrl.trim().isEmpty)) return;
+    if (tipo == TipoPostTurma.enquete && enqueteOpcoes.where((o) => o.trim().isNotEmpty).length < 2) return;
+
     final post = PostTurma(
       id: DateTime.now().millisecondsSinceEpoch,
       alunoId: alunoId,
       nomeAluno: nomeAluno,
       horarioId: horarioId,
-      texto: texto.trim(),
+      texto: trimmed,
       dataHora: DateTime.now(),
+      tipo: tipo,
+      figurinha: figurinha,
+      linkUrl: linkUrl?.trim(),
+      enqueteOpcoes: enqueteOpcoes.map((o) => o.trim()).where((o) => o.isNotEmpty).toList(),
     );
     postsTurma = [post, ...postsTurma];
     notifyListeners();
@@ -727,6 +745,25 @@ class AppState extends ChangeNotifier {
       }).catchError((Object e) {
         debugPrint('Erro ao publicar post: $e');
       });
+    }
+  }
+
+  void votarEnquete({required int postId, required int alunoId, required int opcaoIndex}) {
+    postsTurma = postsTurma.map((p) {
+      if (p.id != postId || p.tipo != TipoPostTurma.enquete) return p;
+      final votos = Map<String, int>.from(p.enqueteVotos);
+      votos['$alunoId'] = opcaoIndex;
+      return p.copyWith(enqueteVotos: votos);
+    }).toList();
+    notifyListeners();
+    if (!useMock) {
+      final post = postsTurma.where((p) => p.id == postId).firstOrNull;
+      if (post != null) {
+        SupabaseService.instance.updatePostTurma(post).catchError((Object e) {
+          debugPrint('Erro ao votar: $e');
+          return post;
+        });
+      }
     }
   }
 

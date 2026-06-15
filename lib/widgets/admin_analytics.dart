@@ -66,13 +66,27 @@ class AdminAnalyticsSection extends StatelessWidget {
         const SizedBox(height: 16),
         _barChart(),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _piePlanos()),
-            const SizedBox(width: 10),
-            Expanded(child: _statusChart()),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stacked = constraints.maxWidth < 520;
+            if (stacked) {
+              return Column(
+                children: [
+                  _piePlanos(),
+                  const SizedBox(height: 12),
+                  _statusChart(),
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _piePlanos()),
+                const SizedBox(width: 10),
+                Expanded(child: _statusChart()),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
         _aniversariantesSection(),
@@ -215,11 +229,13 @@ class AdminAnalyticsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Planos', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 12)),
-          SizedBox(height: 100, child: PieChart(PieChartData(sections: sections, centerSpaceRadius: 20, sectionsSpace: 2))),
+          const Text('Planos', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
+          const SizedBox(height: 8),
+          SizedBox(height: 110, child: PieChart(PieChartData(sections: sections, centerSpaceRadius: 22, sectionsSpace: 2))),
+          const SizedBox(height: 8),
           ...dist.entries.map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 11, color: AppColors.white, fontWeight: FontWeight.w600)),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 12, color: AppColors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
               )),
         ],
       ),
@@ -242,24 +258,25 @@ class AdminAnalyticsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Ativos vs Inadimplentes',
-            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 11),
-            maxLines: 2,
-            overflow: TextOverflow.visible,
+            'Ativos x Inadimplentes',
+            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 13, decoration: TextDecoration.none),
           ),
+          const SizedBox(height: 8),
           SizedBox(
-            height: 100,
+            height: 110,
             child: PieChart(
               PieChartData(
                 sections: [
-                  PieChartSectionData(value: ativos.toDouble(), color: AppColors.neon, title: '${(ativos / total * 100).toStringAsFixed(0)}%', radius: 40, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF111111))),
-                  PieChartSectionData(value: inad.toDouble(), color: AppColors.red, title: '${(inad / total * 100).toStringAsFixed(0)}%', radius: 36, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.white)),
+                  PieChartSectionData(value: ativos.toDouble(), color: AppColors.neon, title: '${(ativos / total * 100).toStringAsFixed(0)}%', radius: 42, titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF111111))),
+                  PieChartSectionData(value: inad.toDouble(), color: AppColors.red, title: '${(inad / total * 100).toStringAsFixed(0)}%', radius: 38, titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.white)),
                 ],
-                centerSpaceRadius: 20,
+                centerSpaceRadius: 22,
               ),
             ),
           ),
-          Text('✅ $ativos ativos · ⚠️ $inad inadimplentes', style: const TextStyle(fontSize: 11, color: AppColors.white, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text('✅ $ativos ativos', style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+          Text('⚠️ $inad inadimplentes', style: const TextStyle(fontSize: 12, color: AppColors.red, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
         ],
       ),
     );

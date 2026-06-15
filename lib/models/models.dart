@@ -508,6 +508,8 @@ class ComentarioTurma {
       };
 }
 
+enum TipoPostTurma { texto, figurinha, enquete, link }
+
 class PostTurma {
   const PostTurma({
     required this.id,
@@ -516,6 +518,11 @@ class PostTurma {
     required this.horarioId,
     required this.texto,
     required this.dataHora,
+    this.tipo = TipoPostTurma.texto,
+    this.figurinha,
+    this.linkUrl,
+    this.enqueteOpcoes = const [],
+    this.enqueteVotos = const {},
     this.reacoes = const [],
     this.comentarios = const [],
   });
@@ -526,11 +533,17 @@ class PostTurma {
   final int horarioId;
   final String texto;
   final DateTime dataHora;
+  final TipoPostTurma tipo;
+  final String? figurinha;
+  final String? linkUrl;
+  final List<String> enqueteOpcoes;
+  final Map<String, int> enqueteVotos;
   final List<int> reacoes;
   final List<ComentarioTurma> comentarios;
 
   int get totalReacoes => reacoes.length;
   bool reagiuPor(int alunoId) => reacoes.contains(alunoId);
+  int? votoDoAluno(int alunoId) => enqueteVotos['$alunoId'];
 
   PostTurma copyWith({
     int? id,
@@ -539,6 +552,11 @@ class PostTurma {
     int? horarioId,
     String? texto,
     DateTime? dataHora,
+    TipoPostTurma? tipo,
+    String? figurinha,
+    String? linkUrl,
+    List<String>? enqueteOpcoes,
+    Map<String, int>? enqueteVotos,
     List<int>? reacoes,
     List<ComentarioTurma>? comentarios,
   }) {
@@ -549,21 +567,55 @@ class PostTurma {
       horarioId: horarioId ?? this.horarioId,
       texto: texto ?? this.texto,
       dataHora: dataHora ?? this.dataHora,
+      tipo: tipo ?? this.tipo,
+      figurinha: figurinha ?? this.figurinha,
+      linkUrl: linkUrl ?? this.linkUrl,
+      enqueteOpcoes: enqueteOpcoes ?? this.enqueteOpcoes,
+      enqueteVotos: enqueteVotos ?? this.enqueteVotos,
       reacoes: reacoes ?? this.reacoes,
       comentarios: comentarios ?? this.comentarios,
     );
   }
 
+  static TipoPostTurma _tipoFrom(String? raw) {
+    return switch (raw) {
+      'figurinha' => TipoPostTurma.figurinha,
+      'enquete' => TipoPostTurma.enquete,
+      'link' => TipoPostTurma.link,
+      _ => TipoPostTurma.texto,
+    };
+  }
+
+  static String _tipoTo(TipoPostTurma tipo) {
+    return switch (tipo) {
+      TipoPostTurma.figurinha => 'figurinha',
+      TipoPostTurma.enquete => 'enquete',
+      TipoPostTurma.link => 'link',
+      TipoPostTurma.texto => 'texto',
+    };
+  }
+
   factory PostTurma.fromJson(Map<String, dynamic> json) {
     final rawReacoes = json['reacoes'];
     final rawComentarios = json['comentarios'];
+    final rawOpcoes = json['enquete_opcoes'];
+    final rawVotos = json['enquete_votos'];
+    Map<String, int> votos = {};
+    if (rawVotos is Map) {
+      votos = rawVotos.map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+    }
     return PostTurma(
       id: json['id'] as int,
       alunoId: json['aluno_id'] as int,
       nomeAluno: json['nome_aluno'] as String,
       horarioId: json['horario_id'] as int,
-      texto: json['texto'] as String,
+      texto: json['texto'] as String? ?? '',
       dataHora: DateTime.parse(json['data_hora'] as String),
+      tipo: _tipoFrom(json['tipo'] as String?),
+      figurinha: json['figurinha'] as String?,
+      linkUrl: json['link_url'] as String?,
+      enqueteOpcoes: rawOpcoes is List ? rawOpcoes.map((e) => e.toString()).toList() : const [],
+      enqueteVotos: votos,
       reacoes: rawReacoes is List ? rawReacoes.map((e) => (e as num).toInt()).toList() : const [],
       comentarios: rawComentarios is List
           ? rawComentarios.map((c) => ComentarioTurma.fromJson(Map<String, dynamic>.from(c as Map))).toList()
@@ -577,6 +629,11 @@ class PostTurma {
         'horario_id': horarioId,
         'texto': texto,
         'data_hora': dataHora.toIso8601String(),
+        'tipo': _tipoTo(tipo),
+        if (figurinha != null) 'figurinha': figurinha,
+        if (linkUrl != null) 'link_url': linkUrl,
+        'enquete_opcoes': enqueteOpcoes,
+        'enquete_votos': enqueteVotos,
         'reacoes': reacoes,
         'comentarios': comentarios.map((c) => c.toJson()).toList(),
       };

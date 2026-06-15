@@ -54,7 +54,7 @@ class _MercadoPagoModalState extends State<MercadoPagoModal> {
     super.initState();
     if (!MercadoPagoConfig.isRealCheckoutAvailable) {
       step = MpStep.error;
-      errorMessage = 'Mercado Pago não configurado. Configure Supabase + Edge Function ou Payment Links no painel admin.';
+      errorMessage = 'Mercado Pago não configurado. O admin deve cadastrar o Access Token em Configurações → Mercado Pago.';
     }
   }
 

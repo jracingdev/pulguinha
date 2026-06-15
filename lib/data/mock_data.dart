@@ -183,13 +183,15 @@ class MockData {
         ],
       ),
       PostTurma(
-        id: 2,
-        alunoId: 1,
-        nomeAluno: 'Ana Costa',
+        id: 3,
+        alunoId: 2,
+        nomeAluno: 'Bruno Lima',
         horarioId: 5,
-        texto: 'Batemos recorde de presença na turma das 18h na semana passada! 🎉',
-        dataHora: now.subtract(const Duration(days: 1)),
-        reacoes: const [2],
+        texto: 'Qual o melhor horário extra para vocês?',
+        dataHora: now.subtract(const Duration(hours: 2)),
+        tipo: TipoPostTurma.enquete,
+        enqueteOpcoes: const ['Manhã 07h', 'Noite 20h'],
+        enqueteVotos: const {'1': 0},
       ),
     ];
   }

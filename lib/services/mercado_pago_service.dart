@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/models/models.dart';
@@ -36,6 +39,10 @@ class MercadoPagoService {
       );
     }
 
+    if (MercadoPagoConfig.hasAccessToken) {
+      return _createPreferenceDirect(produto: produto, aluno: aluno);
+    }
+
     if (MercadoPagoConfig.canUseEdgeFunction) {
       return _createPreferenceViaEdgeFunction(produto: produto, aluno: aluno);
     }
@@ -50,6 +57,67 @@ class MercadoPagoService {
       return false;
     }
     return launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<MercadoPagoCheckoutResult?> _createPreferenceDirect({
+    required Produto produto,
+    Usuario? aluno,
+  }) async {
+    final token = MercadoPagoConfig.accessToken;
+    if (token.isEmpty) return null;
+
+    try {
+      final externalReference = _externalReference(produto, aluno);
+      final body = {
+        'items': [
+          {
+            'title': produto.nome,
+            'description': produto.desc,
+            'quantity': 1,
+            'unit_price': produto.preco,
+            'currency_id': 'BRL',
+          },
+        ],
+        'payer': {
+          if (aluno?.email != null && aluno!.email.isNotEmpty) 'email': aluno.email,
+        },
+        'external_reference': externalReference,
+        'back_urls': {
+          'success': MercadoPagoConfig.backUrl,
+          'pending': MercadoPagoConfig.backUrl,
+          'failure': MercadoPagoConfig.backUrl,
+        },
+        'auto_return': 'approved',
+      };
+
+      final response = await http.post(
+        Uri.parse('https://api.mercadopago.com/checkout/preferences'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('MercadoPago API erro ${response.statusCode}: ${response.body}');
+        return null;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final initPoint = (data['init_point'] ?? data['sandbox_init_point']) as String?;
+      if (initPoint == null || initPoint.isEmpty) return null;
+
+      return MercadoPagoCheckoutResult(
+        checkoutUrl: initPoint,
+        source: 'checkout_pro_app',
+        preferenceId: data['id']?.toString(),
+        externalReference: externalReference,
+      );
+    } catch (e) {
+      debugPrint('MercadoPago API direta erro: $e');
+      return null;
+    }
   }
 
   Future<MercadoPagoCheckoutResult?> _createPreferenceViaEdgeFunction({
@@ -76,10 +144,7 @@ class MercadoPagoService {
 
       final data = Map<String, dynamic>.from(response.data as Map);
       final initPoint = (data['init_point'] ?? data['sandbox_init_point']) as String?;
-      if (initPoint == null || initPoint.isEmpty) {
-        debugPrint('MercadoPago: resposta sem init_point: $data');
-        return null;
-      }
+      if (initPoint == null || initPoint.isEmpty) return null;
 
       return MercadoPagoCheckoutResult(
         checkoutUrl: initPoint,
