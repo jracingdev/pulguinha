@@ -15,6 +15,7 @@ class AppColors {
   static const yellow = Color(0xFFFFB800);
   static const blue = Color(0xFF4A9EFF);
   static const mercadoPago = Color(0xFF009EE3);
+  static const pagBank = Color(0xFF00A868);
 }
 
 /// Paleta para modo claro (fundo claro, acentos neon).

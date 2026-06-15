@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/services/supabase_service.dart';
@@ -43,6 +44,8 @@ class AppState extends ChangeNotifier {
   bool useMock = true;
   String? initError;
 
+  RealtimeChannel? _agendamentosChannel;
+
   AppState() {
     init();
   }
@@ -74,6 +77,7 @@ class AppState extends ChangeNotifier {
         presencas = results[4] as List<Presenca>;
         postsTurma = results[5] as List<PostTurma>;
         useMock = false;
+        _subscribeAgendamentosRealtime();
       } catch (e) {
         debugPrint('Supabase indisponível, usando mock: $e');
         initError = 'Modo offline (dados locais)';
@@ -398,6 +402,34 @@ class AppState extends ChangeNotifier {
       debugPrint('Erro ao sincronizar aluno: $e');
       return aluno;
     });
+  }
+
+  Future<void> recarregarAgendamentos() async {
+    if (useMock || !SupabaseConfig.isConfigured) return;
+    await _syncAgendamentosFromServer();
+  }
+
+  void _subscribeAgendamentosRealtime() {
+    if (!SupabaseConfig.isConfigured || useMock) return;
+    _agendamentosChannel?.unsubscribe();
+    _agendamentosChannel = Supabase.instance.client
+        .channel('pulguinha-agendamentos')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'agendamentos',
+          callback: (_) => _syncAgendamentosFromServer(),
+        )
+        .subscribe();
+  }
+
+  Future<void> _syncAgendamentosFromServer() async {
+    try {
+      agendamentos = await SupabaseService.instance.fetchAgendamentos();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar agendamentos: $e');
+    }
   }
 
   List<Agendamento> agendamentosPorDataHorario(String data, int horarioId) {

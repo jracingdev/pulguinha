@@ -186,3 +186,10 @@ INSERT INTO presencas (aluno_id, horario_id, data, horario, tipo, nome_aluno) VA
   (4, 1, CURRENT_DATE - 1, '06:00', 'scan_professor', 'Diego Souza'),
   (5, 1, CURRENT_DATE, '06:00', 'scan_aluno', 'Elisa Rocha')
 ON CONFLICT (aluno_id, horario_id, data) DO NOTHING;
+
+-- Realtime: atualizar agenda quando alguém agenda/cancela (habilitar no Supabase)
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE agendamentos;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;

@@ -20,6 +20,14 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
   int semana = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().recarregarAgendamentos();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final aluno = state.alunoPorId(widget.usuario.id);

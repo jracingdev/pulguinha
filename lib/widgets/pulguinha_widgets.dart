@@ -72,7 +72,7 @@ Future<void> showEmDesenvolvimentoDialog(BuildContext context, {required String 
   );
 }
 
-enum BadgeVariant { neon, red, yellow, gray, blue, mercadoPago }
+enum BadgeVariant { neon, red, yellow, gray, blue, mercadoPago, pagBank }
 
 class PulguinhaAvatar extends StatelessWidget {
   const PulguinhaAvatar({
@@ -143,6 +143,7 @@ class PulguinhaBadge extends StatelessWidget {
       BadgeVariant.gray => (Colors.white.withValues(alpha: 0.06), AppColors.gray, AppColors.border),
       BadgeVariant.blue => (AppColors.blue.withValues(alpha: 0.12), AppColors.blue, AppColors.blue.withValues(alpha: 0.3)),
       BadgeVariant.mercadoPago => (AppColors.mercadoPago.withValues(alpha: 0.12), AppColors.mercadoPago, AppColors.mercadoPago.withValues(alpha: 0.3)),
+      BadgeVariant.pagBank => (AppColors.pagBank.withValues(alpha: 0.12), AppColors.pagBank, AppColors.pagBank.withValues(alpha: 0.3)),
     };
 
     return Container(

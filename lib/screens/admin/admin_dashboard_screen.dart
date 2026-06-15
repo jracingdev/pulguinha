@@ -6,7 +6,9 @@ import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/screens/admin/admin_horarios_screen.dart';
+import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
+import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_produtos_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/widgets/theme_settings_tile.dart';
@@ -123,6 +125,17 @@ class AdminDashboardScreen extends StatelessWidget {
           color: AppColors.mercadoPago,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AdminMpConfigScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🏦',
+          title: 'PagBank / PagSeguro',
+          subtitle: PagBankConfig.integrationLabel(),
+          color: AppColors.pagBank,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AdminPagBankConfigScreen()),
           ),
         ),
         const SizedBox(height: 10),

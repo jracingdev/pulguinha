@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
+import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -35,6 +37,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         _mpCard(context, rec),
+        _pagbankCard(context),
         if (inad.isNotEmpty) ...[
           const SectionTitle(icon: '⚠️', title: 'Em Atraso'),
           ...inad.map((a) => _alunoFinanceiro(context, state, a, tipo: 'inad')),
@@ -77,7 +80,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
       padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppColors.mercadoPago.withValues(alpha: 0.08),
         border: Border.all(color: AppColors.mercadoPago.withValues(alpha: 0.25)),
@@ -118,6 +121,46 @@ class AdminFinanceiroScreen extends StatelessWidget {
         ],
       ),
     ),
+    );
+  }
+
+  Widget _pagbankCard(BuildContext context) {
+    final configured = PagBankConfig.isRealCheckoutAvailable;
+    final badgeLabel = configured ? 'Ativo' : 'Não configurado';
+    final badgeVariant = configured ? BadgeVariant.pagBank : BadgeVariant.yellow;
+
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const AdminPagBankConfigScreen()),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: AppColors.pagBank.withValues(alpha: 0.08),
+          border: Border.all(color: AppColors.pagBank.withValues(alpha: 0.25)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            const Text('🏦', style: TextStyle(fontSize: 24)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('PagBank / PagSeguro', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.pagBank)),
+                  Text(PagBankConfig.integrationLabel(), style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+              ),
+            ),
+            PulguinhaBadge(label: badgeLabel, variant: badgeVariant),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, color: AppColors.grayDim, size: 18),
+          ],
+        ),
+      ),
     );
   }
 

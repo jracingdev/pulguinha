@@ -2,10 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/config/mercado_pago_config.dart';
+import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/widgets/checkout_picker_modal.dart';
 import 'package:pulguinha/widgets/mercado_pago_modal.dart';
+import 'package:pulguinha/widgets/pagbank_modal.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class LojaScreen extends StatefulWidget {
@@ -198,24 +202,50 @@ class _LojaScreenState extends State<LojaScreen> {
     }
 
     if (!mounted) return;
+
+    final provider = await CheckoutPickerModal.show(context);
+    if (!mounted) return;
+    if (provider == null) {
+      final semPagamento = !MercadoPagoConfig.isRealCheckoutAvailable && !PagBankConfig.isRealCheckoutAvailable;
+      if (semPagamento) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhum meio de pagamento configurado. Peça ao admin.')),
+        );
+      }
+      return;
+    }
+
+    if (provider == CheckoutProvider.pagbank) {
+      PagBankModal.show(
+        context,
+        item: item,
+        aluno: widget.usuario.isAluno ? widget.usuario : null,
+        gradeSelecionada: grade,
+        onSuccess: () => _onCheckoutSuccess(item),
+      );
+      return;
+    }
+
     MercadoPagoModal.show(
       context,
       item: item,
       aluno: widget.usuario.isAluno ? widget.usuario : null,
       gradeSelecionada: grade,
-      onSuccess: () {
-        if (item.tipo == 'plano' && widget.usuario.isAluno && widget.usuario.id != null) {
-          context.read<AppState>().ativarPlanoAluno(widget.usuario.id!, item);
-          final plano = item.nome.replaceFirst('Plano ', '');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('✅ Plano $plano ativado com sucesso!')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('✅ ${item.nome} — pagamento confirmado!')),
-          );
-        }
-      },
+      onSuccess: () => _onCheckoutSuccess(item),
     );
+  }
+
+  void _onCheckoutSuccess(Produto item) {
+    if (item.tipo == 'plano' && widget.usuario.isAluno && widget.usuario.id != null) {
+      context.read<AppState>().ativarPlanoAluno(widget.usuario.id!, item);
+      final plano = item.nome.replaceFirst('Plano ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Plano $plano ativado com sucesso!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ ${item.nome} — pagamento confirmado!')),
+      );
+    }
   }
 }
