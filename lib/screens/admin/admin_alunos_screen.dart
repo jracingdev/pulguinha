@@ -99,6 +99,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     ],
                   ),
                   Text('${a.telefone} · ${a.plano}', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                  if (a.horarioId != null)
+                    Text('Turma: ${state.labelTurma(a)}', style: const TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w600)),
                   Text(vt, style: TextStyle(fontSize: 11, color: vc, fontWeight: FontWeight.w600)),
                   if (!a.anamnese.isEmpty && a.anamnese.restricoesMedicas.isNotEmpty)
                     Text('⚠️ ${a.anamnese.restricoesMedicas}', style: const TextStyle(fontSize: 10, color: AppColors.yellow)),
@@ -143,6 +145,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     var plano = editando?.plano ?? 'Mensal';
     var status = editando?.status ?? 'Ativo';
     var nivel = editando?.anamnese.nivelExperiencia ?? 'Iniciante';
+    int? turmaId = editando?.horarioId;
     String? fotoBase64 = editando?.foto;
 
     await showPulguinhaModal(
@@ -174,6 +177,20 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     value: status,
                     items: ['Ativo', 'Pendente', 'Inadimplente', 'Inativo'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                     onChanged: (v) => setModalState(() => status = v ?? status),
+                  ),
+                ),
+                FieldLabel(
+                  label: 'Turma (horário fixo)',
+                  child: DropdownButtonFormField<int?>(
+                    value: turmaId,
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('Sem turma')),
+                      ...state.horarios.map((h) => DropdownMenuItem<int?>(
+                            value: h.id,
+                            child: Text('${h.hora} · ${h.dias}'),
+                          )),
+                    ],
+                    onChanged: (v) => setModalState(() => turmaId = v),
                   ),
                 ),
                 const SectionTitle(icon: '🏥', title: 'Anamnese'),
@@ -260,6 +277,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             streakPresenca: editando?.streakPresenca ?? 0,
                             pulguinhaPoints: editando?.pulguinhaPoints ?? 0,
                             dataCadastro: editando?.dataCadastro ?? MockData.today,
+                            horarioId: turmaId,
                           );
                           state.salvarAluno(editando: editando, dados: dados);
                           Navigator.pop(ctx);

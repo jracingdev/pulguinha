@@ -24,6 +24,7 @@ class MockData {
       streakPresenca: 5,
       pulguinhaPoints: 50,
       dataCadastro: '2026-01-15',
+      horarioId: 5,
     ),
     Aluno(
       id: 2,
@@ -40,6 +41,7 @@ class MockData {
       streakPresenca: 3,
       pulguinhaPoints: 30,
       dataCadastro: '2026-02-01',
+      horarioId: 5,
     ),
     const Aluno(
       id: 3,
@@ -52,6 +54,7 @@ class MockData {
       status: 'Inadimplente',
       avatar: 'CD',
       dataNascimento: '1988-11-08',
+      horarioId: 4,
     ),
     Aluno(
       id: 4,
@@ -68,6 +71,7 @@ class MockData {
       streakPresenca: 8,
       pulguinhaPoints: 80,
       dataCadastro: '2025-11-20',
+      horarioId: 6,
     ),
     Aluno(
       id: 5,
@@ -84,6 +88,7 @@ class MockData {
       streakPresenca: 2,
       pulguinhaPoints: 20,
       dataCadastro: '2026-05-01',
+      horarioId: 1,
     ),
   ];
 
@@ -155,4 +160,37 @@ class MockData {
 
   static const streakMilestones = [5, 10, 20];
   static const pointsPorCheckin = 10;
+
+  static List<PostTurma> postsTurmaIniciais() {
+    final now = DateTime.now();
+    return [
+      PostTurma(
+        id: 1,
+        alunoId: 2,
+        nomeAluno: 'Bruno Lima',
+        horarioId: 5,
+        texto: 'Quem vem no treino de hoje? Bora dar o gás! 💪',
+        dataHora: now.subtract(const Duration(hours: 5)),
+        reacoes: const [1, 4],
+        comentarios: [
+          ComentarioTurma(
+            id: 1,
+            alunoId: 1,
+            nomeAluno: 'Ana Costa',
+            texto: 'Eu vou! Chego 10 min antes.',
+            dataHora: now.subtract(const Duration(hours: 4)),
+          ),
+        ],
+      ),
+      PostTurma(
+        id: 2,
+        alunoId: 1,
+        nomeAluno: 'Ana Costa',
+        horarioId: 5,
+        texto: 'Batemos recorde de presença na turma das 18h na semana passada! 🎉',
+        dataHora: now.subtract(const Duration(days: 1)),
+        reacoes: const [2],
+      ),
+    ];
+  }
 }

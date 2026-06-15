@@ -92,6 +92,10 @@ class DateHelper {
   static String formatarAniversario(String dataNascimento) {
     return _br.format(parseData(dataNascimento));
   }
+
+  static String formatarDataHora(DateTime value) {
+    return '${_br.format(value)} ${DateFormat('HH:mm').format(value)}';
+  }
 }
 
 class DiaSemana {

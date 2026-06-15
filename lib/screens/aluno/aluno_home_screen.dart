@@ -34,6 +34,7 @@ class AlunoHomeScreen extends StatelessWidget {
     final meusAgs = state.agendamentos.where((ag) => ag.alunoId == aluno.id && ag.data.compareTo(MockData.today) >= 0).take(5).toList();
     final isBirthday = DateHelper.isAniversarioHoje(aluno.dataNascimento);
     final jaCheckinHoje = state.presencasHoje().any((p) => p.alunoId == aluno.id);
+    final colegas = state.colegasDeTurma(aluno.id);
 
     return ConfettiOverlay(
       active: isBirthday,
@@ -132,6 +133,41 @@ class AlunoHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           DicaDoDiaCard(onVerTodas: () => state.setAlunoTab('evolucao')),
+          const SizedBox(height: 20),
+          const SectionTitle(icon: '👥', title: 'Minha Turma'),
+          if (aluno.horarioId == null)
+            const PulguinhaCard(
+              child: Text('Você ainda não tem turma definida. Fale com a recepção.', style: TextStyle(fontSize: 12, color: AppColors.gray)),
+            )
+          else
+            PulguinhaCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(state.labelTurma(aluno), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
+                  const SizedBox(height: 4),
+                  Text(
+                    colegas.isEmpty ? 'Você é o único aluno ativo na turma' : '${colegas.length} colega(s) na mesma turma',
+                    style: const TextStyle(fontSize: 11, color: AppColors.gray),
+                  ),
+                  if (colegas.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: colegas.take(4).map((c) => Chip(
+                            avatar: PulguinhaAvatar(initials: c.avatar, size: AvatarSize.sm, fotoBase64: c.foto),
+                            label: Text(c.nome.split(' ').first, style: const TextStyle(fontSize: 11)),
+                            backgroundColor: AppColors.card2,
+                            side: const BorderSide(color: AppColors.border),
+                          )).toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  NeonButton(label: 'Abrir Minha Turma', fullWidth: true, onPressed: () => state.setAlunoTab('turma')),
+                ],
+              ),
+            ),
           const SizedBox(height: 20),
           const SectionTitle(icon: '📅', title: 'Meus Próximos Treinos'),
           if (meusAgs.isEmpty)

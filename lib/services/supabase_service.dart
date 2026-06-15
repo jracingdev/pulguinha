@@ -109,4 +109,21 @@ class SupabaseService {
     final rows = await _db.from('alunos').select('id').eq('email', email).maybeSingle();
     return rows != null;
   }
+
+  Future<List<PostTurma>> fetchPostsTurma() async {
+    final rows = await _db.from('posts_turma').select().order('data_hora', ascending: false);
+    return (rows as List).map((r) => PostTurma.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<PostTurma> insertPostTurma(PostTurma post) async {
+    final payload = post.toJson();
+    final rows = await _db.from('posts_turma').insert(payload).select().single();
+    return PostTurma.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<PostTurma> updatePostTurma(PostTurma post) async {
+    final payload = post.toJson();
+    final rows = await _db.from('posts_turma').update(payload).eq('id', post.id).select().single();
+    return PostTurma.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
 }

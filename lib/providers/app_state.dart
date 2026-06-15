@@ -34,6 +34,7 @@ class AppState extends ChangeNotifier {
   List<Agendamento> agendamentos = [];
   List<Produto> produtos = [];
   List<Presenca> presencas = [];
+  List<PostTurma> postsTurma = [];
   String adminTab = 'dashboard';
   String alunoTab = 'home';
   ThemeMode themeMode = ThemeMode.dark;
@@ -64,12 +65,14 @@ class AppState extends ChangeNotifier {
           svc.fetchAgendamentos(),
           svc.fetchProdutos(),
           svc.fetchPresencas(),
+          svc.fetchPostsTurma(),
         ]);
         alunos = results[0] as List<Aluno>;
         horarios = results[1] as List<Horario>;
         agendamentos = results[2] as List<Agendamento>;
         produtos = results[3] as List<Produto>;
         presencas = results[4] as List<Presenca>;
+        postsTurma = results[5] as List<PostTurma>;
         useMock = false;
       } catch (e) {
         debugPrint('Supabase indisponível, usando mock: $e');
@@ -91,6 +94,7 @@ class AppState extends ChangeNotifier {
     agendamentos = List.from(MockData.agendamentosIniciais);
     produtos = List.from(MockData.produtosLoja);
     presencas = MockData.presencasIniciais();
+    postsTurma = MockData.postsTurmaIniciais();
   }
 
   void irParaLogin() {
@@ -677,6 +681,101 @@ class AppState extends ChangeNotifier {
   Aluno? alunoPorId(int? id) {
     if (id == null) return null;
     return alunos.where((a) => a.id == id).firstOrNull;
+  }
+
+  Horario? horarioPorId(int? id) {
+    if (id == null) return null;
+    return horarios.where((h) => h.id == id).firstOrNull;
+  }
+
+  String labelTurma(Aluno aluno) {
+    final h = horarioPorId(aluno.horarioId);
+    if (h == null) return 'Sem turma';
+    return '${h.hora} · ${h.dias}';
+  }
+
+  List<Aluno> colegasDeTurma(int alunoId) {
+    final eu = alunoPorId(alunoId);
+    if (eu?.horarioId == null) return [];
+    return alunos
+        .where((a) => a.id != alunoId && a.horarioId == eu!.horarioId && a.status == 'Ativo')
+        .toList()
+      ..sort((a, b) => a.nome.compareTo(b.nome));
+  }
+
+  List<PostTurma> postsDaTurma(int horarioId) {
+    return postsTurma.where((p) => p.horarioId == horarioId).toList()
+      ..sort((a, b) => b.dataHora.compareTo(a.dataHora));
+  }
+
+  void publicarPostTurma({required int alunoId, required String nomeAluno, required int horarioId, required String texto}) {
+    if (texto.trim().isEmpty) return;
+    final post = PostTurma(
+      id: DateTime.now().millisecondsSinceEpoch,
+      alunoId: alunoId,
+      nomeAluno: nomeAluno,
+      horarioId: horarioId,
+      texto: texto.trim(),
+      dataHora: DateTime.now(),
+    );
+    postsTurma = [post, ...postsTurma];
+    notifyListeners();
+    if (!useMock) {
+      SupabaseService.instance.insertPostTurma(post).then((saved) {
+        postsTurma = postsTurma.map((p) => p.id == post.id ? saved : p).toList();
+        notifyListeners();
+      }).catchError((Object e) {
+        debugPrint('Erro ao publicar post: $e');
+      });
+    }
+  }
+
+  void toggleReacaoPost(int postId, int alunoId) {
+    postsTurma = postsTurma.map((p) {
+      if (p.id != postId) return p;
+      final reacoes = List<int>.from(p.reacoes);
+      if (reacoes.contains(alunoId)) {
+        reacoes.remove(alunoId);
+      } else {
+        reacoes.add(alunoId);
+      }
+      return p.copyWith(reacoes: reacoes);
+    }).toList();
+    notifyListeners();
+    if (!useMock) {
+      final post = postsTurma.where((p) => p.id == postId).firstOrNull;
+      if (post != null) {
+        SupabaseService.instance.updatePostTurma(post).catchError((Object e) {
+          debugPrint('Erro ao reagir: $e');
+          return post;
+        });
+      }
+    }
+  }
+
+  void comentarPostTurma({required int postId, required int alunoId, required String nomeAluno, required String texto}) {
+    if (texto.trim().isEmpty) return;
+    final comentario = ComentarioTurma(
+      id: DateTime.now().millisecondsSinceEpoch,
+      alunoId: alunoId,
+      nomeAluno: nomeAluno,
+      texto: texto.trim(),
+      dataHora: DateTime.now(),
+    );
+    postsTurma = postsTurma.map((p) {
+      if (p.id != postId) return p;
+      return p.copyWith(comentarios: [...p.comentarios, comentario]);
+    }).toList();
+    notifyListeners();
+    if (!useMock) {
+      final post = postsTurma.where((p) => p.id == postId).firstOrNull;
+      if (post != null) {
+        SupabaseService.instance.updatePostTurma(post).catchError((Object e) {
+          debugPrint('Erro ao comentar: $e');
+          return post;
+        });
+      }
+    }
   }
 
   static String _formatDate(DateTime d) =>

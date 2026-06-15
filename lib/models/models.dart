@@ -564,7 +564,7 @@ class PostTurma {
       horarioId: json['horario_id'] as int,
       texto: json['texto'] as String,
       dataHora: DateTime.parse(json['data_hora'] as String),
-      reacoes: rawReacoes is List ? rawReacoes.map((e) => e as int).toList() : const [],
+      reacoes: rawReacoes is List ? rawReacoes.map((e) => (e as num).toInt()).toList() : const [],
       comentarios: rawComentarios is List
           ? rawComentarios.map((c) => ComentarioTurma.fromJson(Map<String, dynamic>.from(c as Map))).toList()
           : const [],

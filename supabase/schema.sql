@@ -98,8 +98,33 @@ ALTER TABLE alunos ADD COLUMN IF NOT EXISTS anamnese JSONB NOT NULL DEFAULT '{}'
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS foto TEXT;
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS streak_presenca INT NOT NULL DEFAULT 0;
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS pulguinha_points INT NOT NULL DEFAULT 0;
+ALTER TABLE alunos ADD COLUMN IF NOT EXISTS horario_id BIGINT REFERENCES horarios(id) ON DELETE SET NULL;
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS foto TEXT;
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS grades JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+-- Posts da turma (rede social interna)
+CREATE TABLE IF NOT EXISTS posts_turma (
+  id BIGSERIAL PRIMARY KEY,
+  aluno_id BIGINT NOT NULL REFERENCES alunos(id) ON DELETE CASCADE,
+  nome_aluno TEXT NOT NULL,
+  horario_id BIGINT NOT NULL REFERENCES horarios(id) ON DELETE CASCADE,
+  texto TEXT NOT NULL,
+  data_hora TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reacoes JSONB NOT NULL DEFAULT '[]'::jsonb,
+  comentarios JSONB NOT NULL DEFAULT '[]'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_posts_turma_horario ON posts_turma(horario_id);
+CREATE INDEX IF NOT EXISTS idx_alunos_horario ON alunos(horario_id);
+
+ALTER TABLE posts_turma ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all_posts_turma" ON posts_turma FOR ALL USING (true) WITH CHECK (true);
+
+-- Atualizar turmas dos alunos demo
+UPDATE alunos SET horario_id = 5 WHERE email IN ('ana@email.com', 'bruno@email.com');
+UPDATE alunos SET horario_id = 4 WHERE email = 'carla@email.com';
+UPDATE alunos SET horario_id = 6 WHERE email = 'diego@email.com';
+UPDATE alunos SET horario_id = 1 WHERE email = 'elisa@email.com';
 
 -- Seed: admin padrão
 INSERT INTO admins (email, senha, nome) VALUES
@@ -107,12 +132,12 @@ INSERT INTO admins (email, senha, nome) VALUES
 ON CONFLICT (email) DO NOTHING;
 
 -- Seed: alunos demo
-INSERT INTO alunos (nome, email, senha, telefone, plano, vencimento, status, avatar, data_nascimento, anamnese, streak_presenca, pulguinha_points) VALUES
-  ('Ana Costa', 'ana@email.com', '1234', '(11) 98765-0001', 'Mensal', '2026-06-20', 'Ativo', 'AC', '1995-06-13', '{"objetivo_treino":"Condicionamento","nivel_experiencia":"Intermediário"}', 5, 50),
-  ('Bruno Lima', 'bruno@email.com', '1234', '(11) 98765-0002', 'Trimestral', '2026-08-10', 'Ativo', 'BL', '1990-03-22', '{"objetivo_treino":"Emagrecer","nivel_experiencia":"Iniciante"}', 3, 30),
-  ('Carla Dias', 'carla@email.com', '1234', '(11) 98765-0003', 'Mensal', '2026-06-05', 'Inadimplente', 'CD', '1988-11-08', '{}', 0, 0),
-  ('Diego Souza', 'diego@email.com', '1234', '(11) 98765-0004', 'Anual', '2027-01-15', 'Ativo', 'DS', '1992-07-04', '{"restricoes_medicas":"Joelho direito","nivel_experiencia":"Avançado"}', 8, 80),
-  ('Elisa Rocha', 'elisa@email.com', '1234', '(11) 98765-0005', 'Mensal', '2026-06-28', 'Ativo', 'ER', '1998-06-18', '{"objetivo_treino":"Força","nivel_experiencia":"Intermediário"}', 2, 20)
+INSERT INTO alunos (nome, email, senha, telefone, plano, vencimento, status, avatar, data_nascimento, anamnese, streak_presenca, pulguinha_points, horario_id) VALUES
+  ('Ana Costa', 'ana@email.com', '1234', '(11) 98765-0001', 'Mensal', '2026-06-20', 'Ativo', 'AC', '1995-06-13', '{"objetivo_treino":"Condicionamento","nivel_experiencia":"Intermediário"}', 5, 50, 5),
+  ('Bruno Lima', 'bruno@email.com', '1234', '(11) 98765-0002', 'Trimestral', '2026-08-10', 'Ativo', 'BL', '1990-03-22', '{"objetivo_treino":"Emagrecer","nivel_experiencia":"Iniciante"}', 3, 30, 5),
+  ('Carla Dias', 'carla@email.com', '1234', '(11) 98765-0003', 'Mensal', '2026-06-05', 'Inadimplente', 'CD', '1988-11-08', '{}', 0, 0, 4),
+  ('Diego Souza', 'diego@email.com', '1234', '(11) 98765-0004', 'Anual', '2027-01-15', 'Ativo', 'DS', '1992-07-04', '{"restricoes_medicas":"Joelho direito","nivel_experiencia":"Avançado"}', 8, 80, 6),
+  ('Elisa Rocha', 'elisa@email.com', '1234', '(11) 98765-0005', 'Mensal', '2026-06-28', 'Ativo', 'ER', '1998-06-18', '{"objetivo_treino":"Força","nivel_experiencia":"Intermediário"}', 2, 20, 1)
 ON CONFLICT (email) DO NOTHING;
 
 -- Seed: horários

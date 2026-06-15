@@ -95,7 +95,7 @@ class AdminAnalyticsSection extends StatelessWidget {
           children: [
             Text(icon, style: const TextStyle(fontSize: 18)),
             Text(val, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600)),
+            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.white, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -120,12 +120,12 @@ class AdminAnalyticsSection extends StatelessWidget {
               LineChartData(
                 gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 1, getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.border, strokeWidth: 1)),
                 titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AppColors.grayDim)))),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28, getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600)))),
                   bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, _) {
                     final idx = v.toInt();
                     if (idx < 0 || idx >= data.length) return const SizedBox.shrink();
                     final iso = data.keys.elementAt(idx);
-                    return Text(iso.substring(8), style: const TextStyle(fontSize: 10, color: AppColors.grayDim));
+                    return Text(iso.substring(8), style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600));
                   })),
                   topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -174,9 +174,9 @@ class AdminAnalyticsSection extends StatelessWidget {
                   bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, _) {
                     final id = v.toInt();
                     final h = state.horarios.where((x) => x.id == id).firstOrNull;
-                    return Padding(padding: const EdgeInsets.only(top: 6), child: Text(h?.hora ?? '', style: const TextStyle(fontSize: 9, color: AppColors.grayDim)));
+                    return Padding(padding: const EdgeInsets.only(top: 6), child: Text(h?.hora ?? '', style: const TextStyle(fontSize: 9, color: AppColors.gray, fontWeight: FontWeight.w600)));
                   })),
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 24, getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AppColors.grayDim)))),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 24, getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600)))),
                   topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
@@ -201,12 +201,13 @@ class AdminAnalyticsSection extends StatelessWidget {
     final colors = [AppColors.neon, AppColors.blue, AppColors.yellow, AppColors.red];
     final sections = dist.entries.toList().asMap().entries.map((e) {
       final total = dist.values.fold<int>(0, (a, b) => a + b);
+      final color = colors[e.key % colors.length];
       return PieChartSectionData(
         value: e.value.value.toDouble(),
         title: '${(e.value.value / total * 100).toStringAsFixed(0)}%',
-        color: colors[e.key % colors.length],
+        color: color,
         radius: 40,
-        titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF111111)),
+        titleStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _pieLabelColor(color)),
       );
     }).toList();
 
@@ -216,10 +217,18 @@ class AdminAnalyticsSection extends StatelessWidget {
         children: [
           const Text('Planos', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 12)),
           SizedBox(height: 100, child: PieChart(PieChartData(sections: sections, centerSpaceRadius: 20, sectionsSpace: 2))),
-          ...dist.entries.map((e) => Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 10, color: AppColors.gray))),
+          ...dist.entries.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 11, color: AppColors.white, fontWeight: FontWeight.w600)),
+              )),
         ],
       ),
     );
+  }
+
+  Color _pieLabelColor(Color sliceColor) {
+    final luminance = sliceColor.computeLuminance();
+    return luminance > 0.5 ? const Color(0xFF111111) : AppColors.white;
   }
 
   Widget _statusChart() {
@@ -232,20 +241,25 @@ class AdminAnalyticsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Ativos vs Inad.', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 12)),
+          const Text(
+            'Ativos vs Inadimplentes',
+            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 11),
+            maxLines: 2,
+            overflow: TextOverflow.visible,
+          ),
           SizedBox(
             height: 100,
             child: PieChart(
               PieChartData(
                 sections: [
                   PieChartSectionData(value: ativos.toDouble(), color: AppColors.neon, title: '${(ativos / total * 100).toStringAsFixed(0)}%', radius: 40, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF111111))),
-                  PieChartSectionData(value: inad.toDouble(), color: AppColors.red, title: '${(inad / total * 100).toStringAsFixed(0)}%', radius: 36, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
+                  PieChartSectionData(value: inad.toDouble(), color: AppColors.red, title: '${(inad / total * 100).toStringAsFixed(0)}%', radius: 36, titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.white)),
                 ],
                 centerSpaceRadius: 20,
               ),
             ),
           ),
-          Text('✅ $ativos ativos · ⚠️ $inad inadimplentes', style: const TextStyle(fontSize: 10, color: AppColors.gray)),
+          Text('✅ $ativos ativos · ⚠️ $inad inadimplentes', style: const TextStyle(fontSize: 11, color: AppColors.white, fontWeight: FontWeight.w600)),
         ],
       ),
     );

@@ -12,6 +12,7 @@ import 'package:pulguinha/screens/aluno/aluno_agenda_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_checkin_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_home_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_evolucao_screen.dart';
+import 'package:pulguinha/screens/aluno/aluno_turma_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_perfil_screen.dart';
 import 'package:pulguinha/screens/auth/login_screen.dart';
 import 'package:pulguinha/screens/public/public_screen.dart';
@@ -130,6 +131,7 @@ class _AlunoShell extends StatelessWidget {
 
   static const _tabs = [
     TabItem(id: 'home', label: 'Início', icon: '🏠'),
+    TabItem(id: 'turma', label: 'Turma', icon: '👥'),
     TabItem(id: 'evolucao', label: 'Evolução', icon: '📈'),
     TabItem(id: 'checkin', label: 'Check-in', icon: '📷'),
     TabItem(id: 'agenda', label: 'Agenda', icon: '📅'),
@@ -142,6 +144,7 @@ class _AlunoShell extends StatelessWidget {
     final usuario = state.usuario!;
     final body = switch (state.alunoTab) {
       'home' => AlunoHomeScreen(usuario: usuario),
+      'turma' => AlunoTurmaScreen(usuario: usuario),
       'evolucao' => const AlunoEvolucaoScreen(),
       'checkin' => AlunoCheckinScreen(usuario: usuario),
       'agenda' => AlunoAgendaScreen(usuario: usuario),
