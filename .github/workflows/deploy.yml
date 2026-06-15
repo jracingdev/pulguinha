@@ -35,14 +35,27 @@ jobs:
         run: flutter pub get
 
       - name: Build web
+        env:
+          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN }}
         run: |
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            BASE_HREF="/"
+          else
+            BASE_HREF="/pulguinha/"
+          fi
           flutter build web --release \
-            --base-href "/pulguinha/" \
+            --base-href "$BASE_HREF" \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Preparar artefato Pages
-        run: touch build/web/.nojekyll
+        env:
+          CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN }}
+        run: |
+          touch build/web/.nojekyll
+          if [ -n "$CUSTOM_DOMAIN" ]; then
+            echo "$CUSTOM_DOMAIN" > build/web/CNAME
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

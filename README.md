@@ -120,9 +120,12 @@ O workflow `.github/workflows/deploy.yml` faz build e deploy automático a cada 
 1. Abra **Settings → Pages → Build and deployment**
    - **Source:** selecione **GitHub Actions** (não use "Deploy from a branch" / `main` / `(root)`)
 2. Em **Settings → Pages → Custom domain**
-   - **Remova** qualquer valor inválido (ex.: `pulguinha` sem `.com`) e deixe o campo **vazio**
-   - Salve; o banner de erro do domínio deve sumir
-3. (Opcional, para Supabase em produção) **Settings → Secrets and variables → Actions** — adicione:
+   - Deixe vazio até configurar o DNS no Registro.br (veja seção abaixo)
+   - Depois informe o domínio completo (ex.: `app.seudominio.com.br`)
+3. Em **Settings → Secrets and variables → Actions → Variables**, adicione:
+   - `PAGES_CUSTOM_DOMAIN` — domínio completo (ex.: `app.seudominio.com.br`)  
+   Quando preenchida, o deploy usa `base-href /` e gera o arquivo `CNAME` automaticamente.
+4. (Opcional, para Supabase em produção) **Settings → Secrets and variables → Actions → Secrets** — adicione:
    - `SUPABASE_URL` — URL do projeto Supabase
    - `SUPABASE_ANON_KEY` — chave anon pública  
    Sem esses secrets o app publica em **modo demo** (comportamento esperado).
@@ -133,6 +136,48 @@ O workflow `.github/workflows/deploy.yml` faz build e deploy automático a cada 
 Aguarde o workflow terminar com sucesso (check verde). O app ficará em:
 
 **https://jracingdev.github.io/pulguinha/**
+
+### Domínio personalizado (Registro.br)
+
+Recomendamos um **subdomínio** (ex.: `app.funcionaldopulguinha.com.br`) — configuração mais simples e estável.
+
+#### 1. DNS no Registro.br
+
+1. Acesse [registro.br](https://registro.br) → **Meus domínios** → seu domínio → **DNS**
+2. Se o modo for “Página de redirecionamento”, altere para **Modo avançado / DNS**
+3. Crie o registro conforme o tipo desejado:
+
+**Opção A — Subdomínio (recomendado)** — ex.: `app.seudominio.com.br`
+
+| Tipo  | Nome | Destino              |
+|-------|------|----------------------|
+| CNAME | app  | `jracingdev.github.io` |
+
+**Opção B — Domínio raiz (apex)** — ex.: `seudominio.com.br`
+
+| Tipo | Nome | Destino              |
+|------|------|----------------------|
+| A    | @    | `185.199.108.153`    |
+| A    | @    | `185.199.109.153`    |
+| A    | @    | `185.199.110.153`    |
+| A    | @    | `185.199.111.153`    |
+
+(Opcional, IPv6 — adicione também 4 registros AAAA com os valores oficiais do [GitHub Pages](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site).)
+
+Para `www.seudominio.com.br`, adicione CNAME `www` → `jracingdev.github.io`.
+
+A propagação DNS pode levar de alguns minutos até 24 horas.
+
+#### 2. GitHub
+
+1. **Settings → Pages → Custom domain** → informe o domínio (ex.: `app.seudominio.com.br`) → **Save**
+2. Aguarde o **DNS check** ficar verde e o certificado HTTPS ser emitido
+3. **Settings → Secrets and variables → Actions → Variables** → crie `PAGES_CUSTOM_DOMAIN` com o mesmo domínio
+4. Rode o workflow **Deploy GitHub Pages** (ou push em `main`)
+
+O app passará a abrir em `https://app.seudominio.com.br/` (sem `/pulguinha/` no final).
+
+> **Mercado Pago / Supabase:** se usar callbacks ou URLs de retorno, atualize-as para o novo domínio.
 
 ### Build web manual
 
