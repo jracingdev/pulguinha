@@ -54,6 +54,7 @@ jobs:
           CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN || 'funcionaldopulguinha.com.br' }}
         run: |
           touch build/web/.nojekyll
+          cp build/web/index.html build/web/404.html
           if [ -n "$CUSTOM_DOMAIN" ]; then
             echo "$CUSTOM_DOMAIN" > build/web/CNAME
           fi

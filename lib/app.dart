@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/config/app_links.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/screens/admin/admin_agendamentos_screen.dart';
 import 'package:pulguinha/screens/admin/admin_alunos_screen.dart';
@@ -71,7 +72,7 @@ class _RootRouter extends StatelessWidget {
     }
 
     return switch (state.screen) {
-      AppScreen.public => const PublicScreen(),
+      AppScreen.public => PublicScreen(initialStep: AppLinks.publicInitialStep),
       AppScreen.login => const LoginScreen(),
       AppScreen.admin => _AdminShell(state: state),
       AppScreen.aluno => _AlunoShell(state: state),

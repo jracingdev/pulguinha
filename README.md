@@ -179,6 +179,14 @@ O app passará a abrir em `https://app.seudominio.com.br/` (sem `/pulguinha/` no
 
 > **Mercado Pago / Supabase:** se usar callbacks ou URLs de retorno, atualize-as para o novo domínio.
 
+### Link público da loja
+
+- **URL principal:** `https://funcionaldopulguinha.com.br/loja` — abre a loja sem login
+- **Admin → Loja:** botão para copiar o link
+- **Atalho `loja.funcionaldopulguinha.com.br`:** o GitHub Pages aceita apenas um domínio por repositório. Remova o CNAME de `loja` e configure **redirecionamento** no Registro.br:
+  - De: `loja.funcionaldopulguinha.com.br`
+  - Para: `https://funcionaldopulguinha.com.br/loja`
+
 ### Build web manual
 
 ```bash

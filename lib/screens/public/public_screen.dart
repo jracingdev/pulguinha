@@ -11,19 +11,27 @@ import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class PublicScreen extends StatefulWidget {
-  const PublicScreen({super.key});
+  const PublicScreen({super.key, this.initialStep = 'home'});
+
+  final String initialStep;
 
   @override
   State<PublicScreen> createState() => _PublicScreenState();
 }
 
 class _PublicScreenState extends State<PublicScreen> {
-  String step = 'home';
+  late String step;
   int semana = 0;
   final nomeCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   String horarioId = '';
   String data = MockData.today;
+
+  @override
+  void initState() {
+    super.initState();
+    step = widget.initialStep == 'loja' ? 'loja' : 'home';
+  }
 
   @override
   void dispose() {

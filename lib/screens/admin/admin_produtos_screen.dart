@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:pulguinha/config/app_links.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
@@ -21,6 +23,7 @@ class AdminProdutosScreen extends StatelessWidget {
     final outros = state.produtos.where((p) => p.tipo != 'plano').toList();
 
     final children = <Widget>[
+      _linkPublicoCard(context),
       const SectionTitle(icon: '📅', title: 'Planos'),
       ...planos.map((p) => _produtoCard(context, state, p)),
       const SizedBox(height: 16),
@@ -49,6 +52,43 @@ class AdminProdutosScreen extends StatelessWidget {
       actionLabel: '+ Novo',
       onAction: () => _abrirModal(context, state),
       children: children,
+    );
+  }
+
+  Widget _linkPublicoCard(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: PulguinhaCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionTitle(icon: '🔗', title: 'Link público da loja'),
+            const SizedBox(height: 4),
+            SelectableText(
+              AppLinks.lojaPublicUrl,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.neon, decoration: TextDecoration.none),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Atalho curto: ${AppLinks.lojaShortUrl} (configure redirecionamento no Registro.br)',
+              style: const TextStyle(fontSize: 10, color: AppColors.gray, decoration: TextDecoration.none),
+            ),
+            const SizedBox(height: 10),
+            GhostButton(
+              label: '📋 Copiar link da loja',
+              fullWidth: true,
+              borderColor: AppColors.neon.withValues(alpha: 0.25),
+              textColor: AppColors.neon,
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: AppLinks.lojaPublicUrl));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Link copiado!'), behavior: SnackBarBehavior.floating),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
