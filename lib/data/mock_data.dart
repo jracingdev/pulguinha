@@ -4,6 +4,9 @@ import 'package:pulguinha/models/models.dart';
 class MockData {
   static String get today => DateFormat('yyyy-MM-dd').format(DateTime.now());
 
+  /// Placeholder no banco para alunos Pendentes — não exibir como vencimento real.
+  static const vencimentoPendente = '2099-12-31';
+
   static const adminEmail = 'admin@pulguinha.com';
   static const adminSenha = 'admin123';
   static const adminNome = 'Pulguinha Admin';
@@ -24,6 +27,7 @@ class MockData {
       streakPresenca: 5,
       pulguinhaPoints: 50,
       dataCadastro: '2026-01-15',
+      alunoDesde: '2026-01-15',
       horarioId: 5,
     ),
     Aluno(
@@ -41,6 +45,7 @@ class MockData {
       streakPresenca: 3,
       pulguinhaPoints: 30,
       dataCadastro: '2026-02-01',
+      alunoDesde: '2026-02-01',
       horarioId: 5,
     ),
     const Aluno(
@@ -71,6 +76,7 @@ class MockData {
       streakPresenca: 8,
       pulguinhaPoints: 80,
       dataCadastro: '2025-11-20',
+      alunoDesde: '2025-11-20',
       horarioId: 6,
     ),
     Aluno(
@@ -88,6 +94,7 @@ class MockData {
       streakPresenca: 2,
       pulguinhaPoints: 20,
       dataCadastro: '2026-05-01',
+      alunoDesde: '2026-05-01',
       horarioId: 1,
     ),
   ];

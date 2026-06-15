@@ -28,6 +28,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
   final objCtrl = TextEditingController();
   final emergCtrl = TextEditingController();
   final emergTelCtrl = TextEditingController();
+  final alunoDesdeCtrl = TextEditingController();
 
   String? fotoBase64;
   var nivel = 'Iniciante';
@@ -48,7 +49,14 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
     objCtrl.dispose();
     emergCtrl.dispose();
     emergTelCtrl.dispose();
+    alunoDesdeCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    alunoDesdeCtrl.text = DateHelper.formatarData(MockData.today);
   }
 
   Future<void> _cadastrar() async {
@@ -95,9 +103,11 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       senha: senhaCtrl.text,
       telefone: telCtrl.text.trim(),
       plano: 'Mensal',
-      vencimento: MockData.today,
+      vencimento: MockData.vencimentoPendente,
       status: 'Pendente',
       avatar: avatar,
+      alunoDesde: alunoDesdeCtrl.text.trim().isEmpty ? MockData.today : DateHelper.paraIso(alunoDesdeCtrl.text.trim()),
+      dataCadastro: MockData.today,
       dataNascimento: nascCtrl.text.trim().isEmpty ? null : DateHelper.paraIso(nascCtrl.text.trim()),
       anamnese: Anamnese(
         restricoesMedicas: restrCtrl.text.trim(),
@@ -183,6 +193,13 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
             FieldLabel(label: 'Nome completo *', child: TextField(controller: nomeCtrl)),
             FieldLabel(label: 'E-mail *', child: TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress)),
             FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl, keyboardType: TextInputType.phone)),
+            FieldLabel(
+              label: 'Aluno desde (opcional)',
+              child: TextField(
+                controller: alunoDesdeCtrl,
+                decoration: const InputDecoration(hintText: '15-06-2026 — quando começou a treinar'),
+              ),
+            ),
             FieldLabel(label: 'Data de nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
             FieldLabel(label: 'Senha *', child: TextField(controller: senhaCtrl, obscureText: true)),
             FieldLabel(label: 'Confirmar senha *', child: TextField(controller: confirmSenhaCtrl, obscureText: true)),

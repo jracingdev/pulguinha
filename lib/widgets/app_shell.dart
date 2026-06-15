@@ -30,6 +30,21 @@ class AppShell extends StatelessWidget {
   final VoidCallback? onLogout;
   final Future<void> Function()? onRefresh;
 
+  Widget _scrollBody(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 36),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,7 +71,21 @@ class AppShell extends StatelessWidget {
                   ),
                   const Spacer(),
                   if (headerRight != null) headerRight!,
-                  if (headerRight != null) const SizedBox(width: 8),
+                  if (onRefresh != null) ...[
+                    if (headerRight != null) const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => onRefresh!(),
+                      tooltip: 'Atualizar dados',
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.card2,
+                        minimumSize: const Size(32, 32),
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.refresh_rounded, size: 18, color: AppColors.neon),
+                    ),
+                  ],
+                  if (headerRight != null || onRefresh != null) const SizedBox(width: 8),
                   if (onLogout != null)
                     OutlinedButton(
                       onPressed: onLogout,
@@ -78,17 +107,12 @@ class AppShell extends StatelessWidget {
                   ? RefreshIndicator(
                       color: AppColors.neon,
                       backgroundColor: AppColors.card2,
+                      displacement: 40,
+                      edgeOffset: 0,
                       onRefresh: onRefresh!,
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
-                        child: child,
-                      ),
+                      child: _scrollBody(context),
                     )
-                  : SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(16, 18, 16, 24 + MediaQuery.paddingOf(context).bottom),
-                      child: child,
-                    ),
+                  : _scrollBody(context),
             ),
           ],
         ),

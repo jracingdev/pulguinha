@@ -139,7 +139,7 @@ class AppState extends ChangeNotifier {
   void setAdminTab(String tab) {
     adminTab = tab;
     notifyListeners();
-    if (!useMock && (tab == 'alunos' || tab == 'dashboard')) {
+    if (!useMock && (tab == 'alunos' || tab == 'dashboard' || tab == 'agenda')) {
       recarregarDados();
     }
   }
@@ -230,8 +230,9 @@ class AppState extends ChangeNotifier {
     final novo = dados.copyWith(
       status: 'Pendente',
       plano: 'Mensal',
-      vencimento: MockData.today,
+      vencimento: MockData.vencimentoPendente,
       dataCadastro: MockData.today,
+      alunoDesde: dados.alunoDesde ?? MockData.today,
     );
     if (useMock) {
       return 'Cadastro não enviado — servidor não conectado. Cadastros não sincronizam neste modo.';
@@ -279,7 +280,12 @@ class AppState extends ChangeNotifier {
   void validarAluno(int id) {
     alunos = alunos.map((a) {
       if (a.id != id) return a;
-      return a.copyWith(status: 'Ativo');
+      final meses = MockData.mesesPlano[a.plano] ?? 1;
+      final novaData = DateTime.parse(MockData.today).add(Duration(days: meses * 30));
+      return a.copyWith(
+        status: 'Ativo',
+        vencimento: _formatDate(novaData),
+      );
     }).toList();
     notifyListeners();
     _syncAluno(id);
@@ -374,7 +380,11 @@ class AppState extends ChangeNotifier {
         });
       }
     } else {
-      final novo = dados.copyWith(dataCadastro: dados.dataCadastro ?? MockData.today);
+      final novo = dados.copyWith(
+        dataCadastro: dados.dataCadastro ?? MockData.today,
+        alunoDesde: dados.alunoDesde ?? dados.dataCadastro ?? MockData.today,
+        vencimento: dados.status == 'Pendente' ? MockData.vencimentoPendente : dados.vencimento,
+      );
       if (useMock) {
         alunos = [...alunos, novo];
       } else {

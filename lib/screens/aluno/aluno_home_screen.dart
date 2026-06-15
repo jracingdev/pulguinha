@@ -5,6 +5,7 @@ import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/vencimento_helper.dart';
 import 'package:pulguinha/widgets/celebration_widgets.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:pulguinha/widgets/wellness_widgets.dart';
@@ -30,7 +31,7 @@ class AlunoHomeScreen extends StatelessWidget {
       streakPresenca: usuario.streakPresenca ?? 0,
       pulguinhaPoints: usuario.pulguinhaPoints ?? 0,
     );
-    final d = DateHelper.diasAteVencimento(aluno.vencimento);
+    final d = VencimentoHelper.temPlanoAtivo(aluno) ? DateHelper.diasAteVencimento(aluno.vencimento) : 0;
     final meusAgs = state.agendamentos.where((ag) => ag.alunoId == aluno.id && ag.data.compareTo(MockData.today) >= 0).take(5).toList();
     final isBirthday = DateHelper.isAniversarioHoje(aluno.dataNascimento);
     final jaCheckinHoje = state.presencasHoje().any((p) => p.alunoId == aluno.id);
@@ -102,7 +103,7 @@ class AlunoHomeScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppColors.card2,
-                    border: Border.all(color: d < 0 ? AppColors.red : d <= 7 ? AppColors.yellow.withValues(alpha: 0.4) : AppColors.neon.withValues(alpha: 0.2)),
+                    border: Border.all(color: VencimentoHelper.corDestaque(aluno).withValues(alpha: aluno.status == 'Pendente' ? 0.4 : d < 0 ? 1 : d <= 7 ? 0.4 : 0.2)),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -111,15 +112,25 @@ class AlunoHomeScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('PLANO ${aluno.plano.toUpperCase()}', style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w700)),
                             Text(
-                              d < 0 ? 'Vencido há ${d.abs()} dias' : d == 0 ? 'Vence hoje!' : d <= 7 ? 'Vence em $d dias' : DateHelper.formatarData(aluno.vencimento),
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: d < 0 ? AppColors.red : d <= 7 ? AppColors.yellow : AppColors.neon),
+                              aluno.status == 'Pendente' ? 'CADASTRO' : 'PLANO ${aluno.plano.toUpperCase()}',
+                              style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              VencimentoHelper.textoLongo(aluno),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: VencimentoHelper.corDestaque(aluno)),
                             ),
                           ],
                         ),
                       ),
-                      PulguinhaBadge(label: aluno.status, variant: aluno.status == 'Ativo' ? BadgeVariant.neon : BadgeVariant.red),
+                      PulguinhaBadge(
+                        label: aluno.status,
+                        variant: aluno.status == 'Ativo'
+                            ? BadgeVariant.neon
+                            : aluno.status == 'Pendente'
+                                ? BadgeVariant.yellow
+                                : BadgeVariant.red,
+                      ),
                     ],
                   ),
                 ),

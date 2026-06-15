@@ -11,6 +11,7 @@ import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/utils/qr_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
+import 'package:pulguinha/utils/vencimento_helper.dart';
 import 'package:pulguinha/widgets/qr_widgets.dart';
 
 class AlunoPerfilScreen extends StatelessWidget {
@@ -44,7 +45,7 @@ class AlunoPerfilScreen extends StatelessWidget {
       status: usuario.status ?? 'Ativo',
       avatar: usuario.avatar ?? 'AL',
     );
-    final d = DateHelper.diasAteVencimento(aluno.vencimento);
+    final d = VencimentoHelper.temPlanoAtivo(aluno) ? DateHelper.diasAteVencimento(aluno.vencimento) : 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,6 +78,8 @@ class AlunoPerfilScreen extends StatelessWidget {
               Text(aluno.telefone, style: const TextStyle(fontSize: 13, color: AppColors.gray)),
               if (aluno.dataNascimento != null)
                 Text('🎂 ${DateHelper.formatarAniversario(aluno.dataNascimento!)}', style: const TextStyle(fontSize: 12, color: AppColors.yellow)),
+              if (aluno.alunoDesde != null && aluno.alunoDesde!.isNotEmpty)
+                Text('🏋️ Aluno desde ${DateHelper.formatarData(aluno.alunoDesde!)}', style: const TextStyle(fontSize: 12, color: AppColors.neon)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -103,8 +106,13 @@ class AlunoPerfilScreen extends StatelessWidget {
                 children: [
                   _infoBox('Plano', aluno.plano),
                   _infoBox('Status', aluno.status),
-                  _infoBox('Vencimento', DateHelper.formatarData(aluno.vencimento)),
-                  _infoBox('Dias restantes', d < 0 ? '${d.abs()}d atrasado' : d == 0 ? 'Hoje!' : '${d}d', highlight: d < 0),
+                  if (VencimentoHelper.temPlanoAtivo(aluno)) ...[
+                    _infoBox('Vencimento', DateHelper.formatarData(aluno.vencimento)),
+                    _infoBox('Dias restantes', d < 0 ? '${d.abs()}d atrasado' : d == 0 ? 'Hoje!' : '${d}d', highlight: d < 0),
+                  ] else
+                    _infoBox('Mensalidade', 'Aguardando aprovação'),
+                  if (aluno.alunoDesde != null && aluno.alunoDesde!.isNotEmpty)
+                    _infoBox('Aluno desde', DateHelper.formatarData(aluno.alunoDesde!)),
                   if (aluno.pulguinhaPoints > 0) _infoBox('Points', '${aluno.pulguinhaPoints} ⭐'),
                 ],
               ),

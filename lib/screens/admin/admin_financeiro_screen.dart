@@ -8,6 +8,7 @@ import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/vencimento_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminFinanceiroScreen extends StatelessWidget {
@@ -206,11 +207,13 @@ class AdminFinanceiroScreen extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    tipo == 'inad'
-                        ? 'Venceu ${DateHelper.formatarData(a.vencimento)} · ${a.plano}'
-                        : tipo == 'venc'
-                            ? 'Vence em ${DateHelper.diasAteVencimento(a.vencimento)}d · ${a.plano}'
-                            : '${a.plano} · Venc. ${DateHelper.formatarData(a.vencimento)}',
+                    a.status == 'Pendente'
+                        ? 'Aguardando aprovação · ${a.plano}'
+                        : tipo == 'inad'
+                            ? 'Venceu ${DateHelper.formatarData(a.vencimento)} · ${a.plano}'
+                            : tipo == 'venc'
+                                ? 'Vence em ${DateHelper.diasAteVencimento(a.vencimento)}d · ${a.plano}'
+                                : '${a.plano} · ${VencimentoHelper.temPlanoAtivo(a) ? 'Venc. ${DateHelper.formatarData(a.vencimento)}' : 'Sem vencimento'}',
                     style: TextStyle(fontSize: 11, color: tipo == 'inad' ? AppColors.red : tipo == 'venc' ? AppColors.yellow : AppColors.gray),
                   ),
                 ],

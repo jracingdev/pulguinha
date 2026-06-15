@@ -5,6 +5,7 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/utils/vencimento_helper.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -85,15 +86,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
   }
 
   Widget _alunoCard(BuildContext context, AppState state, Aluno a) {
-    final d = DateHelper.diasAteVencimento(a.vencimento);
-    final vc = d < 0 ? AppColors.red : d <= 7 ? AppColors.yellow : AppColors.gray;
-    final vt = d < 0
-        ? 'Vencido ${d.abs()}d'
-        : d == 0
-            ? 'Vence hoje!'
-            : d <= 7
-                ? 'Vence em ${d}d'
-                : 'Venc. ${DateHelper.formatarData(a.vencimento)}';
+    final vt = VencimentoHelper.textoCurto(a);
+    final vc = VencimentoHelper.cor(a);
     final isAniv = DateHelper.isAniversarioHoje(a.dataNascimento);
 
     return Padding(
@@ -118,6 +112,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     ],
                   ),
                   Text('${a.telefone} · ${a.plano}', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                  if (a.alunoDesde != null && a.alunoDesde!.isNotEmpty)
+                    Text('Aluno desde ${DateHelper.formatarData(a.alunoDesde!)}', style: const TextStyle(fontSize: 11, color: AppColors.grayDim)),
                   if (a.horarioId != null)
                     Text('Turma: ${state.labelTurma(a)}', style: const TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w600)),
                   Text(vt, style: TextStyle(fontSize: 11, color: vc, fontWeight: FontWeight.w600)),
@@ -153,7 +149,14 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     final nomeCtrl = TextEditingController(text: editando?.nome ?? '');
     final emailCtrl = TextEditingController(text: editando?.email ?? '');
     final telCtrl = TextEditingController(text: editando?.telefone ?? '');
-    final vencCtrl = TextEditingController(text: editando != null ? DateHelper.formatarData(editando.vencimento) : '');
+    final vencCtrl = TextEditingController(text: editando != null && editando.status != 'Pendente' ? DateHelper.formatarData(editando.vencimento) : '');
+    final alunoDesdeCtrl = TextEditingController(
+      text: editando?.alunoDesde != null && editando!.alunoDesde!.isNotEmpty
+          ? DateHelper.formatarData(editando.alunoDesde!)
+          : editando?.dataCadastro != null
+              ? DateHelper.formatarData(editando!.dataCadastro!)
+              : DateHelper.formatarData(MockData.today),
+    );
     final nascCtrl = TextEditingController(text: editando?.dataNascimento != null && editando!.dataNascimento!.isNotEmpty ? DateHelper.formatarData(editando.dataNascimento!) : '');
     final senhaCtrl = TextEditingController(text: editando?.senha ?? '1234');
     final restrCtrl = TextEditingController(text: editando?.anamnese.restricoesMedicas ?? '');
@@ -180,7 +183,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl)),
                 FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
                 FieldLabel(label: 'Data nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
-                FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: '20-06-2026'))),
+                FieldLabel(label: 'Aluno desde', child: TextField(controller: alunoDesdeCtrl, decoration: const InputDecoration(hintText: '15-06-2026'))),
+                FieldLabel(label: 'Vencimento', child: TextField(controller: vencCtrl, decoration: const InputDecoration(hintText: 'Definido na aprovação se Pendente'))),
                 FieldLabel(label: 'Senha do app', child: TextField(controller: senhaCtrl, obscureText: true)),
                 FieldLabel(
                   label: 'Plano',
@@ -280,13 +284,22 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             contatoEmergencia: emergCtrl.text.trim(),
                             telefoneEmergencia: emergTelCtrl.text.trim(),
                           );
+                          final alunoDesde = alunoDesdeCtrl.text.trim().isEmpty ? MockData.today : DateHelper.paraIso(alunoDesdeCtrl.text.trim());
+                          String vencimento;
+                          if (status == 'Pendente') {
+                            vencimento = MockData.vencimentoPendente;
+                          } else if (vencCtrl.text.trim().isEmpty) {
+                            vencimento = VencimentoHelper.calcularVencimentoInicial(plano);
+                          } else {
+                            vencimento = DateHelper.paraIso(vencCtrl.text.trim());
+                          }
                           final dados = Aluno(
                             id: editando?.id ?? DateTime.now().millisecondsSinceEpoch,
                             nome: nomeCtrl.text.trim(),
                             email: emailCtrl.text.trim(),
                             telefone: telCtrl.text.trim(),
                             plano: plano,
-                            vencimento: vencCtrl.text.trim().isEmpty ? MockData.today : DateHelper.paraIso(vencCtrl.text.trim()),
+                            vencimento: vencimento,
                             status: status,
                             senha: senhaCtrl.text,
                             avatar: editando?.avatar ?? avatar,
@@ -296,6 +309,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             streakPresenca: editando?.streakPresenca ?? 0,
                             pulguinhaPoints: editando?.pulguinhaPoints ?? 0,
                             dataCadastro: editando?.dataCadastro ?? MockData.today,
+                            alunoDesde: alunoDesde,
                             horarioId: turmaId,
                           );
                           state.salvarAluno(editando: editando, dados: dados);

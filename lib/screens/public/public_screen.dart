@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/screens/shared/loja_screen.dart';
@@ -47,16 +48,34 @@ class _PublicScreenState extends State<PublicScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Column(
-            children: [
-              _buildHero(),
-              const MockModeBanner(),
-              if (step == 'home') _buildHome(state),
-              if (step == 'agendar') _buildAgendar(state),
-              if (step == 'loja') _buildLoja(),
-            ],
+        child: RefreshIndicator(
+          color: AppColors.neon,
+          backgroundColor: AppColors.card2,
+          onRefresh: SupabaseConfig.isConfigured
+              ? () async {
+                  if (state.useMock) await state.garantirConexaoSupabase();
+                  await state.recarregarDados();
+                }
+              : () async {},
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    children: [
+                      _buildHero(),
+                      const MockModeBanner(adminOnly: true),
+                      if (step == 'home') _buildHome(state),
+                      if (step == 'agendar') _buildAgendar(state),
+                      if (step == 'loja') _buildLoja(),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

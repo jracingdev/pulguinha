@@ -7,14 +7,19 @@ import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 /// Aviso visível quando o app está offline / sem Supabase — cadastros não sincronizam.
 class MockModeBanner extends StatelessWidget {
-  const MockModeBanner({super.key, this.compact = false});
+  const MockModeBanner({super.key, this.compact = false, this.adminOnly = false});
 
   final bool compact;
+  final bool adminOnly;
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     if (!state.useMock) return const SizedBox.shrink();
+    if (adminOnly && !SupabaseConfig.isConfigured) {
+      // Em telas públicas/aluno sem config, o banner confunde — mensagem fica no erro de login.
+      return const SizedBox.shrink();
+    }
 
     final semConfig = !SupabaseConfig.isConfigured;
     final texto = semConfig

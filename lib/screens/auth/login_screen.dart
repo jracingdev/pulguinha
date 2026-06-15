@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 40),
               _buildLogo(),
               const SizedBox(height: 36),
-              const MockModeBanner(compact: true),
+              if (role == UserType.admin) const MockModeBanner(compact: true),
               _buildRoleToggle(),
               const SizedBox(height: 28),
               SizedBox(width: 360, child: _buildForm()),

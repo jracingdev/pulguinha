@@ -209,6 +209,7 @@ class Aluno {
     this.streakPresenca = 0,
     this.pulguinhaPoints = 0,
     this.dataCadastro,
+    this.alunoDesde,
     this.horarioId,
   });
 
@@ -227,6 +228,7 @@ class Aluno {
   final int streakPresenca;
   final int pulguinhaPoints;
   final String? dataCadastro;
+  final String? alunoDesde;
   final int? horarioId;
 
   Aluno copyWith({
@@ -245,6 +247,7 @@ class Aluno {
     int? streakPresenca,
     int? pulguinhaPoints,
     String? dataCadastro,
+    String? alunoDesde,
     int? horarioId,
   }) {
     return Aluno(
@@ -263,6 +266,7 @@ class Aluno {
       streakPresenca: streakPresenca ?? this.streakPresenca,
       pulguinhaPoints: pulguinhaPoints ?? this.pulguinhaPoints,
       dataCadastro: dataCadastro ?? this.dataCadastro,
+      alunoDesde: alunoDesde ?? this.alunoDesde,
       horarioId: horarioId ?? this.horarioId,
     );
   }
@@ -283,6 +287,11 @@ class Aluno {
         streakPresenca: json['streak_presenca'] as int? ?? 0,
         pulguinhaPoints: json['pulguinha_points'] as int? ?? 0,
         dataCadastro: json['data_cadastro'] != null ? _formatDate(json['data_cadastro']) : null,
+        alunoDesde: json['aluno_desde'] != null
+            ? _formatDate(json['aluno_desde'])
+            : json['data_cadastro'] != null
+                ? _formatDate(json['data_cadastro'])
+                : null,
         horarioId: json['horario_id'] as int?,
       );
 
@@ -301,6 +310,7 @@ class Aluno {
         'streak_presenca': streakPresenca,
         'pulguinha_points': pulguinhaPoints,
         if (dataCadastro != null) 'data_cadastro': dataCadastro,
+        if (alunoDesde != null) 'aluno_desde': alunoDesde,
         if (horarioId != null) 'horario_id': horarioId,
       };
 

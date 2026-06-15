@@ -27,6 +27,7 @@ class AdminDashboardScreen extends StatelessWidget {
     final agHoje = state.agendamentos.where((ag) => ag.data == MockData.today).length;
     final presHoje = state.presencasHoje().length;
     final venc7 = state.alunos.where((a) {
+      if (a.status != 'Ativo') return false;
       final d = DateHelper.diasAteVencimento(a.vencimento);
       return d >= 0 && d <= 7;
     }).length;
