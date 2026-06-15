@@ -121,7 +121,12 @@ class _AdminShell extends StatelessWidget {
         ),
         child: const Text('ADMIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.neon)),
       ),
-      onRefresh: SupabaseConfig.isConfigured ? state.recarregarDados : null,
+      onRefresh: SupabaseConfig.isConfigured
+          ? () async {
+              if (state.useMock) await state.garantirConexaoSupabase();
+              await state.recarregarDados();
+            }
+          : null,
       child: body,
     );
   }
@@ -165,7 +170,12 @@ class _AlunoShell extends StatelessWidget {
         'Olá, ${usuario.nome.split(' ').first}',
         style: const TextStyle(fontSize: 12, color: AppColors.gray, fontWeight: FontWeight.w600),
       ),
-      onRefresh: SupabaseConfig.isConfigured ? state.recarregarDados : null,
+      onRefresh: SupabaseConfig.isConfigured
+          ? () async {
+              if (state.useMock) await state.garantirConexaoSupabase();
+              await state.recarregarDados();
+            }
+          : null,
       child: body,
     );
   }

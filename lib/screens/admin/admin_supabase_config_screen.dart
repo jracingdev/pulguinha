@@ -68,12 +68,19 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
 
     if (!mounted) return;
     setState(() => _saving = false);
+
+    if (conectou && state.alunosPendentes > 0) {
+      state.setAdminTab('alunos');
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           conectou
-              ? 'Supabase conectado! Cadastros da web já devem aparecer — puxe a tela para atualizar.'
-              : 'Credenciais salvas, mas não foi possível conectar. Verifique URL e chave anon.',
+              ? state.alunosPendentes > 0
+                  ? 'Supabase conectado! ${state.alunosPendentes} cadastro(s) pendente(s) — aba Alunos aberta.'
+                  : 'Supabase conectado! Cadastros da web já devem aparecer — puxe a tela para atualizar.'
+              : 'Credenciais salvas, mas não foi possível conectar. Verifique URL, chave anon e internet.',
         ),
         duration: const Duration(seconds: 5),
       ),

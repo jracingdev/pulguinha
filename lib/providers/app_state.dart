@@ -82,7 +82,11 @@ class AppState extends ChangeNotifier {
         presencas = results[4] as List<Presenca>;
         postsTurma = results[5] as List<PostTurma>;
         useMock = false;
-        _subscribeRealtime();
+        try {
+          _subscribeRealtime();
+        } catch (e) {
+          debugPrint('Realtime indisponível (dados online OK): $e');
+        }
       } catch (e) {
         debugPrint('Supabase indisponível, usando mock: $e');
         initError = 'Modo offline (dados locais)';
@@ -487,10 +491,17 @@ class AppState extends ChangeNotifier {
       postsTurma = results[5] as List<PostTurma>;
       useMock = false;
       initError = null;
-      _subscribeRealtime();
+      try {
+        _subscribeRealtime();
+      } catch (e) {
+        debugPrint('Realtime indisponível (dados online OK): $e');
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Erro ao recarregar dados: $e');
+      initError = 'Sem conexão com o banco';
+      notifyListeners();
+      rethrow;
     }
   }
 
