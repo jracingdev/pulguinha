@@ -85,11 +85,18 @@ ALTER TABLE agendamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE presencas ENABLE ROW LEVEL SECURITY;
 
+-- Políticas idempotentes (pode reexecutar o script em banco já configurado)
+DROP POLICY IF EXISTS "anon_all_admins" ON admins;
 CREATE POLICY "anon_all_admins" ON admins FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_all_alunos" ON alunos;
 CREATE POLICY "anon_all_alunos" ON alunos FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_all_horarios" ON horarios;
 CREATE POLICY "anon_all_horarios" ON horarios FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_all_agendamentos" ON agendamentos;
 CREATE POLICY "anon_all_agendamentos" ON agendamentos FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_all_produtos" ON produtos;
 CREATE POLICY "anon_all_produtos" ON produtos FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "anon_all_presencas" ON presencas;
 CREATE POLICY "anon_all_presencas" ON presencas FOR ALL USING (true) WITH CHECK (true);
 
 -- Migração para bancos existentes (idempotente)
@@ -98,6 +105,7 @@ ALTER TABLE alunos ADD COLUMN IF NOT EXISTS anamnese JSONB NOT NULL DEFAULT '{}'
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS foto TEXT;
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS streak_presenca INT NOT NULL DEFAULT 0;
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS pulguinha_points INT NOT NULL DEFAULT 0;
+ALTER TABLE alunos ADD COLUMN IF NOT EXISTS data_cadastro DATE DEFAULT CURRENT_DATE;
 ALTER TABLE alunos ADD COLUMN IF NOT EXISTS horario_id BIGINT REFERENCES horarios(id) ON DELETE SET NULL;
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS foto TEXT;
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS grades JSONB NOT NULL DEFAULT '[]'::jsonb;
@@ -118,6 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_turma_horario ON posts_turma(horario_id);
 CREATE INDEX IF NOT EXISTS idx_alunos_horario ON alunos(horario_id);
 
 ALTER TABLE posts_turma ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_posts_turma" ON posts_turma;
 CREATE POLICY "anon_all_posts_turma" ON posts_turma FOR ALL USING (true) WITH CHECK (true);
 
 -- Atualizar turmas dos alunos demo
