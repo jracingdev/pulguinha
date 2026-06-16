@@ -1,14 +1,23 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:pulguinha/services/app_sound_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 
 /// Partículas estilo confetti para celebrações (aniversário, streak).
 class ConfettiOverlay extends StatefulWidget {
-  const ConfettiOverlay({super.key, required this.child, this.active = false, this.duration = const Duration(seconds: 3)});
+  const ConfettiOverlay({
+    super.key,
+    required this.child,
+    this.active = false,
+    this.duration = const Duration(seconds: 3),
+    this.playFireworksSound = false,
+  });
 
   final Widget child;
   final bool active;
   final Duration duration;
+  /// Toca som de fogos por 2s quando a celebração inicia (ex.: aniversário).
+  final bool playFireworksSound;
 
   @override
   State<ConfettiOverlay> createState() => _ConfettiOverlayState();
@@ -34,6 +43,9 @@ class _ConfettiOverlayState extends State<ConfettiOverlay> with SingleTickerProv
 
   void _start() {
     _particles.clear();
+    if (widget.playFireworksSound) {
+      AppSoundService.instance.playFogos();
+    }
     for (var i = 0; i < 40; i++) {
       _particles.add(_Particle(
         x: _rng.nextDouble(),

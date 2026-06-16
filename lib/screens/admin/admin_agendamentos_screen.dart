@@ -4,6 +4,7 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminAgendamentosScreen extends StatefulWidget {
@@ -100,7 +101,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
               padding: const EdgeInsets.all(14),
               child: HorarioGrid(
                 spacing: 10,
-                children: state.horarios.map((h) {
+                children: state.horariosOrdenados.map((h) {
                   final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
                   final isVer = verAula?.d == dia.iso && verAula?.h == h.id;
                   return Column(
@@ -157,6 +158,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
     var data = MockData.today;
     var alunoId = '';
     var horarioId = '';
+    final dataCtrl = TextEditingController(text: DateHelper.formatarData(data));
 
     await showPulguinhaModal(
       context: context,
@@ -178,9 +180,11 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
               const SizedBox(height: 14),
               FieldLabel(
                 label: 'Data',
-                child: TextField(
-                  decoration: InputDecoration(hintText: DateHelper.formatarData(data)),
-                  onChanged: (v) => data = v.trim().isEmpty ? data : DateHelper.paraIso(v),
+                child: DateField(
+                  controller: dataCtrl,
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 90)),
+                  onChanged: (iso) => setModal(() => data = iso),
                 ),
               ),
               FieldLabel(
@@ -197,7 +201,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                 child: DropdownButtonFormField<String>(
                   value: horarioId.isEmpty ? null : horarioId,
                   hint: const Text('Selecione...'),
-                  items: state.horarios.map((h) {
+                  items: state.horariosOrdenados.map((h) {
                     final v = state.agendamentosPorDataHorario(data, h.id);
                     final lotado = v.length >= h.capacidade;
                     return DropdownMenuItem(
@@ -219,7 +223,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                       onPressed: () {
                         if (alunoId.isEmpty || horarioId.isEmpty) return;
                         final aluno = state.alunos.firstWhere((a) => a.id == int.parse(alunoId));
-                        final h = state.horarios.firstWhere((x) => x.id == int.parse(horarioId));
+                        final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
                         if (state.aulaLotada(data, h.id)) return;
                         state.criarAgendamento(alunoId: aluno.id, nomeAluno: aluno.nome, horarioId: h.id, data: data, horario: h.hora);
                         Navigator.pop(ctx);
@@ -233,6 +237,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
         },
       ),
     );
+    dataCtrl.dispose();
   }
 
   void _cancelar(BuildContext context, AppState state, int id) {

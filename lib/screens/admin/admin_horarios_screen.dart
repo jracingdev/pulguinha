@@ -14,7 +14,7 @@ class AdminHorariosScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final content = state.horarios.map((h) => _horarioCard(context, state, h)).toList();
+    final content = state.horariosOrdenados.map((h) => _horarioCard(context, state, h)).toList();
 
     if (standalone) {
       return AdminStandalonePage(

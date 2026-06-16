@@ -19,7 +19,8 @@ class LegalScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(title: Text(title)),
-      body: ListView(
+      body: SafeArea(
+        child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           PulguinhaCard(
@@ -39,6 +40,7 @@ class LegalScreen extends StatelessWidget {
             style: TextStyle(fontSize: 11, color: AppColors.gray.withValues(alpha: 0.8)),
           ),
         ],
+      ),
       ),
     );
   }

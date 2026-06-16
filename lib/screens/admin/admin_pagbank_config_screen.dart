@@ -104,7 +104,8 @@ class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
         backgroundColor: AppColors.bg,
         title: const Text('PagBank / PagSeguro', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
-      body: _loading
+      body: SafeArea(
+        child: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.pagBank))
           : ListView(
               padding: const EdgeInsets.all(16),
@@ -114,6 +115,7 @@ class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
                 if (!_unlocked) _lockCard() else ..._formCards(),
               ],
             ),
+      ),
     );
   }
 

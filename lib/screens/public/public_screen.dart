@@ -11,6 +11,7 @@ import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
+import 'package:pulguinha/widgets/studio_contact_card.dart';
 
 class PublicScreen extends StatefulWidget {
   const PublicScreen({super.key, this.initialStep = 'home'});
@@ -33,6 +34,11 @@ class _PublicScreenState extends State<PublicScreen> {
   void initState() {
     super.initState();
     step = widget.initialStep == 'loja' ? 'loja' : 'home';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !SupabaseConfig.isConfigured) return;
+      final state = context.read<AppState>();
+      if (state.useMock) state.garantirConexaoSupabase();
+    });
   }
 
   @override
@@ -116,7 +122,7 @@ class _PublicScreenState extends State<PublicScreen> {
             children: [
               const SectionTitle(icon: '📋', title: 'Horários disponíveis'),
               HorarioGrid(
-                children: state.horarios.map((h) {
+                children: state.horariosOrdenados.map((h) {
                   final ocupadosHoje = state.agendamentosPorDataHorario(MockData.today, h.id).length;
                   return HorarioInfoCard(
                     hora: h.hora,
@@ -148,6 +154,8 @@ class _PublicScreenState extends State<PublicScreen> {
           fullWidth: true,
           onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const CadastroAlunoScreen())),
         ),
+        const SizedBox(height: 16),
+        const StudioContactCard(compact: true),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -273,7 +281,7 @@ class _PublicScreenState extends State<PublicScreen> {
             ),
             const SizedBox(height: 12),
             HorarioGrid(
-              children: state.horarios.map((h) {
+              children: state.horariosOrdenados.map((h) {
                 final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
                 final lotado = ags.length >= h.capacidade;
                 final sel = horarioId == '${h.id}' && data == dia.iso;
@@ -301,12 +309,12 @@ class _PublicScreenState extends State<PublicScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preencha nome e horário.')));
       return;
     }
-    final h = state.horarios.firstWhere((x) => x.id == int.parse(horarioId));
+    final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
     if (state.aulaLotada(data, h.id)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aula lotada!')));
       return;
     }
-    state.criarAgendamento(alunoId: 0, nomeAluno: nomeCtrl.text.trim(), horarioId: h.id, data: data, horario: h.hora);
+    state.criarAgendamento(nomeAluno: nomeCtrl.text.trim(), horarioId: h.id, data: data, horario: h.hora);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Agendamento confirmado! ${nomeCtrl.text} às ${h.hora}')));
     setState(() => step = 'home');
   }

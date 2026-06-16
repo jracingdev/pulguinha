@@ -3,6 +3,7 @@ import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/services/app_version_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
+import 'package:pulguinha/widgets/studio_contact_card.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SobreAppScreen extends StatelessWidget {
@@ -22,7 +23,8 @@ class SobreAppScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Sobre o app'),
       ),
-      body: ListView(
+      body: SafeArea(
+        child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Center(
@@ -58,6 +60,8 @@ class SobreAppScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          const StudioContactCard(),
           const SizedBox(height: 16),
           PulguinhaCard(
             child: InkWell(
@@ -111,6 +115,7 @@ class SobreAppScreen extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

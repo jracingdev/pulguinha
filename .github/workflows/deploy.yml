@@ -51,11 +51,17 @@ jobs:
           else
             BASE_HREF="/pulguinha/"
           fi
+          BUILD_ARGS=""
+          if [ -n "${{ secrets.SUPABASE_URL }}" ] && [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+            BUILD_ARGS="--dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}"
+            echo "Build com secrets Supabase (dart-define)."
+          else
+            echo "Build com credenciais embutidas em lib/config/supabase_config.dart."
+          fi
           echo "Build com base-href: $BASE_HREF (domínio: ${CUSTOM_DOMAIN:-nenhum})"
           flutter build web --release \
             --base-href "$BASE_HREF" \
-            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            $BUILD_ARGS
 
       - name: Preparar artefato Pages
         env:

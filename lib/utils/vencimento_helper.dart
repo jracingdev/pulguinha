@@ -82,40 +82,44 @@ class VencimentoHelper {
     return '${candidato.year}-${candidato.month.toString().padLeft(2, '0')}-${candidato.day.toString().padLeft(2, '0')}';
   }
 
-  static String textoCurto(Aluno aluno) {
+  static String textoCurto(Aluno aluno, {int diasParaInadimplencia = 7}) {
     if (aluno.status == 'Pendente') return 'Aguardando aprovação';
-    if (aluno.status == 'Inadimplente') return 'Em atraso';
+    if (aluno.status == 'Inadimplente') return 'Inadimplente';
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
-    if (d < 0) return 'Vencido ${d.abs()}d';
+    if (d < -diasParaInadimplencia) return 'Inadimplente';
+    if (d < 0) return 'Em atraso (${d.abs()}d)';
     if (d == 0) return 'Vence hoje!';
     if (d <= 7) return 'Vence em ${d}d';
     return 'Venc. ${DateHelper.formatarData(aluno.vencimento)}';
   }
 
-  static String textoLongo(Aluno aluno) {
+  static String textoLongo(Aluno aluno, {int diasParaInadimplencia = 7}) {
     if (aluno.status == 'Pendente') return 'Aguardando aprovação do professor';
-    if (aluno.status == 'Inadimplente') return 'Mensalidade em atraso';
+    if (aluno.status == 'Inadimplente') return 'Mensalidade inadimplente — regularize com o estúdio';
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
-    if (d < 0) return 'Vencido há ${d.abs()} dias';
+    if (d < -diasParaInadimplencia) return 'Inadimplente há ${d.abs()} dias';
+    if (d < 0) return 'Em atraso há ${d.abs()} dias (ainda no período de tolerância)';
     if (d == 0) return 'Vence hoje!';
     if (d <= 7) return 'Vence em $d dias';
     return DateHelper.formatarData(aluno.vencimento);
   }
 
-  static Color cor(Aluno aluno) {
+  static Color cor(Aluno aluno, {int diasParaInadimplencia = 7}) {
     if (aluno.status == 'Pendente') return AppColors.yellow;
     if (aluno.status == 'Inadimplente') return AppColors.red;
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
-    if (d < 0) return AppColors.red;
+    if (d < -diasParaInadimplencia) return AppColors.red;
+    if (d < 0) return AppColors.yellow;
     if (d <= 7) return AppColors.yellow;
     return AppColors.gray;
   }
 
-  static Color corDestaque(Aluno aluno) {
+  static Color corDestaque(Aluno aluno, {int diasParaInadimplencia = 7}) {
     if (aluno.status == 'Pendente') return AppColors.yellow;
     if (aluno.status == 'Inadimplente') return AppColors.red;
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
-    if (d < 0) return AppColors.red;
+    if (d < -diasParaInadimplencia) return AppColors.red;
+    if (d < 0) return AppColors.yellow;
     if (d <= 7) return AppColors.yellow;
     return AppColors.neon;
   }

@@ -7,8 +7,15 @@ class SupabaseService {
 
   SupabaseClient get _db => Supabase.instance.client;
 
-  Future<List<Aluno>> fetchAlunos() async {
-    final rows = await _db.from('alunos').select().order('nome');
+  /// Colunas leves — sem `foto` (base64 pode passar de 200 KB por aluno e derrubar o web).
+  static const _alunoColumnsSemFoto =
+      'id,nome,email,senha,telefone,plano,vencimento,status,avatar,data_nascimento,anamnese,'
+      'streak_presenca,pulguinha_points,data_cadastro,aluno_desde,horario_id,cep,logradouro,'
+      'numero,complemento,bairro,cidade,uf,codigo_indicacao,credito_indicacao';
+
+  Future<List<Aluno>> fetchAlunos({bool includeFoto = false}) async {
+    final columns = includeFoto ? '*' : _alunoColumnsSemFoto;
+    final rows = await _db.from('alunos').select(columns).order('nome');
     return (rows as List).map((r) => Aluno.fromJson(Map<String, dynamic>.from(r as Map))).toList();
   }
 
@@ -138,5 +145,148 @@ class SupabaseService {
     final payload = post.toJson();
     final rows = await _db.from('posts_turma').update(payload).eq('id', post.id).select().single();
     return PostTurma.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deletePostTurma(int id) async {
+    await _db.from('posts_turma').delete().eq('id', id);
+  }
+
+  Future<void> updateAlunoSenha(int id, String novaSenha) async {
+    await _db.from('alunos').update({'senha': novaSenha}).eq('id', id);
+  }
+
+  Future<void> updateAdminSenha(String email, String novaSenha) async {
+    await _db.from('admins').update({'senha': novaSenha}).eq('email', email);
+  }
+
+  Future<Aluno?> buscarAlunoPorEmail(String email) async {
+    final rows = await _db.from('alunos').select().eq('email', email.trim().toLowerCase()).maybeSingle();
+    if (rows == null) return null;
+    return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<List<DicaTreino>> fetchDicas() async {
+    final rows = await _db.from('dicas_treino').select().order('ordem');
+    return (rows as List).map((r) => DicaTreino.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<DicaTreino> insertDica(DicaTreino dica) async {
+    final rows = await _db.from('dicas_treino').insert(dica.toJson()).select().single();
+    return DicaTreino.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<DicaTreino> updateDica(DicaTreino dica) async {
+    final rows = await _db.from('dicas_treino').update(dica.toJson()).eq('id', dica.id).select().single();
+    return DicaTreino.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deleteDica(int id) async {
+    await _db.from('dicas_treino').delete().eq('id', id);
+  }
+
+  Future<List<Desafio>> fetchDesafios() async {
+    final rows = await _db.from('desafios').select().order('data_inicio', ascending: false);
+    return (rows as List).map((r) => Desafio.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<Desafio> insertDesafio(Desafio d) async {
+    final rows = await _db.from('desafios').insert(d.toJson()).select().single();
+    return Desafio.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Desafio> updateDesafio(Desafio d) async {
+    final rows = await _db.from('desafios').update(d.toJson()).eq('id', d.id).select().single();
+    return Desafio.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deleteDesafio(int id) async {
+    await _db.from('desafios').delete().eq('id', id);
+  }
+
+  Future<List<DesafioProgresso>> fetchDesafioProgresso() async {
+    final rows = await _db.from('desafio_progresso').select();
+    return (rows as List).map((r) => DesafioProgresso.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<void> upsertDesafioProgresso(DesafioProgresso prog) async {
+    await _db.from('desafio_progresso').upsert(prog.toJson());
+  }
+
+  Future<List<Aviso>> fetchAvisos() async {
+    final rows = await _db.from('avisos').select().eq('ativo', true).order('fixado', ascending: false).order('data_hora', ascending: false);
+    return (rows as List).map((r) => Aviso.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<Aviso> insertAviso(Aviso aviso) async {
+    final rows = await _db.from('avisos').insert(aviso.toJson()).select().single();
+    return Aviso.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Aviso> updateAviso(Aviso aviso) async {
+    final rows = await _db.from('avisos').update(aviso.toJson()).eq('id', aviso.id).select().single();
+    return Aviso.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deleteAviso(int id) async {
+    await _db.from('avisos').delete().eq('id', id);
+  }
+
+  Future<List<EventoEstudio>> fetchEventos() async {
+    final rows = await _db.from('eventos').select().eq('ativo', true).order('data_inicio');
+    return (rows as List).map((r) => EventoEstudio.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<EventoEstudio> insertEvento(EventoEstudio evento) async {
+    final rows = await _db.from('eventos').insert(evento.toJson()).select().single();
+    return EventoEstudio.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<EventoEstudio> updateEvento(EventoEstudio evento) async {
+    final rows = await _db.from('eventos').update(evento.toJson()).eq('id', evento.id).select().single();
+    return EventoEstudio.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<void> deleteEvento(int id) async {
+    await _db.from('eventos').delete().eq('id', id);
+  }
+
+  Future<Set<String>> fetchLeiturasAluno(int alunoId) async {
+    final rows = await _db.from('comunicacao_leituras').select().eq('aluno_id', alunoId);
+    return (rows as List)
+        .map((r) {
+          final m = Map<String, dynamic>.from(r as Map);
+          return '${m['item_tipo']}_${m['item_id']}';
+        })
+        .toSet();
+  }
+
+  Future<void> marcarComunicacaoLida(int alunoId, String itemTipo, int itemId) async {
+    await _db.from('comunicacao_leituras').upsert({
+      'aluno_id': alunoId,
+      'item_tipo': itemTipo,
+      'item_id': itemId,
+      'lido_em': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Indicacao>> fetchIndicacoes() async {
+    final rows = await _db.from('indicacoes').select().order('data_criacao', ascending: false);
+    return (rows as List).map((r) => Indicacao.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  Future<Indicacao> insertIndicacao(Indicacao indicacao) async {
+    final payload = indicacao.toJson();
+    final rows = await _db.from('indicacoes').insert(payload).select().single();
+    return Indicacao.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Indicacao> updateIndicacao(Indicacao indicacao) async {
+    final rows = await _db
+        .from('indicacoes')
+        .update(indicacao.toJson())
+        .eq('id', indicacao.id)
+        .select()
+        .single();
+    return Indicacao.fromJson(Map<String, dynamic>.from(rows as Map));
   }
 }

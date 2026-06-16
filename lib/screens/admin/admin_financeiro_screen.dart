@@ -4,6 +4,7 @@ import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
+import 'package:pulguinha/models/billing_rules.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
@@ -30,6 +31,10 @@ class AdminFinanceiroScreen extends StatelessWidget {
         const Text('FINANCEIRO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.white)),
         const SizedBox(height: 16),
         _configVencimentoCard(context, state),
+        const SizedBox(height: 16),
+        _regrasCobrancaSection(context, state),
+        const SizedBox(height: 16),
+        _indicacoesSection(context, state),
         const SizedBox(height: 20),
         Row(
           children: [
@@ -264,6 +269,272 @@ class AdminFinanceiroScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _regrasCobrancaSection(BuildContext context, AppState state) {
+    final regras = state.regrasCobranca;
+
+    return PulguinhaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Regras de cobrança', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
+          const SizedBox(height: 6),
+          const Text(
+            'Configure descontos e novas regras. O app aplica desconto antecipado, indicação e crédito na loja.',
+            style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          if (regras.isEmpty)
+            const Text('Nenhuma regra configurada.', style: TextStyle(fontSize: 12, color: AppColors.grayDim))
+          else ...regras.map((r) => _regraCard(context: context, state: state, regra: r)),
+          const SizedBox(height: 12),
+          NeonButton(
+            label: '➕ Nova regra',
+            fullWidth: true,
+            onPressed: () => _abrirFormRegra(context, state),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _indicacoesSection(BuildContext context, AppState state) {
+    final lista = state.indicacoes;
+    final pendentes = lista.where((i) => i.status == 'pendente').length;
+    final convertidas = lista.where((i) => i.status == 'convertida').length;
+
+    return PulguinhaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Indique e Ganhe', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
+          const SizedBox(height: 6),
+          Text(
+            '$pendentes pendentes · $convertidas convertidas',
+            style: const TextStyle(fontSize: 11, color: AppColors.gray),
+          ),
+          const SizedBox(height: 12),
+          if (lista.isEmpty)
+            const Text('Nenhuma indicação registrada ainda.', style: TextStyle(fontSize: 12, color: AppColors.grayDim))
+          else
+            ...lista.take(20).map((ind) {
+              final indicador = state.alunoPorId(ind.indicadorId);
+              final indicado = state.alunoPorId(ind.indicadoId);
+              final statusLabel = ind.status == 'convertida'
+                  ? 'Convertida'
+                  : ind.status == 'pendente'
+                      ? 'Pendente'
+                      : ind.status;
+              final variant = ind.status == 'convertida'
+                  ? BadgeVariant.neon
+                  : ind.status == 'pendente'
+                      ? BadgeVariant.yellow
+                      : BadgeVariant.gray;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: PulguinhaCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${indicador?.nome ?? 'Aluno #${ind.indicadorId}'} → ${indicado?.nome ?? 'Aluno #${ind.indicadoId}'}',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.white),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Código ${ind.codigoUsado} · ${DateHelper.formatarData(ind.dataCriacao)}${ind.dataConversao != null ? ' · conv. ${DateHelper.formatarData(ind.dataConversao!)}' : ''}',
+                              style: const TextStyle(fontSize: 10, color: AppColors.gray),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PulguinhaBadge(label: statusLabel, variant: variant),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _regraCard({required BuildContext context, required AppState state, required RegraCobranca regra}) {
+    final valor =
+        regra.tipo == 'desconto_antecipado' ? '${regra.valorPercent.toStringAsFixed(0)}%' : regra.valorFixo > 0 ? 'R\$ ${regra.valorFixo.toStringAsFixed(0)}' : '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: PulguinhaCard(
+        borderColor: regra.ativo ? AppColors.neon.withValues(alpha: 0.25) : AppColors.border,
+        backgroundColor: regra.ativo ? AppColors.neon.withValues(alpha: 0.06) : null,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(regra.nome, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.white)),
+                  const SizedBox(height: 4),
+                  Text('${regra.tipo.replaceAll('_', ' ')}${valor.isNotEmpty ? ' · $valor' : ''}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                ],
+              ),
+            ),
+            PulguinhaBadge(
+              label: regra.ativo ? 'Ativa' : 'Inativa',
+              variant: regra.ativo ? BadgeVariant.neon : BadgeVariant.gray,
+            ),
+            const SizedBox(width: 10),
+            IconButton(
+              tooltip: 'Editar regra',
+              icon: const Icon(Icons.edit_rounded, color: AppColors.neon),
+              onPressed: () => _abrirFormRegra(context, state, editando: regra),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _abrirFormRegra(
+    BuildContext context,
+    AppState state, {
+    RegraCobranca? editando,
+  }) async {
+    String tipoSel = editando?.tipo ?? 'desconto_antecipado';
+    final tipoPersonalizadaCtrl = TextEditingController(
+      text: (editando != null && !['desconto_antecipado', 'indique_ganhe'].contains(editando.tipo)) ? editando.tipo : 'personalizada',
+    );
+    final nomeCtrl = TextEditingController(text: editando?.nome ?? '');
+    final ativo = editando?.ativo ?? true;
+    final percCtrl = TextEditingController(text: '${editando?.valorPercent ?? 10}');
+    final fixCtrl = TextEditingController(text: '${editando?.valorFixo ?? 30}');
+
+    bool ativoLocal = ativo;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          backgroundColor: AppColors.card,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+          title: Text(editando == null ? 'Nova regra' : 'Editar regra', style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w900)),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: tipoSel,
+                    items: const [
+                      DropdownMenuItem(value: 'desconto_antecipado', child: Text('Desconto antes do vencimento')),
+                      DropdownMenuItem(value: 'indique_ganhe', child: Text('Indique e ganhe')),
+                      DropdownMenuItem(value: 'personalizada', child: Text('Personalizada (novo tipo)')),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setLocal(() => tipoSel = v);
+                    },
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.card2,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (tipoSel == 'personalizada')
+                    FieldLabel(
+                      label: 'Tipo (id da regra)',
+                      child: TextField(
+                        controller: tipoPersonalizadaCtrl,
+                        decoration: const InputDecoration(hintText: 'ex.: regra_cpf_valido'),
+                      ),
+                    ),
+                  FieldLabel(
+                    label: 'Nome da regra',
+                    child: TextField(
+                      controller: nomeCtrl,
+                      decoration: const InputDecoration(hintText: 'Ex.: Desconto antes do vencimento'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Ativa', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white)),
+                    value: ativoLocal,
+                    activeColor: AppColors.neon,
+                    onChanged: (v) => setLocal(() => ativoLocal = v),
+                  ),
+                  const SizedBox(height: 10),
+                  if (tipoSel == 'desconto_antecipado' || tipoSel == 'personalizada')
+                    FieldLabel(
+                      label: 'Desconto (%)',
+                      child: TextField(
+                        controller: percCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(hintText: '10'),
+                      ),
+                    ),
+                  if (tipoSel == 'indique_ganhe' || tipoSel == 'personalizada')
+                    FieldLabel(
+                      label: 'Crédito/valor fixo (R\$)',
+                      child: TextField(
+                        controller: fixCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(hintText: '30'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () async {
+                final tipoFinal = tipoSel == 'personalizada' ? tipoPersonalizadaCtrl.text.trim() : tipoSel;
+                if (tipoFinal.isEmpty) return;
+
+                final nome = nomeCtrl.text.trim().isEmpty ? tipoFinal.replaceAll('_', ' ') : nomeCtrl.text.trim();
+                final valorPercent = double.tryParse(percCtrl.text.replaceAll(',', '.')) ?? (tipoFinal == 'desconto_antecipado' ? 10 : 0);
+                final valorFixo = double.tryParse(fixCtrl.text.replaceAll(',', '.')) ?? (tipoFinal == 'indique_ganhe' ? 30 : 0);
+
+                final id = (tipoFinal == 'desconto_antecipado' || tipoFinal == 'indique_ganhe') ? tipoFinal : 'custom_${DateTime.now().millisecondsSinceEpoch}';
+
+                final regra = RegraCobranca(
+                  id: id,
+                  nome: nome,
+                  tipo: tipoFinal,
+                  valorPercent: valorPercent,
+                  valorFixo: valorFixo,
+                  ativo: ativoLocal,
+                  descricao: '',
+                );
+
+                final novaLista = List<RegraCobranca>.from(state.regrasCobranca);
+                final idx = novaLista.indexWhere((r) => r.id == regra.id);
+                if (idx >= 0) {
+                  novaLista[idx] = regra;
+                } else {
+                  novaLista.add(regra);
+                }
+                await state.salvarRegrasCobranca(novaLista);
+                if (!context.mounted) return;
+                Navigator.pop(ctx);
+              },
+              child: const Text('Salvar', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w900)),
+            ),
+          ],
+        ),
       ),
     );
   }

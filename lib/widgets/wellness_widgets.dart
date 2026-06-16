@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:pulguinha/data/training_tips.dart';
+import 'package:provider/provider.dart';
+import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/services/app_sound_service.dart';
 import 'package:pulguinha/services/wellness_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -145,14 +147,20 @@ class _MegaAguaCardState extends State<MegaAguaCard> with SingleTickerProviderSt
   }
 
   Future<void> _addCopo() async {
+    final state = context.read<AppState>();
+    final alunoId = state.usuario?.id;
     await _pulseCtrl.forward(from: 0);
     _pulseCtrl.reverse();
     final data = await WellnessService.instance.addCopo();
     if (!mounted) return;
+    await AppSoundService.instance.playAgua();
     setState(() {
       _data = data;
       _mensagem = WellnessService.instance.mensagemAgua(data);
     });
+    if (alunoId != null) {
+      state.registrarProgressoAgua(alunoId, data.copos);
+    }
   }
 
   @override
@@ -279,7 +287,7 @@ class DicaDoDiaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dica = TrainingTipsData.dicaDoDia();
+    final dica = context.watch<AppState>().dicaDoDia();
     return PulguinhaCard(
       borderColor: AppColors.neon.withValues(alpha: 0.25),
       child: Column(
@@ -483,6 +491,7 @@ class _TrainingTipsListState extends State<TrainingTipsList> {
 
   @override
   Widget build(BuildContext context) {
+    final tips = context.watch<AppState>().dicasAtivas();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -504,8 +513,8 @@ class _TrainingTipsListState extends State<TrainingTipsList> {
           ),
         ),
         const SizedBox(height: 12),
-        ...TrainingTipsData.tips.map((tip) {
-          final open = _expanded.contains(tip.id);
+        ...tips.map((tip) {
+          final open = _expanded.contains('${tip.id}');
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: PulguinhaCard(
@@ -513,9 +522,9 @@ class _TrainingTipsListState extends State<TrainingTipsList> {
               child: InkWell(
                 onTap: () => setState(() {
                   if (open) {
-                    _expanded.remove(tip.id);
+                    _expanded.remove('${tip.id}');
                   } else {
-                    _expanded.add(tip.id);
+                    _expanded.add('${tip.id}');
                   }
                 }),
                 borderRadius: BorderRadius.circular(16),

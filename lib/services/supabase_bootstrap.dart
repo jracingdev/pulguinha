@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseBootstrap {
   static String? _activeUrl;
   static String? _activeKey;
+  static bool _clientReady = false;
 
   static Future<void> ensureInitialized({
     required String url,
@@ -16,18 +17,17 @@ class SupabaseBootstrap {
       throw StateError('URL ou chave anon do Supabase vazias.');
     }
 
-    if (Supabase.instance.isInitialized &&
-        _activeUrl == trimmedUrl &&
-        _activeKey == trimmedKey) {
+    if (_clientReady && _activeUrl == trimmedUrl && _activeKey == trimmedKey) {
       return;
     }
 
-    if (Supabase.instance.isInitialized) {
+    if (_clientReady) {
       try {
         await Supabase.instance.dispose();
       } catch (e) {
         debugPrint('Supabase dispose: $e');
       }
+      _clientReady = false;
     }
 
     await Supabase.initialize(
@@ -36,5 +36,6 @@ class SupabaseBootstrap {
     );
     _activeUrl = trimmedUrl;
     _activeKey = trimmedKey;
+    _clientReady = true;
   }
 }

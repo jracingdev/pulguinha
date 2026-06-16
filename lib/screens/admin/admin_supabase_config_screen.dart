@@ -106,9 +106,10 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
         backgroundColor: AppColors.card,
         title: const Text('Conexão Supabase (avançado)', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
           PulguinhaCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +182,8 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
             const SizedBox(height: 16),
             NeonButton(label: _saving ? 'Salvando...' : '💾 Salvar e conectar', fullWidth: true, onPressed: _saving ? null : _save),
           ],
-        ],
+          ],
+        ),
       ),
     );
   }

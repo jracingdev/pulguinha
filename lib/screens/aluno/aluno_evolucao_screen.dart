@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/widgets/desafios_widgets.dart';
 import 'package:pulguinha/widgets/wellness_widgets.dart';
 
 class AlunoEvolucaoScreen extends StatefulWidget {
@@ -16,6 +19,7 @@ class _AlunoEvolucaoScreenState extends State<AlunoEvolucaoScreen> {
     ('💧', 'Água'),
     ('📊', 'IMC'),
     ('🏋️', 'Dicas'),
+    ('🏆', 'Desafios'),
   ];
 
   @override
@@ -75,6 +79,7 @@ class _AlunoEvolucaoScreenState extends State<AlunoEvolucaoScreen> {
           0 => const MegaAguaCard(),
           1 => const ImcCalculatorWidget(),
           2 => const TrainingTipsList(),
+          3 => DesafiosAlunoSection(alunoId: context.watch<AppState>().usuario?.id ?? 0),
           _ => const SizedBox.shrink(),
         },
       ],

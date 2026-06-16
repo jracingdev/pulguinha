@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
+import 'package:pulguinha/widgets/change_password_dialog.dart';
 import 'package:pulguinha/widgets/theme_settings_tile.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
@@ -137,6 +139,63 @@ class AlunoPerfilScreen extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 16),
+        PulguinhaCard(
+          borderColor: AppColors.neon.withValues(alpha: 0.25),
+          backgroundColor: AppColors.neon.withValues(alpha: 0.05),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionTitle(icon: '🎁', title: 'Indique e Ganhe'),
+              const SizedBox(height: 8),
+              Text(
+                'Compartilhe seu código. Quem se cadastrar ganha desconto na 1ª mensalidade e você recebe crédito quando pagar.',
+                style: TextStyle(fontSize: 12, color: AppColors.gray.withValues(alpha: 0.9), height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.card2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Text(
+                        aluno.codigoIndicacao.isNotEmpty ? aluno.codigoIndicacao : 'Gerando código...',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Copiar código',
+                    onPressed: aluno.codigoIndicacao.isEmpty
+                        ? null
+                        : () {
+                            Clipboard.setData(ClipboardData(text: aluno.codigoIndicacao));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Código copiado!'), behavior: SnackBarBehavior.floating),
+                            );
+                          },
+                    icon: const Icon(Icons.copy_rounded, color: AppColors.neon),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _infoBox('Crédito disponível', 'R\$ ${aluno.creditoIndicacao.toStringAsFixed(0)}', highlight: aluno.creditoIndicacao > 0),
+                  _infoBox('Indicações convertidas', '${state.indicacoesConvertidasPor(aluno.id)}'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           title: const Text('QR de backup (opcional)', style: TextStyle(fontSize: 12, color: AppColors.grayDim, fontWeight: FontWeight.w600)),
@@ -177,8 +236,18 @@ class AlunoPerfilScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle(icon: '🔐', title: 'Segurança'),
-              _securityItem(context, '🔒', 'Alterar senha', 'Em breve via Supabase Auth', () {
-                showEmDesenvolvimentoDialog(context, titulo: 'Alterar senha', mensagem: 'Disponível quando Supabase Auth for configurado.');
+              _securityItem(context, '🔒', 'Alterar senha', 'Troque sua senha de acesso', () async {
+                final ok = await showChangePasswordDialog(
+                  context,
+                  titulo: 'Alterar senha',
+                  exigeSenhaAtual: true,
+                  onConfirm: (atual, nova) => context.read<AppState>().alterarSenhaAluno(aluno.id, atual, nova),
+                );
+                if (ok == true && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Senha alterada com sucesso!'), behavior: SnackBarBehavior.floating),
+                  );
+                }
               }),
             ],
           ),

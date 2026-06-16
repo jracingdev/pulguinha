@@ -6,12 +6,14 @@ import 'package:pulguinha/config/supabase_config.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/screens/admin/admin_agendamentos_screen.dart';
 import 'package:pulguinha/screens/admin/admin_alunos_screen.dart';
+import 'package:pulguinha/screens/admin/admin_comunicacao_screen.dart';
 import 'package:pulguinha/screens/admin/admin_dashboard_screen.dart';
 import 'package:pulguinha/screens/admin/admin_financeiro_screen.dart';
 import 'package:pulguinha/screens/admin/admin_presenca_screen.dart';
 import 'package:pulguinha/screens/admin/admin_produtos_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_agenda_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_checkin_screen.dart';
+import 'package:pulguinha/screens/aluno/aluno_avisos_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_home_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_evolucao_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_turma_screen.dart';
@@ -22,6 +24,7 @@ import 'package:pulguinha/screens/shared/loja_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/theme/app_theme.dart';
 import 'package:pulguinha/widgets/app_shell.dart';
+import 'package:pulguinha/widgets/realtime_in_app_listener.dart';
 
 class PulguinhaApp extends StatelessWidget {
   const PulguinhaApp({super.key});
@@ -44,7 +47,7 @@ class PulguinhaApp extends StatelessWidget {
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          home: const _RootRouter(),
+          home: const RealtimeInAppListener(child: _RootRouter()),
         ),
       ),
     );
@@ -89,6 +92,7 @@ class _AdminShell extends StatelessWidget {
   static const _tabs = [
     TabItem(id: 'dashboard', label: 'Início', icon: '⚡'),
     TabItem(id: 'alunos', label: 'Alunos', icon: '👥'),
+    TabItem(id: 'comunicacao', label: 'Avisos', icon: '📢'),
     TabItem(id: 'agenda', label: 'Agenda', icon: '📅'),
     TabItem(id: 'presenca', label: 'Presença', icon: '📱'),
     TabItem(id: 'financeiro', label: 'Financ.', icon: '💰'),
@@ -100,6 +104,7 @@ class _AdminShell extends StatelessWidget {
     final body = switch (state.adminTab) {
       'dashboard' => const AdminDashboardScreen(),
       'alunos' => const AdminAlunosScreen(),
+      'comunicacao' => const AdminComunicacaoScreen(),
       'agenda' => const AdminAgendamentosScreen(),
       'presenca' => const AdminPresencaScreen(),
       'financeiro' => const AdminFinanceiroScreen(),
@@ -139,6 +144,7 @@ class _AlunoShell extends StatelessWidget {
 
   static const _tabs = [
     TabItem(id: 'home', label: 'Início', icon: '🏠'),
+    TabItem(id: 'avisos', label: 'Avisos', icon: '📢'),
     TabItem(id: 'turma', label: 'Turma', icon: '👥'),
     TabItem(id: 'evolucao', label: 'Evolução', icon: '📈'),
     TabItem(id: 'checkin', label: 'Check-in', icon: '📷'),
@@ -152,6 +158,7 @@ class _AlunoShell extends StatelessWidget {
     final usuario = state.usuario!;
     final body = switch (state.alunoTab) {
       'home' => AlunoHomeScreen(usuario: usuario),
+      'avisos' => AlunoAvisosScreen(usuario: usuario),
       'turma' => AlunoTurmaScreen(usuario: usuario),
       'evolucao' => const AlunoEvolucaoScreen(),
       'checkin' => AlunoCheckinScreen(usuario: usuario),
@@ -165,6 +172,10 @@ class _AlunoShell extends StatelessWidget {
       tabs: _tabs,
       activeTab: state.alunoTab,
       onTabChanged: state.setAlunoTab,
+      tabBadges: {
+        if (usuario.id != null && state.mencoesNaoLidas(usuario.id!) > 0)
+          'avisos': state.mencoesNaoLidas(usuario.id!),
+      },
       onLogout: state.logout,
       headerRight: Text(
         'Olá, ${usuario.nome.split(' ').first}',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
@@ -6,7 +7,9 @@ import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/services/viacep_service.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
+import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -21,6 +24,13 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
   final nomeCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final telCtrl = TextEditingController();
+  final cepCtrl = TextEditingController();
+  final logradouroCtrl = TextEditingController();
+  final numeroCtrl = TextEditingController();
+  final complementoCtrl = TextEditingController();
+  final bairroCtrl = TextEditingController();
+  final cidadeCtrl = TextEditingController();
+  final ufCtrl = TextEditingController();
   final senhaCtrl = TextEditingController();
   final confirmSenhaCtrl = TextEditingController();
   final nascCtrl = TextEditingController();
@@ -29,6 +39,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
   final emergCtrl = TextEditingController();
   final emergTelCtrl = TextEditingController();
   final alunoDesdeCtrl = TextEditingController();
+  final codigoIndicacaoCtrl = TextEditingController();
 
   String? fotoBase64;
   var nivel = 'Iniciante';
@@ -37,11 +48,21 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
   String? erro;
   bool sucesso = false;
 
+  var cepLoading = false;
+  String? cepErro;
+
   @override
   void dispose() {
     nomeCtrl.dispose();
     emailCtrl.dispose();
     telCtrl.dispose();
+    cepCtrl.dispose();
+    logradouroCtrl.dispose();
+    numeroCtrl.dispose();
+    complementoCtrl.dispose();
+    bairroCtrl.dispose();
+    cidadeCtrl.dispose();
+    ufCtrl.dispose();
     senhaCtrl.dispose();
     confirmSenhaCtrl.dispose();
     nascCtrl.dispose();
@@ -50,6 +71,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
     emergCtrl.dispose();
     emergTelCtrl.dispose();
     alunoDesdeCtrl.dispose();
+    codigoIndicacaoCtrl.dispose();
     super.dispose();
   }
 
@@ -95,6 +117,18 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
     }
 
     final state = context.read<AppState>();
+    final codigoInd = codigoIndicacaoCtrl.text.trim();
+    if (codigoInd.isNotEmpty) {
+      final errCodigo = state.validarCodigoIndicacao(codigoInd);
+      if (errCodigo != null) {
+        setState(() {
+          erro = errCodigo;
+          loading = false;
+        });
+        return;
+      }
+    }
+
     final avatar = nomeCtrl.text.split(' ').map((n) => n[0]).take(2).join().toUpperCase();
     final aluno = Aluno(
       id: DateTime.now().millisecondsSinceEpoch,
@@ -102,6 +136,13 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       email: emailCtrl.text.trim().toLowerCase(),
       senha: senhaCtrl.text,
       telefone: telCtrl.text.trim(),
+      cep: cepCtrl.text.trim(),
+      logradouro: logradouroCtrl.text.trim(),
+      numero: numeroCtrl.text.trim(),
+      complemento: complementoCtrl.text.trim(),
+      bairro: bairroCtrl.text.trim(),
+      cidade: cidadeCtrl.text.trim(),
+      uf: ufCtrl.text.trim(),
       plano: 'Mensal',
       vencimento: MockData.vencimentoPendente,
       status: 'Pendente',
@@ -119,7 +160,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       foto: fotoBase64,
     );
 
-    final msg = await state.cadastrarAlunoPublico(aluno);
+    final msg = await state.cadastrarAlunoPublico(aluno, codigoIndicacao: codigoInd);
     if (!mounted) return;
     setState(() {
       loading = false;
@@ -128,6 +169,30 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       } else {
         sucesso = true;
       }
+    });
+  }
+
+  Future<void> _buscarCep() async {
+    setState(() {
+      cepErro = null;
+      cepLoading = true;
+    });
+
+    final res = await ViaCepService.instance.buscar(cepCtrl.text.trim());
+    if (!mounted) return;
+
+    setState(() => cepLoading = false);
+
+    if (res == null || res.erro) {
+      setState(() => cepErro = 'CEP inválido ou não encontrado.');
+      return;
+    }
+
+    setState(() {
+      logradouroCtrl.text = res.logradouro;
+      bairroCtrl.text = res.bairro;
+      cidadeCtrl.text = res.cidade;
+      ufCtrl.text = res.uf;
     });
   }
 
@@ -141,11 +206,12 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
         title: const Text('Criar conta'),
         backgroundColor: AppColors.card,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             const Center(child: PulguinhaLogo(size: 100, borderRadius: 20)),
             const SizedBox(height: 8),
             const Text(
@@ -192,15 +258,80 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
             ),
             FieldLabel(label: 'Nome completo *', child: TextField(controller: nomeCtrl)),
             FieldLabel(label: 'E-mail *', child: TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress)),
-            FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl, keyboardType: TextInputType.phone)),
             FieldLabel(
-              label: 'Aluno desde (opcional)',
+              label: 'Código de indicação (opcional)',
               child: TextField(
-                controller: alunoDesdeCtrl,
-                decoration: const InputDecoration(hintText: '15-06-2026 — quando começou a treinar'),
+                controller: codigoIndicacaoCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  hintText: 'Ex: MAR1234',
+                  helperText: 'Ganhe 5% na 1ª mensalidade se foi indicado por um aluno.',
+                ),
               ),
             ),
-            FieldLabel(label: 'Data de nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
+            FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl, keyboardType: TextInputType.phone)),
+            const SizedBox(height: 10),
+            const SectionTitle(icon: '📍', title: 'Endereço'),
+            FieldLabel(
+              label: 'CEP',
+              child: TextField(
+                controller: cepCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  hintText: '00000-000',
+                  suffixIcon: cepLoading
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : (cepCtrl.text.trim().length == 8 ? const Icon(Icons.search, color: AppColors.neon) : null),
+                ),
+                onChanged: (v) {
+                  setState(() => cepErro = null);
+                  final digits = v.replaceAll(RegExp(r'\D'), '');
+                  if (digits.length == 8 && !cepLoading) _buscarCep();
+                },
+              ),
+            ),
+            if (cepErro != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  '⚠️ $cepErro',
+                  style: const TextStyle(color: AppColors.red, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+              ),
+            FieldLabel(label: 'Logradouro', child: TextField(controller: logradouroCtrl)),
+            Row(
+              children: [
+                Expanded(
+                  child: FieldLabel(
+                    label: 'Número',
+                    child: TextField(controller: numeroCtrl, keyboardType: TextInputType.number),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FieldLabel(label: 'Complemento', child: TextField(controller: complementoCtrl)),
+                ),
+              ],
+            ),
+            FieldLabel(label: 'Bairro', child: TextField(controller: bairroCtrl)),
+            FieldLabel(label: 'Cidade', child: TextField(controller: cidadeCtrl)),
+            FieldLabel(
+              label: 'UF',
+              child: TextField(
+                controller: ufCtrl,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 2,
+              ),
+            ),
+            FieldLabel(
+              label: 'Aluno desde (opcional)',
+              child: DateField(controller: alunoDesdeCtrl, lastDate: DateTime.now().add(const Duration(days: 365))),
+            ),
+            FieldLabel(
+              label: 'Data de nascimento',
+              child: DateField(controller: nascCtrl, lastDate: DateTime.now(), hintText: '13-06-1995'),
+            ),
             FieldLabel(label: 'Senha *', child: TextField(controller: senhaCtrl, obscureText: true)),
             FieldLabel(label: 'Confirmar senha *', child: TextField(controller: confirmSenhaCtrl, obscureText: true)),
             const SectionTitle(icon: '🏥', title: 'Anamnese'),
@@ -241,7 +372,8 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Já tenho conta — Fazer login', style: TextStyle(color: AppColors.neon)),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

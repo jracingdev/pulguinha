@@ -7,6 +7,8 @@ import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
+import 'package:pulguinha/widgets/change_password_dialog.dart';
 import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -362,7 +364,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const Spacer(),
-            TextButton(onPressed: () {}, child: const Text('Esqueci a senha', style: TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700))),
+            TextButton(
+              onPressed: () => showForgotPasswordDialog(
+                context,
+                buscarDica: context.read<AppState>().dicaRecuperacaoSenha,
+              ),
+              child: const Text('Esqueci a senha', style: TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700)),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -401,7 +409,13 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const CadastroAlunoScreen())),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const SobreAppScreen())),
+          icon: const Icon(Icons.contact_page_outlined, size: 16, color: AppColors.neon),
+          label: const Text('Contato do estúdio', style: TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

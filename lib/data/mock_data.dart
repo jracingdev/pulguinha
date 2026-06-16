@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:pulguinha/data/training_tips.dart';
 import 'package:pulguinha/models/models.dart';
 
 class MockData {
@@ -202,4 +203,59 @@ class MockData {
       ),
     ];
   }
+
+  static List<Aviso> avisosIniciais() => [
+        Aviso(
+          id: 1,
+          titulo: 'Bem-vindos ao Pulguinha!',
+          texto: 'Confira a Agenda de eventos e agende suas aulas com vaga disponível.',
+          autor: 'Admin',
+          dataHora: DateTime.now().subtract(const Duration(hours: 2)),
+          fixado: true,
+        ),
+      ];
+
+  static List<EventoEstudio> eventosIniciais() => [
+        EventoEstudio(
+          id: 1,
+          titulo: 'Treino funcional ao ar livre',
+          descricao: 'Encontro especial no parque — traga água e toalha.',
+          dataInicio: DateTime.now().add(const Duration(days: 14)),
+          local: 'Parque Central',
+        ),
+      ];
+
+  static List<DicaTreino> dicasIniciais() => TrainingTipsData.tips
+      .asMap()
+      .entries
+      .map((e) => DicaTreino(
+            id: e.key + 1,
+            icon: e.value.icon,
+            titulo: e.value.titulo,
+            texto: e.value.texto,
+            categoria: e.value.categoria,
+            ordem: e.key,
+          ))
+      .toList();
+
+  static List<Desafio> desafiosIniciais() => [
+        Desafio(
+          id: 1,
+          titulo: 'Semana de fogo',
+          descricao: 'Faça 3 check-ins esta semana e ganhe pontos extras!',
+          tipo: TipoDesafio.checkins,
+          meta: 3,
+          pontosRecompensa: 30,
+          dataInicio: today,
+        ),
+        Desafio(
+          id: 2,
+          titulo: 'Hidratação campeã',
+          descricao: 'Bata a meta de água (8 copos) em um dia.',
+          tipo: TipoDesafio.agua,
+          meta: 8,
+          pontosRecompensa: 20,
+          dataInicio: today,
+        ),
+      ];
 }

@@ -3,11 +3,18 @@ import 'package:pulguinha/config/supabase_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pulguinha/data/mock_data.dart';
+import 'package:pulguinha/models/billing_rules.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/services/supabase_bootstrap.dart';
 import 'package:pulguinha/services/supabase_service.dart';
 import 'package:pulguinha/services/finance_settings_storage.dart';
+import 'package:pulguinha/services/referral_storage.dart';
+import 'package:pulguinha/services/notifications/notification_payload.dart';
+import 'package:pulguinha/services/notifications/notification_scheduler.dart';
+import 'package:pulguinha/services/notifications/notification_settings_storage.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/horario_helper.dart';
+import 'package:pulguinha/utils/mention_helper.dart';
 import 'package:pulguinha/utils/vencimento_helper.dart';
 
 enum AppScreen { public, login, admin, aluno }
@@ -39,10 +46,21 @@ class AppState extends ChangeNotifier {
   List<Produto> produtos = [];
   List<Presenca> presencas = [];
   List<PostTurma> postsTurma = [];
+  List<Aviso> avisos = [];
+  List<EventoEstudio> eventos = [];
+  List<DicaTreino> dicas = [];
+  List<Desafio> desafios = [];
+  List<Indicacao> indicacoes = [];
+  List<DesafioProgresso> desafioProgresso = [];
+  Set<String> comunicacaoLidas = {};
+  NotificationSettings notificationSettings = const NotificationSettings();
+  bool adminParticipaMural = false;
   String adminTab = 'dashboard';
   String alunoTab = 'home';
   ThemeMode themeMode = ThemeMode.dark;
   int diaVencimentoPadrao = FinanceSettingsStorage.defaultDiaVencimento;
+  int diasParaInadimplencia = FinanceSettingsStorage.defaultDiasInadimplencia;
+  List<RegraCobranca> regrasCobranca = RegraCobranca.padrao();
 
   bool loading = true;
   bool useMock = true;
@@ -55,64 +73,421 @@ class AppState extends ChangeNotifier {
   }
 
   static const _themePrefKey = 'pulguinha_theme_mode';
+  static const _adminMuralPrefKey = 'pulguinha_admin_participa_mural';
 
   Future<void> init() async {
     loading = true;
     initError = null;
     notifyListeners();
 
-    await _loadThemeMode();
-    await _loadFinanceSettings();
+    try {
+      await _loadThemeMode();
+      await _loadAdminMuralPref();
+      await _loadFinanceSettings();
+      await NotificationScheduler.instance.loadSettings();
+      notificationSettings = await NotificationSettingsStorage.instance.load();
+      await NotificationScheduler.instance.refreshSettings(notificationSettings);
 
-    if (SupabaseConfig.isConfigured) {
-      try {
-        await SupabaseBootstrap.ensureInitialized(
-          url: SupabaseConfig.url,
-          anonKey: SupabaseConfig.anonKey,
-        );
-        final svc = SupabaseService.instance;
-        final results = await Future.wait([
-          svc.fetchAlunos(),
-          svc.fetchHorarios(),
-          svc.fetchAgendamentos(),
-          svc.fetchProdutos(),
-          svc.fetchPresencas(),
-          svc.fetchPostsTurma(),
-        ]);
-        alunos = results[0] as List<Aluno>;
-        horarios = results[1] as List<Horario>;
-        agendamentos = results[2] as List<Agendamento>;
-        produtos = results[3] as List<Produto>;
-        presencas = results[4] as List<Presenca>;
-        postsTurma = results[5] as List<PostTurma>;
-        useMock = false;
-        _atualizarInadimplentes();
-        try {
-          _subscribeRealtime();
-        } catch (e) {
-          debugPrint('Realtime indisponível (dados online OK): $e');
+      if (SupabaseConfig.isConfigured) {
+        final conectou = await _sincronizarDadosSupabase(includeFotosAlunos: false);
+        if (!conectou) {
+          initError = 'Modo offline (dados locais)';
+          _carregarMock();
+          await _carregarIndicacoesMock();
         }
-      } catch (e) {
-        debugPrint('Supabase indisponível, usando mock: $e');
-        initError = 'Modo offline (dados locais)';
+      } else {
         _carregarMock();
+        await _carregarIndicacoesMock();
       }
-    } else {
+    } catch (e, st) {
+      debugPrint('Erro na inicialização do app: $e\n$st');
+      initError = 'Falha ao iniciar. Usando dados locais.';
       _carregarMock();
+      await _carregarIndicacoesMock();
+    } finally {
+      loading = false;
+      notifyListeners();
     }
-
-    loading = false;
-    notifyListeners();
   }
 
   void _carregarMock() {
     useMock = true;
-    alunos = List.from(MockData.alunosIniciais);
-    horarios = List.from(MockData.horariosIniciais);
+    alunos = _aplicarCodigosIndicacao(List.from(MockData.alunosIniciais));
+    horarios = _processarHorarios(List.from(MockData.horariosIniciais));
     agendamentos = List.from(MockData.agendamentosIniciais);
     produtos = List.from(MockData.produtosLoja);
     presencas = MockData.presencasIniciais();
     postsTurma = MockData.postsTurmaIniciais();
+    avisos = MockData.avisosIniciais();
+    eventos = MockData.eventosIniciais();
+    dicas = MockData.dicasIniciais();
+    desafios = MockData.desafiosIniciais();
+  }
+
+  String _gerarCodigoIndicacao(Aluno aluno) {
+    final nomeBase = aluno.nome.trim().isEmpty ? 'ALUNO' : aluno.nome.trim().split(' ').first;
+    final letras = nomeBase.replaceAll(RegExp(r'[^A-Za-z]'), '').toUpperCase();
+    final prefixo =
+        letras.isEmpty ? 'ALU' : (letras.length >= 3 ? letras.substring(0, 3) : letras.padRight(3, 'X'));
+    final sufixo = (aluno.id % 10000).toString().padLeft(4, '0');
+    return '$prefixo$sufixo';
+  }
+
+  List<Aluno> _aplicarCodigosIndicacao(List<Aluno> lista) {
+    final usados = <String>{};
+    final pendentesSync = <Map<String, dynamic>>[];
+
+    final atualizados = lista.map((a) {
+      var codigo = a.codigoIndicacao;
+      final originalVazio = codigo.isEmpty;
+      if (codigo.isEmpty) {
+        var tentativa = _gerarCodigoIndicacao(a);
+        while (usados.contains(tentativa)) {
+          tentativa = '${tentativa}X';
+        }
+        codigo = tentativa;
+      }
+      usados.add(codigo);
+      if (!useMock && originalVazio) {
+        pendentesSync.add({'id': a.id, 'codigo': codigo});
+      }
+      return a.copyWith(codigoIndicacao: codigo);
+    }).toList();
+
+    for (final item in pendentesSync) {
+      SupabaseService.instance
+          .updateAlunoFields(item['id'] as int, {'codigo_indicacao': item['codigo']})
+          .catchError((Object e) {
+        debugPrint('Erro ao salvar codigo_indicacao: $e');
+        return null;
+      });
+    }
+
+    return atualizados;
+  }
+
+  Future<void> _carregarIndicacoesMock() async {
+    indicacoes = await ReferralStorage.instance.loadIndicacoes();
+  }
+
+  Future<void> _persistirIndicacoes() async {
+    if (useMock) {
+      await ReferralStorage.instance.saveIndicacoes(indicacoes);
+    }
+  }
+
+  Aluno? buscarAlunoPorCodigoIndicacao(String codigo) {
+    final norm = codigo.trim().toUpperCase();
+    if (norm.isEmpty) return null;
+    return alunos.where((a) => a.codigoIndicacao.toUpperCase() == norm).firstOrNull;
+  }
+
+  Indicacao? indicacaoPorIndicado(int indicadoId) =>
+      indicacoes.where((i) => i.indicadoId == indicadoId).firstOrNull;
+
+  bool indicadoElegivelDesconto(int indicadoId) {
+    final ind = indicacaoPorIndicado(indicadoId);
+    return ind != null && ind.status == 'pendente';
+  }
+
+  int indicacoesConvertidasPor(int indicadorId) =>
+      indicacoes.where((i) => i.indicadorId == indicadorId && i.status == 'convertida').length;
+
+  String? validarCodigoIndicacao(String codigo, {int? indicadoId}) {
+    final norm = codigo.trim().toUpperCase();
+    if (norm.isEmpty) return null;
+    final indicador = buscarAlunoPorCodigoIndicacao(norm);
+    if (indicador == null) return 'Código de indicação inválido.';
+    if (indicadoId != null && indicador.id == indicadoId) {
+      return 'Você não pode usar seu próprio código.';
+    }
+    if (indicadoId != null && indicacaoPorIndicado(indicadoId) != null) {
+      return 'Este cadastro já possui indicação.';
+    }
+    return null;
+  }
+
+  Future<String?> registrarIndicacao(String codigo, int indicadoId) async {
+    final erro = validarCodigoIndicacao(codigo, indicadoId: indicadoId);
+    if (erro != null) return erro;
+    final norm = codigo.trim().toUpperCase();
+    if (norm.isEmpty) return null;
+
+    final indicador = buscarAlunoPorCodigoIndicacao(norm)!;
+    final nova = Indicacao(
+      id: DateTime.now().millisecondsSinceEpoch,
+      indicadorId: indicador.id,
+      indicadoId: indicadoId,
+      codigoUsado: norm,
+      status: 'pendente',
+      dataCriacao: MockData.today,
+    );
+
+    if (useMock) {
+      indicacoes = [...indicacoes, nova];
+      await _persistirIndicacoes();
+      notifyListeners();
+      return null;
+    }
+
+    try {
+      final saved = await SupabaseService.instance.insertIndicacao(nova);
+      indicacoes = [saved, ...indicacoes];
+      notifyListeners();
+      return null;
+    } catch (e) {
+      debugPrint('Erro insertIndicacao: $e');
+      return 'Erro ao registrar indicação: ${e.toString().split('\n').first}';
+    }
+  }
+
+  void _processarPagamentoIndicacao(int compradorId, double creditoUsado, {required bool converterIndicacao}) {
+    if (creditoUsado > 0) {
+      alunos = alunos.map((a) {
+        if (a.id != compradorId) return a;
+        final novo = (a.creditoIndicacao - creditoUsado).clamp(0.0, double.infinity);
+        return a.copyWith(creditoIndicacao: novo);
+      }).toList();
+      if (usuario?.id == compradorId) {
+        usuario = alunos.firstWhere((a) => a.id == compradorId).toUsuario();
+      }
+      _syncAluno(compradorId);
+    }
+
+    if (!converterIndicacao) {
+      if (creditoUsado > 0) notifyListeners();
+      return;
+    }
+
+    final ind = indicacaoPorIndicado(compradorId);
+    if (ind == null || ind.status != 'pendente') {
+      if (creditoUsado > 0) notifyListeners();
+      return;
+    }
+
+    final regra = regraPorTipo('indique_ganhe');
+    final bonusIndicador = regra?.valorFixo ?? 30;
+    final convertida = ind.copyWith(status: 'convertida', dataConversao: MockData.today);
+    indicacoes = indicacoes.map((i) => i.id == ind.id ? convertida : i).toList();
+
+    alunos = alunos.map((a) {
+      if (a.id == ind.indicadorId) {
+        return a.copyWith(creditoIndicacao: a.creditoIndicacao + bonusIndicador);
+      }
+      return a;
+    }).toList();
+
+    if (useMock) {
+      _persistirIndicacoes();
+    } else {
+      SupabaseService.instance.updateIndicacao(convertida).catchError((Object e) {
+        debugPrint('Erro ao converter indicação: $e');
+        return convertida;
+      });
+      _syncAluno(ind.indicadorId);
+    }
+    notifyListeners();
+  }
+
+  void registrarCompraProduto(int alunoId, Produto produto) {
+    final detalhe = detalharPrecoComRegras(produto, aluno: alunoPorId(alunoId));
+    _processarPagamentoIndicacao(alunoId, detalhe.creditoIndicador, converterIndicacao: false);
+  }
+
+  Future<List<Indicacao>> _fetchIndicacoesSafe() async {
+    try {
+      return await SupabaseService.instance.fetchIndicacoes();
+    } catch (e) {
+      debugPrint('Indicações indisponíveis (rode migration_indique_ganhe.sql): $e');
+      return [];
+    }
+  }
+
+  Future<List<DicaTreino>> _fetchDicasSafe() async {
+    try {
+      final list = await SupabaseService.instance.fetchDicas();
+      return list.isEmpty ? MockData.dicasIniciais() : list;
+    } catch (e) {
+      debugPrint('Dicas indisponíveis (rode migration_mural_dicas_desafios.sql): $e');
+      return MockData.dicasIniciais();
+    }
+  }
+
+  Future<List<Desafio>> _fetchDesafiosSafe() async {
+    try {
+      return await SupabaseService.instance.fetchDesafios();
+    } catch (e) {
+      debugPrint('Desafios indisponíveis: $e');
+      return MockData.desafiosIniciais();
+    }
+  }
+
+  Future<List<DesafioProgresso>> _fetchDesafioProgressoSafe() async {
+    try {
+      return await SupabaseService.instance.fetchDesafioProgresso();
+    } catch (e) {
+      debugPrint('Progresso desafios indisponível: $e');
+      return [];
+    }
+  }
+
+  Future<List<Aviso>> _fetchAvisosSafe() async {
+    try {
+      return await SupabaseService.instance.fetchAvisos();
+    } catch (e) {
+      debugPrint('Avisos indisponíveis (rode migration_comunicacao.sql): $e');
+      return [];
+    }
+  }
+
+  Future<List<EventoEstudio>> _fetchEventosSafe() async {
+    try {
+      return await SupabaseService.instance.fetchEventos();
+    } catch (e) {
+      debugPrint('Eventos indisponíveis (rode migration_comunicacao.sql): $e');
+      return [];
+    }
+  }
+
+  Future<List<Presenca>> _fetchPresencasSafe() async {
+    try {
+      return await SupabaseService.instance.fetchPresencas();
+    } catch (e) {
+      debugPrint('Presenças indisponíveis: $e');
+      return presencas;
+    }
+  }
+
+  Future<List<PostTurma>> _fetchPostsTurmaSafe() async {
+    try {
+      return await SupabaseService.instance.fetchPostsTurma();
+    } catch (e) {
+      debugPrint('Posts turma indisponíveis: $e');
+      return postsTurma;
+    }
+  }
+
+  /// Carrega dados do Supabase sem cair em mock por falha em tabela secundária.
+  /// Retorna true quando horários/agenda/produtos/alunos foram sincronizados.
+  Future<bool> _sincronizarDadosSupabase({bool includeFotosAlunos = false}) async {
+    if (!SupabaseConfig.isConfigured) return false;
+    try {
+      await SupabaseBootstrap.ensureInitialized(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
+      final svc = SupabaseService.instance;
+      final results = await Future.wait([
+        svc.fetchAlunos(includeFoto: includeFotosAlunos),
+        svc.fetchHorarios(),
+        svc.fetchAgendamentos(),
+        svc.fetchProdutos(),
+        _fetchPresencasSafe(),
+        _fetchPostsTurmaSafe(),
+        _fetchAvisosSafe(),
+        _fetchEventosSafe(),
+        _fetchDicasSafe(),
+        _fetchDesafiosSafe(),
+        _fetchDesafioProgressoSafe(),
+        _fetchIndicacoesSafe(),
+      ]);
+      alunos = _aplicarCodigosIndicacao(results[0] as List<Aluno>);
+      horarios = _processarHorarios(results[1] as List<Horario>);
+      agendamentos = results[2] as List<Agendamento>;
+      produtos = results[3] as List<Produto>;
+      presencas = results[4] as List<Presenca>;
+      postsTurma = results[5] as List<PostTurma>;
+      avisos = results[6] as List<Aviso>;
+      eventos = results[7] as List<EventoEstudio>;
+      dicas = results[8] as List<DicaTreino>;
+      desafios = results[9] as List<Desafio>;
+      desafioProgresso = results[10] as List<DesafioProgresso>;
+      indicacoes = results[11] as List<Indicacao>;
+      useMock = false;
+      initError = null;
+      alunos = _aplicarCodigosIndicacao(alunos);
+      _atualizarInadimplentes();
+      try {
+        _subscribeRealtime();
+      } catch (e) {
+        debugPrint('Realtime indisponível (dados online OK): $e');
+      }
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      debugPrint('Supabase indisponível, usando mock: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<void> _carregarProgressoAluno(int alunoId) async {
+    if (useMock) return;
+    try {
+      final all = await SupabaseService.instance.fetchDesafioProgresso();
+      desafioProgresso = [
+        ...desafioProgresso.where((p) => p.alunoId != alunoId),
+        ...all.where((p) => p.alunoId == alunoId),
+      ];
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Progresso desafio: $e');
+    }
+  }
+
+  Future<void> _loadAdminMuralPref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      adminParticipaMural = prefs.getBool(_adminMuralPrefKey) ?? false;
+    } catch (e) {
+      debugPrint('Erro pref mural admin: $e');
+    }
+  }
+
+  Future<void> setAdminParticipaMural(bool value) async {
+    adminParticipaMural = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_adminMuralPrefKey, value);
+    } catch (e) {
+      debugPrint('Erro ao salvar pref mural: $e');
+    }
+  }
+
+  Future<void> _atualizarFotoAlunoLogado(String email) async {
+    if (useMock || !SupabaseConfig.isConfigured) return;
+    try {
+      final remoto = await SupabaseService.instance.buscarAlunoPorEmail(email);
+      if (remoto == null) return;
+      alunos = alunos
+          .map((a) => a.email.toLowerCase() == email.toLowerCase() ? remoto : a)
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Foto do aluno logado: $e');
+    }
+  }
+
+  Future<void> _carregarLeiturasAluno(int alunoId) async {
+    if (useMock) return;
+    try {
+      comunicacaoLidas = await SupabaseService.instance.fetchLeiturasAluno(alunoId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Leituras: $e');
+    }
+  }
+
+  Future<void> _agendarNotificacoesUsuario() async {
+    NotificationScheduler.instance.setDiasParaInadimplencia(diasParaInadimplencia);
+    await NotificationScheduler.instance.rescheduleAll(
+      agendamentos: agendamentos,
+      alunos: alunos,
+      horarios: horarios,
+      alunoLogadoId: usuario?.tipo == UserType.aluno ? usuario?.id : null,
+      isAdmin: usuario?.isAdmin ?? false,
+      diasParaInadimplencia: diasParaInadimplencia,
+    );
   }
 
   void irParaLogin() {
@@ -130,9 +505,15 @@ class AppState extends ChangeNotifier {
       if (useMock) {
         conectarSupabase();
       } else {
-        recarregarDados();
+        recarregarDados(includeFotosAlunos: true);
       }
     }
+    if (!user.isAdmin && user.id != null) {
+      _carregarLeiturasAluno(user.id!);
+      _carregarProgressoAluno(user.id!);
+      _atualizarFotoAlunoLogado(user.email);
+    }
+    _agendarNotificacoesUsuario();
   }
 
   void logout() {
@@ -145,7 +526,7 @@ class AppState extends ChangeNotifier {
     adminTab = tab;
     notifyListeners();
     if (!useMock && (tab == 'alunos' || tab == 'dashboard' || tab == 'agenda')) {
-      recarregarDados();
+      recarregarDados(includeFotosAlunos: tab == 'alunos');
     }
   }
 
@@ -226,7 +607,7 @@ class AppState extends ChangeNotifier {
     return alunos.where((a) => a.email.toLowerCase() == email.toLowerCase()).firstOrNull;
   }
 
-  Future<String?> cadastrarAlunoPublico(Aluno dados) async {
+  Future<String?> cadastrarAlunoPublico(Aluno dados, {String? codigoIndicacao}) async {
     await garantirConexaoSupabase();
 
     if (await emailJaCadastradoRemoto(dados.email)) {
@@ -248,7 +629,11 @@ class AppState extends ChangeNotifier {
       if (!confirmado) {
         return 'Cadastro não confirmado no servidor. Verifique a conexão e tente novamente.';
       }
-      alunos = [...alunos, saved];
+      alunos = _aplicarCodigosIndicacao([...alunos, saved]);
+      if (codigoIndicacao != null && codigoIndicacao.trim().isNotEmpty) {
+        final errInd = await registrarIndicacao(codigoIndicacao, saved.id);
+        if (errInd != null) debugPrint('Indicação não registrada: $errInd');
+      }
       notifyListeners();
       return null;
     } catch (e) {
@@ -268,12 +653,9 @@ class AppState extends ChangeNotifier {
   Future<bool> conectarSupabase() async {
     if (!SupabaseConfig.isConfigured) return false;
     try {
-      await SupabaseBootstrap.ensureInitialized(
-        url: SupabaseConfig.url,
-        anonKey: SupabaseConfig.anonKey,
-      );
-      await recarregarDados();
-      return !useMock;
+      final ok = await _sincronizarDadosSupabase(includeFotosAlunos: false);
+      if (ok) await _agendarNotificacoesUsuario();
+      return ok;
     } catch (e) {
       debugPrint('Falha ao conectar Supabase: $e');
       initError = 'Sem conexão com o banco';
@@ -306,12 +688,92 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadFinanceSettings() async {
     diaVencimentoPadrao = await FinanceSettingsStorage.instance.loadDiaVencimento();
+    diasParaInadimplencia = await FinanceSettingsStorage.instance.loadDiasInadimplencia();
+    regrasCobranca = await FinanceSettingsStorage.instance.loadRegrasCobranca();
   }
+
+  List<Horario> _ordenarHorarios(List<Horario> lista) => HorarioHelper.ordenar(lista);
+
+  List<Horario> _processarHorarios(List<Horario> lista) => _ordenarHorarios(
+        lista.map((h) => h.copyWith(hora: HorarioHelper.normalizar(h.hora))).toList(),
+      );
+
+  /// Horários sempre em ordem cronológica (06:00 antes de 09:00).
+  List<Horario> get horariosOrdenados => _processarHorarios(horarios);
+
+  Future<void> setDiasParaInadimplencia(int dias) async {
+    diasParaInadimplencia = dias.clamp(1, 60);
+    await FinanceSettingsStorage.instance.saveDiasInadimplencia(diasParaInadimplencia);
+    _atualizarInadimplentes();
+    notifyListeners();
+  }
+
+  Future<void> salvarRegrasCobranca(List<RegraCobranca> regras) async {
+    regrasCobranca = regras;
+    await FinanceSettingsStorage.instance.saveRegrasCobranca(regras);
+    notifyListeners();
+  }
+
+  Future<void> adicionarRegraCobranca(RegraCobranca regra) async {
+    regrasCobranca = [...regrasCobranca, regra];
+    await FinanceSettingsStorage.instance.saveRegrasCobranca(regrasCobranca);
+    notifyListeners();
+  }
+
+  RegraCobranca? regraPorTipo(String tipo) =>
+      regrasCobranca.where((r) => r.tipo == tipo && r.ativo).firstOrNull;
+
+  /// Detalha preço com desconto antecipado, indicação e crédito.
+  PrecoComRegras detalharPrecoComRegras(Produto produto, {Aluno? aluno}) {
+    final precoOriginal = produto.preco;
+    var precoFinal = precoOriginal;
+    var descontoAntecipado = 0.0;
+    var descontoIndicado = 0.0;
+    var creditoIndicador = 0.0;
+
+    if (aluno != null && produto.tipo == 'plano') {
+      final desconto = regraPorTipo('desconto_antecipado');
+      if (desconto != null &&
+          VencimentoHelper.temPlanoAtivo(aluno) &&
+          DateHelper.diasAteVencimento(aluno.vencimento) > 0) {
+        descontoAntecipado = precoOriginal * (desconto.valorPercent / 100);
+        precoFinal -= descontoAntecipado;
+      }
+
+      final regraIndique = regraPorTipo('indique_ganhe');
+      if (regraIndique != null && indicadoElegivelDesconto(aluno.id)) {
+        descontoIndicado = precoOriginal * (regraIndique.valorPercent / 100);
+        precoFinal -= descontoIndicado;
+      }
+    }
+
+    if (aluno != null && aluno.creditoIndicacao > 0) {
+      creditoIndicador = aluno.creditoIndicacao;
+      if (creditoIndicador > precoFinal) creditoIndicador = precoFinal;
+      precoFinal -= creditoIndicador;
+    }
+
+    if (precoFinal < 0) precoFinal = 0;
+
+    return PrecoComRegras(
+      precoOriginal: precoOriginal,
+      precoFinal: precoFinal,
+      descontoAntecipado: descontoAntecipado,
+      descontoIndicado: descontoIndicado,
+      creditoIndicador: creditoIndicador,
+    );
+  }
+
+  /// Preço final com regras de cobrança (desconto antecipado, indicação, crédito).
+  double calcularPrecoComRegras(Produto produto, {Aluno? aluno}) =>
+      detalharPrecoComRegras(produto, aluno: aluno).precoFinal;
 
   void _atualizarInadimplentes() {
     final idsAlterados = <int>[];
     alunos = alunos.map((a) {
-      if (a.status == 'Ativo' && VencimentoHelper.temPlanoAtivo(a) && DateHelper.diasAteVencimento(a.vencimento) < 0) {
+      if (a.status != 'Ativo' || !VencimentoHelper.temPlanoAtivo(a)) return a;
+      final dias = DateHelper.diasAteVencimento(a.vencimento);
+      if (dias < -diasParaInadimplencia) {
         idsAlterados.add(a.id);
         return a.copyWith(status: 'Inadimplente');
       }
@@ -337,23 +799,29 @@ class AppState extends ChangeNotifier {
     }).toList();
     notifyListeners();
     _syncAluno(alunoId);
+    _processarPagamentoIndicacao(alunoId, 0, converterIndicacao: true);
+    final aluno = alunos.where((a) => a.id == alunoId).firstOrNull;
+    if (aluno != null) {
+      NotificationScheduler.instance.notifyPagamento(aluno.nome, alunoId);
+    }
   }
 
   void salvarHorario({Horario? editando, required Horario dados}) {
+    final normalizado = dados.copyWith(hora: HorarioHelper.normalizar(dados.hora));
     if (editando != null) {
-      horarios = horarios.map((h) => h.id == editando.id ? dados : h).toList();
+      horarios = _ordenarHorarios(horarios.map((h) => h.id == editando.id ? normalizado : h).toList());
       if (!useMock) {
-        SupabaseService.instance.updateHorario(dados).catchError((Object e) {
+        SupabaseService.instance.updateHorario(normalizado).catchError((Object e) {
           debugPrint('Erro ao atualizar horário: $e');
-          return dados;
+          return normalizado;
         });
       }
     } else {
-      final novo = dados.copyWith(id: DateTime.now().millisecondsSinceEpoch);
-      horarios = [...horarios, novo];
+      final novo = normalizado.copyWith(id: DateTime.now().millisecondsSinceEpoch);
+      horarios = _ordenarHorarios([...horarios, novo]);
       if (!useMock) {
         SupabaseService.instance.insertHorario(novo).then((saved) {
-          horarios = horarios.map((h) => h.id == novo.id ? saved : h).toList();
+          horarios = _ordenarHorarios(horarios.map((h) => h.id == novo.id ? saved : h).toList());
           notifyListeners();
         }).catchError((Object e) {
           debugPrint('Erro ao criar horário: $e');
@@ -487,6 +955,8 @@ class AppState extends ChangeNotifier {
   }
 
   void ativarPlanoAluno(int alunoId, Produto produto) {
+    final alunoAntes = alunoPorId(alunoId);
+    final detalhe = detalharPrecoComRegras(produto, aluno: alunoAntes);
     final plano = produto.nome.replaceFirst('Plano ', '');
     alunos = alunos.map((a) {
       if (a.id != alunoId) return a;
@@ -506,6 +976,7 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     _syncAluno(alunoId);
+    _processarPagamentoIndicacao(alunoId, detalhe.creditoIndicador, converterIndicacao: true);
   }
 
   void _syncAluno(int alunoId) {
@@ -517,40 +988,19 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  Future<void> recarregarDados() async {
+  Future<void> recarregarDados({bool includeFotosAlunos = false}) async {
     if (!SupabaseConfig.isConfigured) return;
     try {
-      await SupabaseBootstrap.ensureInitialized(
-        url: SupabaseConfig.url,
-        anonKey: SupabaseConfig.anonKey,
-      );
-      final svc = SupabaseService.instance;
-      final results = await Future.wait([
-        svc.fetchAlunos(),
-        svc.fetchHorarios(),
-        svc.fetchAgendamentos(),
-        svc.fetchProdutos(),
-        svc.fetchPresencas(),
-        svc.fetchPostsTurma(),
-      ]);
-      alunos = results[0] as List<Aluno>;
-      horarios = results[1] as List<Horario>;
-      agendamentos = results[2] as List<Agendamento>;
-      produtos = results[3] as List<Produto>;
-      presencas = results[4] as List<Presenca>;
-      postsTurma = results[5] as List<PostTurma>;
-      useMock = false;
-      initError = null;
-      _atualizarInadimplentes();
-      try {
-        _subscribeRealtime();
-      } catch (e) {
-        debugPrint('Realtime indisponível (dados online OK): $e');
+      final ok = await _sincronizarDadosSupabase(includeFotosAlunos: includeFotosAlunos);
+      if (!ok) {
+        initError = 'Sem conexão com o banco';
+        notifyListeners();
+        throw StateError('Sem conexão com o banco');
       }
-      notifyListeners();
+      await _agendarNotificacoesUsuario();
     } catch (e) {
       debugPrint('Erro ao recarregar dados: $e');
-      initError = 'Sem conexão com o banco';
+      if (initError == null) initError = 'Sem conexão com o banco';
       notifyListeners();
       rethrow;
     }
@@ -578,12 +1028,79 @@ class AppState extends ChangeNotifier {
           table: 'alunos',
           callback: (_) => _syncAlunosFromServer(),
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'avisos',
+          callback: (_) => _syncAvisosFromServer(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'eventos',
+          callback: (_) => _syncEventosFromServer(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'posts_turma',
+          callback: (_) => _syncPostsTurmaFromServer(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'comunicacao_leituras',
+          callback: (_) {
+            final u = usuario;
+            if (u?.tipo != UserType.aluno || u?.id == null) return;
+            _carregarLeiturasAluno(u!.id!);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'dicas_treino',
+          callback: (_) => _syncDicasFromServer(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'desafios',
+          callback: (_) => _syncDesafiosFromServer(),
+        )
         .subscribe();
+  }
+
+  Future<void> _syncPostsTurmaFromServer() async {
+    try {
+      postsTurma = await SupabaseService.instance.fetchPostsTurma();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar mural: $e');
+    }
+  }
+
+  Future<void> _syncDicasFromServer() async {
+    try {
+      dicas = await _fetchDicasSafe();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar dicas: $e');
+    }
+  }
+
+  Future<void> _syncDesafiosFromServer() async {
+    try {
+      desafios = await _fetchDesafiosSafe();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar desafios: $e');
+    }
   }
 
   Future<void> _syncAlunosFromServer() async {
     try {
-      alunos = await SupabaseService.instance.fetchAlunos();
+      alunos = _aplicarCodigosIndicacao(await SupabaseService.instance.fetchAlunos(includeFoto: true));
       notifyListeners();
     } catch (e) {
       debugPrint('Erro ao sincronizar alunos: $e');
@@ -593,9 +1110,28 @@ class AppState extends ChangeNotifier {
   Future<void> _syncAgendamentosFromServer() async {
     try {
       agendamentos = await SupabaseService.instance.fetchAgendamentos();
+      await _agendarNotificacoesUsuario();
       notifyListeners();
     } catch (e) {
       debugPrint('Erro ao sincronizar agendamentos: $e');
+    }
+  }
+
+  Future<void> _syncAvisosFromServer() async {
+    try {
+      avisos = await _fetchAvisosSafe();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar avisos: $e');
+    }
+  }
+
+  Future<void> _syncEventosFromServer() async {
+    try {
+      eventos = await _fetchEventosSafe();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao sincronizar eventos: $e');
     }
   }
 
@@ -609,7 +1145,7 @@ class AppState extends ChangeNotifier {
   }
 
   void criarAgendamento({
-    required int alunoId,
+    int? alunoId,
     required String nomeAluno,
     required int horarioId,
     required String data,
@@ -625,17 +1161,22 @@ class AppState extends ChangeNotifier {
       status: 'Confirmado',
     );
 
+    agendamentos = [...agendamentos, novo];
+    notifyListeners();
+
     if (useMock) {
-      agendamentos = [...agendamentos, novo];
-      notifyListeners();
+      _agendarNotificacoesUsuario();
       return;
     }
 
     SupabaseService.instance.insertAgendamento(novo).then((saved) {
-      agendamentos = [...agendamentos, saved];
+      agendamentos = agendamentos.map((a) => a.id == novo.id ? saved : a).toList();
       notifyListeners();
+      _agendarNotificacoesUsuario();
     }).catchError((Object e) {
       debugPrint('Erro ao criar agendamento: $e');
+      agendamentos = agendamentos.where((a) => a.id != novo.id).toList();
+      notifyListeners();
     });
   }
 
@@ -713,6 +1254,8 @@ class AppState extends ChangeNotifier {
       });
       _syncAluno(alunoId);
     }
+
+    _atualizarDesafiosAluno(alunoId, checkin: true);
 
     final atualizado = alunos.firstWhere((a) => a.id == alunoId);
     return RegistrarPresencaResult(
@@ -902,10 +1445,18 @@ class AppState extends ChangeNotifier {
       ..sort((a, b) => a.nome.compareTo(b.nome));
   }
 
-  List<PostTurma> postsDaTurma(int horarioId) {
-    return postsTurma.where((p) => p.horarioId == horarioId).toList()
-      ..sort((a, b) => b.dataHora.compareTo(a.dataHora));
+  List<PostTurma> postsDaTurma(int horarioId, {bool incluirOcultos = false}) {
+    return postsTurma
+        .where((p) => p.horarioId == horarioId && (incluirOcultos || !p.oculto))
+        .toList()
+      ..sort((a, b) {
+        if (a.fixado != b.fixado) return a.fixado ? -1 : 1;
+        return b.dataHora.compareTo(a.dataHora);
+      });
   }
+
+  int contagemAlunosTurma(int horarioId) =>
+      alunos.where((a) => a.horarioId == horarioId && a.status == 'Ativo').length;
 
   void publicarPostTurma({
     required int alunoId,
@@ -1010,6 +1561,414 @@ class AppState extends ChangeNotifier {
           debugPrint('Erro ao comentar: $e');
           return post;
         });
+      }
+    }
+  }
+
+  Future<void> setNotificationSettings(NotificationSettings settings) async {
+    notificationSettings = settings;
+    await NotificationSettingsStorage.instance.save(settings);
+    await NotificationScheduler.instance.refreshSettings(settings);
+    await _agendarNotificacoesUsuario();
+    notifyListeners();
+  }
+
+  List<Aviso> avisosAtivos() => avisos.where((a) => a.ativo).toList()
+    ..sort((a, b) {
+      if (a.fixado != b.fixado) return a.fixado ? -1 : 1;
+      return b.dataHora.compareTo(a.dataHora);
+    });
+
+  List<EventoEstudio> eventosProximos({int dias = 30}) {
+    final limite = DateTime.now().add(Duration(days: dias));
+    return eventos.where((e) => e.ativo && e.dataInicio.isBefore(limite) && e.dataInicio.isAfter(DateTime.now().subtract(const Duration(days: 1)))).toList()
+      ..sort((a, b) => a.dataInicio.compareTo(b.dataInicio));
+  }
+
+  bool comunicacaoLida(String tipo, int itemId) => comunicacaoLidas.contains('${tipo}_$itemId');
+
+  int mencoesNaoLidas(int alunoId) {
+    var n = 0;
+    for (final a in avisosAtivos()) {
+      if (MentionHelper.alunoMencionado(alunoId, a.mencoes) && !comunicacaoLida('aviso', a.id)) n++;
+    }
+    for (final e in eventosProximos()) {
+      if (MentionHelper.alunoMencionado(alunoId, e.mencoes) && !comunicacaoLida('evento', e.id)) n++;
+    }
+    return n;
+  }
+
+  List<Aviso> avisosParaAluno(int alunoId) {
+    return avisosAtivos().where((a) => a.notificarTodos || MentionHelper.alunoMencionado(alunoId, a.mencoes)).toList();
+  }
+
+  void marcarComunicacaoLida(int alunoId, String itemTipo, int itemId) {
+    comunicacaoLidas.add('${itemTipo}_$itemId');
+    notifyListeners();
+    if (!useMock) {
+      SupabaseService.instance.marcarComunicacaoLida(alunoId, itemTipo, itemId).catchError((Object e) {
+        debugPrint('Erro ao marcar leitura: $e');
+        return null;
+      });
+    }
+  }
+
+  void publicarAviso({
+    required String titulo,
+    required String texto,
+    required List<int> mencoes,
+    bool notificarTodos = true,
+    bool fixado = false,
+  }) {
+    final aviso = Aviso(
+      id: DateTime.now().millisecondsSinceEpoch,
+      titulo: titulo.trim(),
+      texto: texto.trim(),
+      autor: usuario?.nome ?? 'Admin',
+      dataHora: DateTime.now(),
+      mencoes: mencoes,
+      notificarTodos: notificarTodos,
+      fixado: fixado,
+    );
+    if (useMock) {
+      avisos = [aviso, ...avisos];
+    } else {
+      SupabaseService.instance.insertAviso(aviso).then((saved) {
+        avisos = [saved, ...avisos];
+        notifyListeners();
+      }).catchError((Object e) {
+        debugPrint('Erro aviso: $e');
+      });
+    }
+    notifyListeners();
+    NotificationScheduler.instance.notifyComunicacao(
+      tipo: NotificationPayloadType.aviso,
+      titulo: aviso.titulo,
+      corpo: aviso.texto.length > 80 ? '${aviso.texto.substring(0, 80)}...' : aviso.texto,
+      notificarTodos: notificarTodos,
+      mencoes: mencoes,
+      alunosAtivos: alunos.where((a) => a.status == 'Ativo').toList(),
+      itemId: aviso.id,
+    );
+  }
+
+  void publicarEvento({
+    required String titulo,
+    required String descricao,
+    required DateTime dataInicio,
+    DateTime? dataFim,
+    String? local,
+    required List<int> mencoes,
+    bool notificarTodos = true,
+    int lembreteDiasAntes = 1,
+  }) {
+    final evento = EventoEstudio(
+      id: DateTime.now().millisecondsSinceEpoch,
+      titulo: titulo.trim(),
+      descricao: descricao.trim(),
+      dataInicio: dataInicio,
+      dataFim: dataFim,
+      local: local,
+      mencoes: mencoes,
+      notificarTodos: notificarTodos,
+      lembreteDiasAntes: lembreteDiasAntes,
+      criadoEm: DateTime.now(),
+    );
+    if (useMock) {
+      eventos = [...eventos, evento];
+    } else {
+      SupabaseService.instance.insertEvento(evento).then((saved) {
+        eventos = [...eventos, saved];
+        notifyListeners();
+      }).catchError((Object e) {
+        debugPrint('Erro evento: $e');
+      });
+    }
+    notifyListeners();
+    final lembrete = dataInicio.subtract(Duration(days: lembreteDiasAntes));
+    NotificationScheduler.instance.notifyComunicacao(
+      tipo: NotificationPayloadType.evento,
+      titulo: evento.titulo,
+      corpo: DateHelper.formatarDataHora(evento.dataInicio),
+      notificarTodos: notificarTodos,
+      mencoes: mencoes,
+      alunosAtivos: alunos.where((a) => a.status == 'Ativo').toList(),
+      itemId: evento.id,
+      lembreteEvento: lembrete,
+    );
+  }
+
+  void removerAviso(int id) {
+    avisos = avisos.where((a) => a.id != id).toList();
+    notifyListeners();
+    if (!useMock) SupabaseService.instance.deleteAviso(id).catchError((Object e) => debugPrint('$e'));
+  }
+
+  void removerEvento(int id) {
+    eventos = eventos.where((e) => e.id != id).toList();
+    notifyListeners();
+    if (!useMock) SupabaseService.instance.deleteEvento(id).catchError((Object e) => debugPrint('$e'));
+  }
+
+  // —— Senhas ——
+
+  Future<String?> alterarSenhaAluno(int alunoId, String senhaAtual, String novaSenha) async {
+    final aluno = alunoPorId(alunoId);
+    if (aluno == null) return 'Aluno não encontrado.';
+    if (aluno.senha != senhaAtual) return 'Senha atual incorreta.';
+    if (novaSenha.length < 4) return 'Mínimo 4 caracteres.';
+    alunos = alunos.map((a) => a.id == alunoId ? a.copyWith(senha: novaSenha) : a).toList();
+    if (usuario?.id == alunoId) usuario = alunos.firstWhere((a) => a.id == alunoId).toUsuario();
+    notifyListeners();
+    if (!useMock) {
+      try {
+        await SupabaseService.instance.updateAlunoSenha(alunoId, novaSenha);
+      } catch (e) {
+        return 'Erro ao salvar senha: $e';
+      }
+    }
+    return null;
+  }
+
+  Future<String?> alterarSenhaAdmin(String email, String senhaAtual, String novaSenha) async {
+    if (novaSenha.length < 4) return 'Mínimo 4 caracteres.';
+    if (useMock) {
+      if (senhaAtual != 'admin123') return 'Senha atual incorreta.';
+      return null;
+    }
+    try {
+      final ok = await SupabaseService.instance.autenticarAdmin(email, senhaAtual);
+      if (ok == null) return 'Senha atual incorreta.';
+      await SupabaseService.instance.updateAdminSenha(email, novaSenha);
+      return null;
+    } catch (e) {
+      return 'Erro ao salvar: $e';
+    }
+  }
+
+  Future<String?> resetarSenhaAlunoAdmin(int alunoId, String novaSenha) async {
+    if (novaSenha.length < 4) return 'Mínimo 4 caracteres.';
+    alunos = alunos.map((a) => a.id == alunoId ? a.copyWith(senha: novaSenha) : a).toList();
+    notifyListeners();
+    if (!useMock) {
+      try {
+        await SupabaseService.instance.updateAlunoSenha(alunoId, novaSenha);
+      } catch (e) {
+        return 'Erro: $e';
+      }
+    }
+    return null;
+  }
+
+  Future<String?> dicaRecuperacaoSenha(String email) async {
+    final em = email.trim().toLowerCase();
+    Aluno? aluno;
+    if (useMock) {
+      aluno = alunos.where((a) => a.email.toLowerCase() == em).firstOrNull;
+    } else {
+      try {
+        aluno = await SupabaseService.instance.buscarAlunoPorEmail(em);
+      } catch (_) {
+        aluno = alunos.where((a) => a.email.toLowerCase() == em).firstOrNull;
+      }
+    }
+    if (aluno == null) return null;
+    final primeiro = aluno.nome.split(' ').first;
+    final tel = aluno.telefone.length >= 4 ? '***${aluno.telefone.substring(aluno.telefone.length - 4)}' : '';
+    return 'Cadastro encontrado ($primeiro). Fale com a recepção do Pulguinha para resetar sua senha${tel.isNotEmpty ? ' (tel. $tel)' : ''}.';
+  }
+
+  // —— Mural moderação ——
+
+  void publicarPostTurmaAdmin({
+    required String nomeAdmin,
+    required int horarioId,
+    required String texto,
+    TipoPostTurma tipo = TipoPostTurma.texto,
+    String? figurinha,
+    String? linkUrl,
+    List<String> enqueteOpcoes = const [],
+  }) {
+    final trimmed = texto.trim();
+    if (tipo == TipoPostTurma.texto && trimmed.isEmpty) return;
+    final post = PostTurma(
+      id: DateTime.now().millisecondsSinceEpoch,
+      alunoId: 0,
+      nomeAluno: nomeAdmin,
+      horarioId: horarioId,
+      texto: trimmed,
+      dataHora: DateTime.now(),
+      tipo: tipo,
+      autorTipo: AutorPostTurma.admin,
+      figurinha: figurinha,
+      linkUrl: linkUrl?.trim(),
+      enqueteOpcoes: enqueteOpcoes.where((o) => o.trim().isNotEmpty).toList(),
+    );
+    postsTurma = [post, ...postsTurma];
+    notifyListeners();
+    if (!useMock) {
+      SupabaseService.instance.insertPostTurma(post).then((saved) {
+        postsTurma = postsTurma.map((p) => p.id == post.id ? saved : p).toList();
+        notifyListeners();
+      }).catchError((Object e) {
+        debugPrint('Erro post admin: $e');
+      });
+    }
+  }
+
+  void moderarPostTurma(int postId, {bool? oculto, bool? fixado}) {
+    postsTurma = postsTurma.map((p) {
+      if (p.id != postId) return p;
+      return p.copyWith(oculto: oculto ?? p.oculto, fixado: fixado ?? p.fixado);
+    }).toList();
+    notifyListeners();
+    if (!useMock) {
+      final post = postsTurma.where((p) => p.id == postId).firstOrNull;
+      if (post != null) {
+        SupabaseService.instance.updatePostTurma(post).catchError((Object e) {
+          debugPrint('$e');
+          return post;
+        });
+      }
+    }
+  }
+
+  void removerPostTurma(int postId) {
+    postsTurma = postsTurma.where((p) => p.id != postId).toList();
+    notifyListeners();
+    if (!useMock) SupabaseService.instance.deletePostTurma(postId).catchError((Object e) => debugPrint('$e'));
+  }
+
+  // —— Dicas ——
+
+  List<DicaTreino> dicasAtivas() => dicas.where((d) => d.ativo).toList()..sort((a, b) => a.ordem.compareTo(b.ordem));
+
+  DicaTreino dicaDoDia([DateTime? date]) {
+    final ativas = dicasAtivas();
+    if (ativas.isEmpty) return MockData.dicasIniciais().first;
+    final d = date ?? DateTime.now();
+    final index = (d.year * 366 + d.month * 31 + d.day) % ativas.length;
+    return ativas[index];
+  }
+
+  void salvarDica(DicaTreino dica) {
+    final idx = dicas.indexWhere((d) => d.id == dica.id);
+    if (idx >= 0) {
+      dicas = [...dicas]..[idx] = dica;
+    } else {
+      dicas = [...dicas, dica];
+    }
+    notifyListeners();
+    if (!useMock) {
+      if (idx >= 0) {
+        SupabaseService.instance.updateDica(dica).then((saved) {
+          dicas = dicas.map((d) => d.id == dica.id ? saved : d).toList();
+          notifyListeners();
+        }).catchError((Object e) {
+          debugPrint('$e');
+        });
+      } else {
+        SupabaseService.instance.insertDica(dica).then((saved) {
+          dicas = [...dicas.where((d) => d.id != dica.id), saved];
+          notifyListeners();
+        }).catchError((Object e) {
+          debugPrint('$e');
+        });
+      }
+    }
+  }
+
+  void removerDica(int id) {
+    dicas = dicas.where((d) => d.id != id).toList();
+    notifyListeners();
+    if (!useMock) SupabaseService.instance.deleteDica(id).catchError((Object e) => debugPrint('$e'));
+  }
+
+  // —— Desafios ——
+
+  List<Desafio> desafiosAtivos() => desafios.where((d) => d.ativo && d.vigente).toList();
+
+  DesafioProgresso? progressoDesafio(int alunoId, int desafioId) =>
+      desafioProgresso.where((p) => p.alunoId == alunoId && p.desafioId == desafioId).firstOrNull;
+
+  void salvarDesafio(Desafio d) {
+    final idx = desafios.indexWhere((x) => x.id == d.id);
+    if (idx >= 0) {
+      desafios = [...desafios]..[idx] = d;
+    } else {
+      desafios = [...desafios, d];
+    }
+    notifyListeners();
+    if (!useMock) {
+      if (idx >= 0) {
+        SupabaseService.instance.updateDesafio(d).then((saved) {
+          desafios = desafios.map((x) => x.id == d.id ? saved : x).toList();
+          notifyListeners();
+        }).catchError((Object e) {
+          debugPrint('$e');
+        });
+      } else {
+        SupabaseService.instance.insertDesafio(d).then((saved) {
+          desafios = [...desafios.where((x) => x.id != d.id), saved];
+          notifyListeners();
+        }).catchError((Object e) {
+          debugPrint('$e');
+        });
+      }
+    }
+  }
+
+  void removerDesafio(int id) {
+    desafios = desafios.where((d) => d.id != id).toList();
+    desafioProgresso = desafioProgresso.where((p) => p.desafioId != id).toList();
+    notifyListeners();
+    if (!useMock) SupabaseService.instance.deleteDesafio(id).catchError((Object e) => debugPrint('$e'));
+  }
+
+  void registrarProgressoAgua(int alunoId, int copos) {
+    _atualizarDesafiosAluno(alunoId, coposAgua: copos);
+  }
+
+  void _atualizarDesafiosAluno(int alunoId, {bool checkin = false, int? coposAgua}) {
+    var mudou = false;
+    for (final d in desafiosAtivos()) {
+      var prog = progressoDesafio(alunoId, d.id);
+      if (prog?.concluido == true) continue;
+
+      var novo = prog?.progresso ?? 0;
+      if (d.tipo == TipoDesafio.checkins && checkin) novo++;
+      if (d.tipo == TipoDesafio.streak && checkin) novo = alunoPorId(alunoId)?.streakPresenca ?? 0;
+      if (d.tipo == TipoDesafio.agua && coposAgua != null) novo = coposAgua;
+
+      final concluiu = novo >= d.meta;
+      final atualizado = DesafioProgresso(
+        desafioId: d.id,
+        alunoId: alunoId,
+        progresso: novo.clamp(0, d.meta),
+        concluidoEm: concluiu ? DateTime.now() : null,
+      );
+
+      desafioProgresso = [
+        ...desafioProgresso.where((p) => !(p.desafioId == d.id && p.alunoId == alunoId)),
+        atualizado,
+      ];
+      mudou = true;
+
+      if (concluiu && prog?.concluido != true && d.pontosRecompensa > 0) {
+        alunos = alunos.map((a) {
+          if (a.id != alunoId) return a;
+          return a.copyWith(pulguinhaPoints: a.pulguinhaPoints + d.pontosRecompensa);
+        }).toList();
+        if (usuario?.id == alunoId) usuario = alunos.firstWhere((a) => a.id == alunoId).toUsuario();
+        if (!useMock) _syncAluno(alunoId);
+      }
+    }
+    if (mudou) {
+      notifyListeners();
+      if (!useMock) {
+        for (final p in desafioProgresso.where((x) => x.alunoId == alunoId)) {
+          SupabaseService.instance.upsertDesafioProgresso(p).catchError((Object e) => debugPrint('$e'));
+        }
       }
     }
   }

@@ -211,6 +211,15 @@ class Aluno {
     this.dataCadastro,
     this.alunoDesde,
     this.horarioId,
+    this.cep = '',
+    this.logradouro = '',
+    this.numero = '',
+    this.complemento = '',
+    this.bairro = '',
+    this.cidade = '',
+    this.uf = '',
+    this.codigoIndicacao = '',
+    this.creditoIndicacao = 0,
   });
 
   final int id;
@@ -230,6 +239,17 @@ class Aluno {
   final String? dataCadastro;
   final String? alunoDesde;
   final int? horarioId;
+  final String cep;
+  final String logradouro;
+  final String numero;
+  final String complemento;
+  final String bairro;
+  final String cidade;
+  final String uf;
+  /// Código único que o aluno pode compartilhar para o programa "Indique e Ganhe".
+  final String codigoIndicacao;
+  /// Crédito acumulado por indicações convertidas (R\$).
+  final double creditoIndicacao;
 
   Aluno copyWith({
     int? id,
@@ -249,6 +269,15 @@ class Aluno {
     String? dataCadastro,
     String? alunoDesde,
     int? horarioId,
+    String? cep,
+    String? logradouro,
+    String? numero,
+    String? complemento,
+    String? bairro,
+    String? cidade,
+    String? uf,
+    String? codigoIndicacao,
+    double? creditoIndicacao,
   }) {
     return Aluno(
       id: id ?? this.id,
@@ -268,6 +297,15 @@ class Aluno {
       dataCadastro: dataCadastro ?? this.dataCadastro,
       alunoDesde: alunoDesde ?? this.alunoDesde,
       horarioId: horarioId ?? this.horarioId,
+      cep: cep ?? this.cep,
+      logradouro: logradouro ?? this.logradouro,
+      numero: numero ?? this.numero,
+      complemento: complemento ?? this.complemento,
+      bairro: bairro ?? this.bairro,
+      cidade: cidade ?? this.cidade,
+      uf: uf ?? this.uf,
+      codigoIndicacao: codigoIndicacao ?? this.codigoIndicacao,
+      creditoIndicacao: creditoIndicacao ?? this.creditoIndicacao,
     );
   }
 
@@ -293,6 +331,15 @@ class Aluno {
                 ? _formatDate(json['data_cadastro'])
                 : null,
         horarioId: json['horario_id'] as int?,
+        cep: json['cep'] as String? ?? '',
+        logradouro: json['logradouro'] as String? ?? '',
+        numero: json['numero'] as String? ?? '',
+        complemento: json['complemento'] as String? ?? '',
+        bairro: json['bairro'] as String? ?? '',
+        cidade: json['cidade'] as String? ?? '',
+        uf: json['uf'] as String? ?? '',
+        codigoIndicacao: (json['codigo_indicacao'] as String?) ?? '',
+        creditoIndicacao: (json['credito_indicacao'] as num?)?.toDouble() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -312,6 +359,15 @@ class Aluno {
         if (dataCadastro != null) 'data_cadastro': dataCadastro,
         if (alunoDesde != null) 'aluno_desde': alunoDesde,
         if (horarioId != null) 'horario_id': horarioId,
+        'cep': cep,
+        'logradouro': logradouro,
+        'numero': numero,
+        'complemento': complemento,
+        'bairro': bairro,
+        'cidade': cidade,
+        'uf': uf,
+        if (codigoIndicacao.isNotEmpty) 'codigo_indicacao': codigoIndicacao,
+        if (creditoIndicacao > 0) 'credito_indicacao': creditoIndicacao,
       };
 
   /// Payload para INSERT — nunca envia `id` (BIGSERIAL no Postgres).
@@ -334,6 +390,67 @@ class Aluno {
         pulguinhaPoints: pulguinhaPoints,
         horarioId: horarioId,
       );
+}
+
+/// Registro de indicação entre alunos (programa Indique e Ganhe).
+class Indicacao {
+  const Indicacao({
+    required this.id,
+    required this.indicadorId,
+    required this.indicadoId,
+    required this.codigoUsado,
+    this.status = 'pendente',
+    required this.dataCriacao,
+    this.dataConversao,
+  });
+
+  final int id;
+  final int indicadorId;
+  final int indicadoId;
+  final String codigoUsado;
+  /// pendente | convertida | cancelada
+  final String status;
+  final String dataCriacao;
+  final String? dataConversao;
+
+  Indicacao copyWith({
+    int? id,
+    int? indicadorId,
+    int? indicadoId,
+    String? codigoUsado,
+    String? status,
+    String? dataCriacao,
+    String? dataConversao,
+  }) {
+    return Indicacao(
+      id: id ?? this.id,
+      indicadorId: indicadorId ?? this.indicadorId,
+      indicadoId: indicadoId ?? this.indicadoId,
+      codigoUsado: codigoUsado ?? this.codigoUsado,
+      status: status ?? this.status,
+      dataCriacao: dataCriacao ?? this.dataCriacao,
+      dataConversao: dataConversao ?? this.dataConversao,
+    );
+  }
+
+  factory Indicacao.fromJson(Map<String, dynamic> json) => Indicacao(
+        id: json['id'] as int,
+        indicadorId: json['indicador_id'] as int,
+        indicadoId: json['indicado_id'] as int,
+        codigoUsado: json['codigo_usado'] as String? ?? '',
+        status: json['status'] as String? ?? 'pendente',
+        dataCriacao: _formatDate(json['data_criacao']),
+        dataConversao: json['data_conversao'] != null ? _formatDate(json['data_conversao']) : null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'indicador_id': indicadorId,
+        'indicado_id': indicadoId,
+        'codigo_usado': codigoUsado,
+        'status': status,
+        'data_criacao': dataCriacao,
+        if (dataConversao != null) 'data_conversao': dataConversao,
+      };
 }
 
 class Horario {
@@ -380,7 +497,7 @@ class Horario {
 class Agendamento {
   const Agendamento({
     required this.id,
-    required this.alunoId,
+    this.alunoId,
     required this.nomeAluno,
     required this.horarioId,
     required this.data,
@@ -389,7 +506,7 @@ class Agendamento {
   });
 
   final int id;
-  final int alunoId;
+  final int? alunoId;
   final String nomeAluno;
   final int horarioId;
   final String data;
@@ -398,7 +515,7 @@ class Agendamento {
 
   factory Agendamento.fromJson(Map<String, dynamic> json) => Agendamento(
         id: json['id'] as int,
-        alunoId: json['aluno_id'] as int,
+        alunoId: json['aluno_id'] as int?,
         nomeAluno: json['nome_aluno'] as String,
         horarioId: json['horario_id'] as int,
         data: _formatDate(json['data']),
@@ -407,7 +524,7 @@ class Agendamento {
       );
 
   Map<String, dynamic> toJson() => {
-        'aluno_id': alunoId,
+        if (alunoId != null) 'aluno_id': alunoId,
         'nome_aluno': nomeAluno,
         'horario_id': horarioId,
         'data': data,
@@ -523,6 +640,8 @@ class ComentarioTurma {
 
 enum TipoPostTurma { texto, figurinha, enquete, link }
 
+enum AutorPostTurma { aluno, admin }
+
 class PostTurma {
   const PostTurma({
     required this.id,
@@ -532,6 +651,9 @@ class PostTurma {
     required this.texto,
     required this.dataHora,
     this.tipo = TipoPostTurma.texto,
+    this.autorTipo = AutorPostTurma.aluno,
+    this.oculto = false,
+    this.fixado = false,
     this.figurinha,
     this.linkUrl,
     this.enqueteOpcoes = const [],
@@ -547,6 +669,9 @@ class PostTurma {
   final String texto;
   final DateTime dataHora;
   final TipoPostTurma tipo;
+  final AutorPostTurma autorTipo;
+  final bool oculto;
+  final bool fixado;
   final String? figurinha;
   final String? linkUrl;
   final List<String> enqueteOpcoes;
@@ -557,6 +682,7 @@ class PostTurma {
   int get totalReacoes => reacoes.length;
   bool reagiuPor(int alunoId) => reacoes.contains(alunoId);
   int? votoDoAluno(int alunoId) => enqueteVotos['$alunoId'];
+  bool get isAdminPost => autorTipo == AutorPostTurma.admin;
 
   PostTurma copyWith({
     int? id,
@@ -566,6 +692,9 @@ class PostTurma {
     String? texto,
     DateTime? dataHora,
     TipoPostTurma? tipo,
+    AutorPostTurma? autorTipo,
+    bool? oculto,
+    bool? fixado,
     String? figurinha,
     String? linkUrl,
     List<String>? enqueteOpcoes,
@@ -581,6 +710,9 @@ class PostTurma {
       texto: texto ?? this.texto,
       dataHora: dataHora ?? this.dataHora,
       tipo: tipo ?? this.tipo,
+      autorTipo: autorTipo ?? this.autorTipo,
+      oculto: oculto ?? this.oculto,
+      fixado: fixado ?? this.fixado,
       figurinha: figurinha ?? this.figurinha,
       linkUrl: linkUrl ?? this.linkUrl,
       enqueteOpcoes: enqueteOpcoes ?? this.enqueteOpcoes,
@@ -608,6 +740,12 @@ class PostTurma {
     };
   }
 
+  static AutorPostTurma _autorFrom(String? raw) =>
+      raw == 'admin' ? AutorPostTurma.admin : AutorPostTurma.aluno;
+
+  static String _autorTo(AutorPostTurma tipo) =>
+      tipo == AutorPostTurma.admin ? 'admin' : 'aluno';
+
   factory PostTurma.fromJson(Map<String, dynamic> json) {
     final rawReacoes = json['reacoes'];
     final rawComentarios = json['comentarios'];
@@ -625,6 +763,9 @@ class PostTurma {
       texto: json['texto'] as String? ?? '',
       dataHora: DateTime.parse(json['data_hora'] as String),
       tipo: _tipoFrom(json['tipo'] as String?),
+      autorTipo: _autorFrom(json['autor_tipo'] as String?),
+      oculto: json['oculto'] as bool? ?? false,
+      fixado: json['fixado'] as bool? ?? false,
       figurinha: json['figurinha'] as String?,
       linkUrl: json['link_url'] as String?,
       enqueteOpcoes: rawOpcoes is List ? rawOpcoes.map((e) => e.toString()).toList() : const [],
@@ -643,6 +784,9 @@ class PostTurma {
         'texto': texto,
         'data_hora': dataHora.toIso8601String(),
         'tipo': _tipoTo(tipo),
+        'autor_tipo': _autorTo(autorTipo),
+        'oculto': oculto,
+        'fixado': fixado,
         if (figurinha != null) 'figurinha': figurinha,
         if (linkUrl != null) 'link_url': linkUrl,
         'enquete_opcoes': enqueteOpcoes,
@@ -652,7 +796,365 @@ class PostTurma {
       };
 }
 
+class Aviso {
+  const Aviso({
+    required this.id,
+    required this.titulo,
+    required this.texto,
+    required this.autor,
+    required this.dataHora,
+    this.mencoes = const [],
+    this.notificarTodos = true,
+    this.fixado = false,
+    this.ativo = true,
+  });
+
+  final int id;
+  final String titulo;
+  final String texto;
+  final String autor;
+  final DateTime dataHora;
+  final List<int> mencoes;
+  final bool notificarTodos;
+  final bool fixado;
+  final bool ativo;
+
+  Aviso copyWith({
+    int? id,
+    String? titulo,
+    String? texto,
+    String? autor,
+    DateTime? dataHora,
+    List<int>? mencoes,
+    bool? notificarTodos,
+    bool? fixado,
+    bool? ativo,
+  }) {
+    return Aviso(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      texto: texto ?? this.texto,
+      autor: autor ?? this.autor,
+      dataHora: dataHora ?? this.dataHora,
+      mencoes: mencoes ?? this.mencoes,
+      notificarTodos: notificarTodos ?? this.notificarTodos,
+      fixado: fixado ?? this.fixado,
+      ativo: ativo ?? this.ativo,
+    );
+  }
+
+  factory Aviso.fromJson(Map<String, dynamic> json) => Aviso(
+        id: json['id'] as int,
+        titulo: json['titulo'] as String,
+        texto: json['texto'] as String,
+        autor: json['autor'] as String? ?? 'Admin',
+        dataHora: DateTime.parse(json['data_hora'] as String),
+        mencoes: _parseBigIntArray(json['mencoes']),
+        notificarTodos: json['notificar_todos'] as bool? ?? true,
+        fixado: json['fixado'] as bool? ?? false,
+        ativo: json['ativo'] as bool? ?? true,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'titulo': titulo,
+        'texto': texto,
+        'autor': autor,
+        'data_hora': dataHora.toIso8601String(),
+        'mencoes': mencoes,
+        'notificar_todos': notificarTodos,
+        'fixado': fixado,
+        'ativo': ativo,
+      };
+}
+
+class EventoEstudio {
+  const EventoEstudio({
+    required this.id,
+    required this.titulo,
+    required this.descricao,
+    required this.dataInicio,
+    this.dataFim,
+    this.local,
+    this.mencoes = const [],
+    this.notificarTodos = true,
+    this.lembreteDiasAntes = 1,
+    this.ativo = true,
+    this.criadoEm,
+  });
+
+  final int id;
+  final String titulo;
+  final String descricao;
+  final DateTime dataInicio;
+  final DateTime? dataFim;
+  final String? local;
+  final List<int> mencoes;
+  final bool notificarTodos;
+  final int lembreteDiasAntes;
+  final bool ativo;
+  final DateTime? criadoEm;
+
+  EventoEstudio copyWith({
+    int? id,
+    String? titulo,
+    String? descricao,
+    DateTime? dataInicio,
+    DateTime? dataFim,
+    String? local,
+    List<int>? mencoes,
+    bool? notificarTodos,
+    int? lembreteDiasAntes,
+    bool? ativo,
+    DateTime? criadoEm,
+  }) {
+    return EventoEstudio(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      descricao: descricao ?? this.descricao,
+      dataInicio: dataInicio ?? this.dataInicio,
+      dataFim: dataFim ?? this.dataFim,
+      local: local ?? this.local,
+      mencoes: mencoes ?? this.mencoes,
+      notificarTodos: notificarTodos ?? this.notificarTodos,
+      lembreteDiasAntes: lembreteDiasAntes ?? this.lembreteDiasAntes,
+      ativo: ativo ?? this.ativo,
+      criadoEm: criadoEm ?? this.criadoEm,
+    );
+  }
+
+  factory EventoEstudio.fromJson(Map<String, dynamic> json) => EventoEstudio(
+        id: json['id'] as int,
+        titulo: json['titulo'] as String,
+        descricao: json['descricao'] as String? ?? '',
+        dataInicio: DateTime.parse(json['data_inicio'] as String),
+        dataFim: json['data_fim'] != null ? DateTime.parse(json['data_fim'] as String) : null,
+        local: json['local'] as String?,
+        mencoes: _parseBigIntArray(json['mencoes']),
+        notificarTodos: json['notificar_todos'] as bool? ?? true,
+        lembreteDiasAntes: json['lembrete_dias_antes'] as int? ?? 1,
+        ativo: json['ativo'] as bool? ?? true,
+        criadoEm: json['criado_em'] != null ? DateTime.parse(json['criado_em'] as String) : null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'titulo': titulo,
+        'descricao': descricao,
+        'data_inicio': dataInicio.toIso8601String(),
+        if (dataFim != null) 'data_fim': dataFim!.toIso8601String(),
+        if (local != null && local!.isNotEmpty) 'local': local,
+        'mencoes': mencoes,
+        'notificar_todos': notificarTodos,
+        'lembrete_dias_antes': lembreteDiasAntes,
+        'ativo': ativo,
+      };
+}
+
+List<int> _parseBigIntArray(dynamic raw) {
+  if (raw == null) return [];
+  if (raw is List) return raw.map((e) => (e as num).toInt()).toList();
+  return [];
+}
+
 String _formatDate(dynamic value) {
   if (value is String) return value.split('T').first;
   return value.toString().split('T').first;
 }
+
+enum TipoDesafio { checkins, streak, agua }
+
+class DicaTreino {
+  const DicaTreino({
+    required this.id,
+    required this.icon,
+    required this.titulo,
+    required this.texto,
+    required this.categoria,
+    this.ativo = true,
+    this.ordem = 0,
+  });
+
+  final int id;
+  final String icon;
+  final String titulo;
+  final String texto;
+  final String categoria;
+  final bool ativo;
+  final int ordem;
+
+  DicaTreino copyWith({
+    int? id,
+    String? icon,
+    String? titulo,
+    String? texto,
+    String? categoria,
+    bool? ativo,
+    int? ordem,
+  }) {
+    return DicaTreino(
+      id: id ?? this.id,
+      icon: icon ?? this.icon,
+      titulo: titulo ?? this.titulo,
+      texto: texto ?? this.texto,
+      categoria: categoria ?? this.categoria,
+      ativo: ativo ?? this.ativo,
+      ordem: ordem ?? this.ordem,
+    );
+  }
+
+  factory DicaTreino.fromJson(Map<String, dynamic> json) => DicaTreino(
+        id: json['id'] as int,
+        icon: json['icon'] as String? ?? '💡',
+        titulo: json['titulo'] as String,
+        texto: json['texto'] as String,
+        categoria: json['categoria'] as String? ?? 'Geral',
+        ativo: json['ativo'] as bool? ?? true,
+        ordem: json['ordem'] as int? ?? 0,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'icon': icon,
+        'titulo': titulo,
+        'texto': texto,
+        'categoria': categoria,
+        'ativo': ativo,
+        'ordem': ordem,
+      };
+
+}
+
+class Desafio {
+  const Desafio({
+    required this.id,
+    required this.titulo,
+    required this.descricao,
+    required this.tipo,
+    required this.meta,
+    required this.pontosRecompensa,
+    required this.dataInicio,
+    this.dataFim,
+    this.ativo = true,
+  });
+
+  final int id;
+  final String titulo;
+  final String descricao;
+  final TipoDesafio tipo;
+  final int meta;
+  final int pontosRecompensa;
+  final String dataInicio;
+  final String? dataFim;
+  final bool ativo;
+
+  bool get vigente {
+    final hoje = DateTime.now();
+    final inicio = DateTime.parse(dataInicio);
+    if (hoje.isBefore(DateTime(inicio.year, inicio.month, inicio.day))) return false;
+    if (dataFim == null || dataFim!.isEmpty) return true;
+    final fim = DateTime.parse(dataFim!);
+    return !hoje.isAfter(DateTime(fim.year, fim.month, fim.day));
+  }
+
+  Desafio copyWith({
+    int? id,
+    String? titulo,
+    String? descricao,
+    TipoDesafio? tipo,
+    int? meta,
+    int? pontosRecompensa,
+    String? dataInicio,
+    String? dataFim,
+    bool? ativo,
+  }) {
+    return Desafio(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      descricao: descricao ?? this.descricao,
+      tipo: tipo ?? this.tipo,
+      meta: meta ?? this.meta,
+      pontosRecompensa: pontosRecompensa ?? this.pontosRecompensa,
+      dataInicio: dataInicio ?? this.dataInicio,
+      dataFim: dataFim ?? this.dataFim,
+      ativo: ativo ?? this.ativo,
+    );
+  }
+
+  static TipoDesafio _tipoFrom(String? raw) => switch (raw) {
+        'streak' => TipoDesafio.streak,
+        'agua' => TipoDesafio.agua,
+        _ => TipoDesafio.checkins,
+      };
+
+  static String _tipoTo(TipoDesafio tipo) => switch (tipo) {
+        TipoDesafio.streak => 'streak',
+        TipoDesafio.agua => 'agua',
+        TipoDesafio.checkins => 'checkins',
+      };
+
+  factory Desafio.fromJson(Map<String, dynamic> json) => Desafio(
+        id: json['id'] as int,
+        titulo: json['titulo'] as String,
+        descricao: json['descricao'] as String? ?? '',
+        tipo: _tipoFrom(json['tipo'] as String?),
+        meta: json['meta'] as int? ?? 5,
+        pontosRecompensa: json['pontos_recompensa'] as int? ?? 50,
+        dataInicio: _formatDate(json['data_inicio']),
+        dataFim: json['data_fim'] != null ? _formatDate(json['data_fim']) : null,
+        ativo: json['ativo'] as bool? ?? true,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'titulo': titulo,
+        'descricao': descricao,
+        'tipo': _tipoTo(tipo),
+        'meta': meta,
+        'pontos_recompensa': pontosRecompensa,
+        'data_inicio': dataInicio,
+        if (dataFim != null && dataFim!.isNotEmpty) 'data_fim': dataFim,
+        'ativo': ativo,
+      };
+}
+
+class DesafioProgresso {
+  const DesafioProgresso({
+    required this.desafioId,
+    required this.alunoId,
+    this.progresso = 0,
+    this.concluidoEm,
+  });
+
+  final int desafioId;
+  final int alunoId;
+  final int progresso;
+  final DateTime? concluidoEm;
+
+  bool get concluido => concluidoEm != null;
+
+  DesafioProgresso copyWith({
+    int? desafioId,
+    int? alunoId,
+    int? progresso,
+    DateTime? concluidoEm,
+  }) {
+    return DesafioProgresso(
+      desafioId: desafioId ?? this.desafioId,
+      alunoId: alunoId ?? this.alunoId,
+      progresso: progresso ?? this.progresso,
+      concluidoEm: concluidoEm ?? this.concluidoEm,
+    );
+  }
+
+  factory DesafioProgresso.fromJson(Map<String, dynamic> json) => DesafioProgresso(
+        desafioId: json['desafio_id'] as int,
+        alunoId: json['aluno_id'] as int,
+        progresso: json['progresso'] as int? ?? 0,
+        concluidoEm: json['concluido_em'] != null ? DateTime.parse(json['concluido_em'] as String) : null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'desafio_id': desafioId,
+        'aluno_id': alunoId,
+        'progresso': progresso,
+        if (concluidoEm != null) 'concluido_em': concluidoEm!.toIso8601String(),
+      };
+}
+

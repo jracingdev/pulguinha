@@ -39,6 +39,7 @@ class AlunoHomeScreen extends StatelessWidget {
 
     return ConfettiOverlay(
       active: isBirthday,
+      playFireworksSound: isBirthday,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -138,6 +139,8 @@ class AlunoHomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          _comunicacaoResumo(context, state, aluno.id),
+          const SizedBox(height: 20),
           MegaAguaCard(
             compact: true,
             onVerMais: () => state.setAlunoTab('evolucao'),
@@ -231,6 +234,44 @@ class AlunoHomeScreen extends StatelessWidget {
                   ),
                 )),
         ],
+      ),
+    );
+  }
+
+  Widget _comunicacaoResumo(BuildContext context, AppState state, int alunoId) {
+    final avisos = state.avisosParaAluno(alunoId);
+    final eventosSemana = state.eventosProximos(dias: 7);
+    final mencoes = state.mencoesNaoLidas(alunoId);
+    if (avisos.isEmpty && eventosSemana.isEmpty) return const SizedBox.shrink();
+
+    final partes = <String>[];
+    if (avisos.isNotEmpty) partes.add('${avisos.length} aviso${avisos.length > 1 ? 's' : ''}');
+    if (eventosSemana.isNotEmpty) partes.add('${eventosSemana.length} evento${eventosSemana.length > 1 ? 's' : ''} esta semana');
+
+    return InkWell(
+      onTap: () => state.setAlunoTab('avisos'),
+      borderRadius: BorderRadius.circular(16),
+      child: PulguinhaCard(
+        borderColor: mencoes > 0 ? AppColors.red.withValues(alpha: 0.4) : AppColors.neon.withValues(alpha: 0.3),
+        child: Row(
+          children: [
+            Text(mencoes > 0 ? '🔔' : '📢', style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    mencoes > 0 ? 'Você foi mencionado!' : 'Avisos e eventos',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: mencoes > 0 ? AppColors.red : AppColors.neon),
+                  ),
+                  Text(partes.join(' · '), style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.grayDim),
+          ],
+        ),
       ),
     );
   }

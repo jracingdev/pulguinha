@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
+import 'package:pulguinha/services/viacep_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/vencimento_helper.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
+import 'package:pulguinha/widgets/change_password_dialog.dart';
+import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminAlunosScreen extends StatefulWidget {
@@ -169,6 +173,13 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     final nomeCtrl = TextEditingController(text: editando?.nome ?? '');
     final emailCtrl = TextEditingController(text: editando?.email ?? '');
     final telCtrl = TextEditingController(text: editando?.telefone ?? '');
+    final cepCtrl = TextEditingController(text: editando?.cep ?? '');
+    final logradouroCtrl = TextEditingController(text: editando?.logradouro ?? '');
+    final numeroCtrl = TextEditingController(text: editando?.numero ?? '');
+    final complementoCtrl = TextEditingController(text: editando?.complemento ?? '');
+    final bairroCtrl = TextEditingController(text: editando?.bairro ?? '');
+    final cidadeCtrl = TextEditingController(text: editando?.cidade ?? '');
+    final ufCtrl = TextEditingController(text: editando?.uf ?? '');
     final vencCtrl = TextEditingController(
       text: editando != null && editando.status != 'Pendente'
           ? DateHelper.formatarData(editando.vencimento)
@@ -193,6 +204,28 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     var nivel = editando?.anamnese.nivelExperiencia ?? 'Iniciante';
     int? turmaId = editando?.horarioId;
     String? fotoBase64 = editando?.foto;
+    var cepLoading = false;
+    String? cepErro;
+
+    Future<void> buscarCep(void Function(void Function()) setModalState) async {
+      setModalState(() {
+        cepErro = null;
+        cepLoading = true;
+      });
+      final res = await ViaCepService.instance.buscar(cepCtrl.text.trim());
+      if (!context.mounted) return;
+      setModalState(() => cepLoading = false);
+      if (res == null || res.erro) {
+        setModalState(() => cepErro = 'CEP inválido ou não encontrado.');
+        return;
+      }
+      setModalState(() {
+        logradouroCtrl.text = res.logradouro;
+        bairroCtrl.text = res.bairro;
+        cidadeCtrl.text = res.cidade;
+        ufCtrl.text = res.uf;
+      });
+    }
 
     await showPulguinhaModal(
       context: context,
@@ -206,15 +239,80 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 FieldLabel(label: 'Nome *', child: TextField(controller: nomeCtrl)),
                 FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl)),
                 FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
-                FieldLabel(label: 'Data nascimento', child: TextField(controller: nascCtrl, decoration: const InputDecoration(hintText: '13-06-1995'))),
-                FieldLabel(label: 'Aluno desde', child: TextField(controller: alunoDesdeCtrl, decoration: const InputDecoration(hintText: '15-06-2026'))),
+                const SizedBox(height: 8),
+                const SectionTitle(icon: '📍', title: 'Endereço'),
+                FieldLabel(
+                  label: 'CEP',
+                  child: TextField(
+                    controller: cepCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      hintText: '00000-000',
+                      suffixIcon: cepLoading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : (cepCtrl.text.trim().length == 8 ? const Icon(Icons.search, color: AppColors.neon) : null),
+                    ),
+                    onChanged: (v) {
+                      setModalState(() => cepErro = null);
+                      final digits = v.replaceAll(RegExp(r'\D'), '');
+                      if (digits.length == 8 && !cepLoading) buscarCep(setModalState);
+                    },
+                  ),
+                ),
+                if (cepErro != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      '⚠️ $cepErro',
+                      style: const TextStyle(color: AppColors.red, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                FieldLabel(label: 'Logradouro', child: TextField(controller: logradouroCtrl)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FieldLabel(
+                        label: 'Número',
+                        child: TextField(controller: numeroCtrl, keyboardType: TextInputType.number),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FieldLabel(label: 'Complemento', child: TextField(controller: complementoCtrl)),
+                    ),
+                  ],
+                ),
+                FieldLabel(label: 'Bairro', child: TextField(controller: bairroCtrl)),
+                FieldLabel(label: 'Cidade', child: TextField(controller: cidadeCtrl)),
+                FieldLabel(
+                  label: 'UF',
+                  child: TextField(
+                    controller: ufCtrl,
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 2,
+                  ),
+                ),
+                FieldLabel(
+                  label: 'Data nascimento',
+                  child: DateField(
+                    controller: nascCtrl,
+                    lastDate: DateTime.now(),
+                    hintText: '13-06-1995',
+                  ),
+                ),
+                FieldLabel(
+                  label: 'Aluno desde',
+                  child: DateField(controller: alunoDesdeCtrl, lastDate: DateTime.now().add(const Duration(days: 365))),
+                ),
                 FieldLabel(
                   label: 'Vencimento da mensalidade',
-                  child: TextField(
+                  child: DateField(
                     controller: vencCtrl,
-                    decoration: InputDecoration(
-                      hintText: VencimentoHelper.hintVencimento(plano, state.diaVencimentoPadrao),
-                    ),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                    hintText: VencimentoHelper.hintVencimento(plano, state.diaVencimentoPadrao),
+                    enabled: status != 'Pendente',
                   ),
                 ),
                 FieldLabel(label: 'Senha do app', child: TextField(controller: senhaCtrl, obscureText: true)),
@@ -252,7 +350,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     value: turmaId,
                     items: [
                       const DropdownMenuItem<int?>(value: null, child: Text('Sem turma')),
-                      ...state.horarios.map((h) => DropdownMenuItem<int?>(
+                      ...state.horariosOrdenados.map((h) => DropdownMenuItem<int?>(
                             value: h.id,
                             child: Text('${h.hora} · ${h.dias}'),
                           )),
@@ -309,6 +407,26 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     ],
                   ),
                 ),
+                if (editando != null) ...[
+                  const SizedBox(height: 8),
+                  GhostButton(
+                    label: '🔑 Resetar senha do aluno',
+                    fullWidth: true,
+                    onPressed: () async {
+                      final nova = await showResetPasswordDialog(ctx, nomeAluno: editando.nome);
+                      if (nova == null || nova.isEmpty) return;
+                      final err = await state.resetarSenhaAlunoAdmin(editando.id, nova);
+                      if (!ctx.mounted) return;
+                      if (err != null) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(err)));
+                      } else {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text('Nova senha: $nova — informe ao aluno'), duration: const Duration(seconds: 8)),
+                        );
+                      }
+                    },
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -342,6 +460,13 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             nome: nomeCtrl.text.trim(),
                             email: emailCtrl.text.trim(),
                             telefone: telCtrl.text.trim(),
+                            cep: cepCtrl.text.trim(),
+                            logradouro: logradouroCtrl.text.trim(),
+                            numero: numeroCtrl.text.trim(),
+                            complemento: complementoCtrl.text.trim(),
+                            bairro: bairroCtrl.text.trim(),
+                            cidade: cidadeCtrl.text.trim(),
+                            uf: ufCtrl.text.trim(),
                             plano: plano,
                             vencimento: vencimento,
                             status: status,
@@ -355,6 +480,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             dataCadastro: editando?.dataCadastro ?? MockData.today,
                             alunoDesde: alunoDesde,
                             horarioId: turmaId,
+                            codigoIndicacao: editando?.codigoIndicacao ?? '',
+                            creditoIndicacao: editando?.creditoIndicacao ?? 0,
                           );
                           state.salvarAluno(editando: editando, dados: dados);
                           Navigator.pop(ctx);
@@ -400,9 +527,11 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
               const SizedBox(height: 12),
               FieldLabel(
                 label: 'Primeiro vencimento',
-                child: TextField(
+                child: DateField(
                   controller: vencCtrl,
-                  decoration: InputDecoration(hintText: VencimentoHelper.hintVencimento(a.plano, state.diaVencimentoPadrao)),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                  hintText: VencimentoHelper.hintVencimento(a.plano, state.diaVencimentoPadrao),
                 ),
               ),
               CheckboxListTile(

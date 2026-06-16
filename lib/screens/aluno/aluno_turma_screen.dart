@@ -274,13 +274,23 @@ class _AlunoTurmaScreenState extends State<AlunoTurmaScreen> {
         children: [
           Row(
             children: [
-              PulguinhaAvatar(initials: post.nomeAluno.split(' ').map((n) => n[0]).take(2).join(), size: AvatarSize.sm),
+              PulguinhaAvatar(initials: post.isAdminPost ? 'PR' : post.nomeAluno.split(' ').map((n) => n[0]).take(2).join(), size: AvatarSize.sm),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(post.nomeAluno, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.white)),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            post.isAdminPost ? 'Professor · ${post.nomeAluno}' : post.nomeAluno,
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: post.isAdminPost ? AppColors.yellow : AppColors.white),
+                          ),
+                        ),
+                        if (post.fixado) ...[const SizedBox(width: 4), const Text('📌', style: TextStyle(fontSize: 10))],
+                      ],
+                    ),
                     Text(DateHelper.formatarDataHora(post.dataHora), style: const TextStyle(fontSize: 10, color: AppColors.gray)),
                   ],
                 ),

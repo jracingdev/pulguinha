@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
+import 'package:pulguinha/models/billing_rules.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
@@ -39,8 +40,36 @@ class _LojaScreenState extends State<LojaScreen> {
         const SizedBox(height: 20),
         _tabBar(),
         const SizedBox(height: 20),
-        if (tab == 'planos') ...planos.map((p) => _planoCard(p)),
+        if (tab == 'planos') ...planos.map((p) => _planoCard(p, state)),
         if (tab == 'produtos') ...produtos.map((p) => _produtoCard(p)),
+      ],
+    );
+  }
+
+  PrecoComRegras _detalharPreco(Produto p, AppState state) {
+    if (!widget.usuario.isAluno || widget.usuario.id == null) {
+      return PrecoComRegras(precoOriginal: p.preco, precoFinal: p.preco);
+    }
+    return state.detalharPrecoComRegras(p, aluno: state.alunoPorId(widget.usuario.id));
+  }
+
+  Widget _precoWidget(Produto p, AppState state) {
+    final detalhe = _detalharPreco(p, state);
+    final temDesconto = detalhe.descontoTotal > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (temDesconto)
+          Text(
+            'R\$${detalhe.precoOriginal.toStringAsFixed(0)}',
+            style: const TextStyle(fontSize: 12, color: AppColors.gray, decoration: TextDecoration.lineThrough, decorationColor: AppColors.gray),
+          ),
+        Text('R\$${detalhe.precoFinal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon, decoration: TextDecoration.none)),
+        if (detalhe.descontoIndicado > 0)
+          Text('-${(detalhe.descontoIndicado / detalhe.precoOriginal * 100).toStringAsFixed(0)}% indicação', style: const TextStyle(fontSize: 10, color: AppColors.yellow)),
+        if (detalhe.creditoIndicador > 0)
+          Text('-R\$${detalhe.creditoIndicador.toStringAsFixed(0)} crédito', style: const TextStyle(fontSize: 10, color: AppColors.neon)),
       ],
     );
   }
@@ -73,7 +102,7 @@ class _LojaScreenState extends State<LojaScreen> {
     );
   }
 
-  Widget _planoCard(Produto p) {
+  Widget _planoCard(Produto p, AppState state) {
     final isAtual = widget.usuario.isAluno && widget.usuario.plano == p.nome.replaceFirst('Plano ', '');
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -102,7 +131,7 @@ class _LojaScreenState extends State<LojaScreen> {
                     ],
                   ),
                 ),
-                Text('R\$${p.preco.toStringAsFixed(0)}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.neon, decoration: TextDecoration.none)),
+                _precoWidget(p, state),
               ],
             ),
             const SizedBox(height: 10),
@@ -120,6 +149,8 @@ class _LojaScreenState extends State<LojaScreen> {
   }
 
   Widget _produtoCard(Produto p) {
+    final state = context.watch<AppState>();
+    final detalhe = _detalharPreco(p, state);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: PulguinhaCard(
@@ -135,7 +166,9 @@ class _LojaScreenState extends State<LojaScreen> {
                   Text(p.desc, style: const TextStyle(fontSize: 11, color: AppColors.gray, decoration: TextDecoration.none)),
                   if (p.grades.isNotEmpty)
                     Text('Tamanhos: ${p.grades.join(' · ')}', style: const TextStyle(fontSize: 10, color: AppColors.neon, decoration: TextDecoration.none)),
-                  Text('R\$ ${p.preco.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.neon, decoration: TextDecoration.none)),
+                  if (detalhe.descontoTotal > 0)
+                    Text('R\$ ${detalhe.precoOriginal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: AppColors.gray, decoration: TextDecoration.lineThrough)),
+                  Text('R\$ ${detalhe.precoFinal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.neon, decoration: TextDecoration.none)),
                 ],
               ),
             ),
@@ -203,6 +236,10 @@ class _LojaScreenState extends State<LojaScreen> {
 
     if (!mounted) return;
 
+    final state = context.read<AppState>();
+    final detalhe = _detalharPreco(item, state);
+    final itemComPreco = item.copyWith(preco: detalhe.precoFinal);
+
     final provider = await CheckoutPickerModal.show(context);
     if (!mounted) return;
     if (provider == null) {
@@ -218,34 +255,38 @@ class _LojaScreenState extends State<LojaScreen> {
     if (provider == CheckoutProvider.pagbank) {
       PagBankModal.show(
         context,
-        item: item,
+        item: itemComPreco,
         aluno: widget.usuario.isAluno ? widget.usuario : null,
         gradeSelecionada: grade,
-        onSuccess: () => _onCheckoutSuccess(item),
+        onSuccess: () => _onCheckoutSuccess(itemComPreco),
       );
       return;
     }
 
     MercadoPagoModal.show(
       context,
-      item: item,
+      item: itemComPreco,
       aluno: widget.usuario.isAluno ? widget.usuario : null,
       gradeSelecionada: grade,
-      onSuccess: () => _onCheckoutSuccess(item),
+      onSuccess: () => _onCheckoutSuccess(itemComPreco),
     );
   }
 
   void _onCheckoutSuccess(Produto item) {
-    if (item.tipo == 'plano' && widget.usuario.isAluno && widget.usuario.id != null) {
-      context.read<AppState>().ativarPlanoAluno(widget.usuario.id!, item);
-      final plano = item.nome.replaceFirst('Plano ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ Plano $plano ativado com sucesso!')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✅ ${item.nome} — pagamento confirmado!')),
-      );
+    if (widget.usuario.isAluno && widget.usuario.id != null) {
+      final state = context.read<AppState>();
+      if (item.tipo == 'plano') {
+        state.ativarPlanoAluno(widget.usuario.id!, item);
+        final plano = item.nome.replaceFirst('Plano ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('✅ Plano $plano ativado com sucesso!')),
+        );
+        return;
+      }
+      state.registrarCompraProduto(widget.usuario.id!, item);
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('✅ ${item.nome} — pagamento confirmado!')),
+    );
   }
 }

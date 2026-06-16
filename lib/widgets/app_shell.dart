@@ -21,6 +21,7 @@ class AppShell extends StatelessWidget {
     this.headerRight,
     this.onLogout,
     this.onRefresh,
+    this.tabBadges = const {},
   });
 
   final List<TabItem> tabs;
@@ -30,6 +31,8 @@ class AppShell extends StatelessWidget {
   final Widget? headerRight;
   final VoidCallback? onLogout;
   final Future<void> Function()? onRefresh;
+  /// Contagem opcional por id de aba (ex.: menções não lidas em "avisos").
+  final Map<String, int> tabBadges;
 
   Widget _scrollBody(BuildContext context) {
     return LayoutBuilder(
@@ -131,6 +134,7 @@ class AppShell extends StatelessWidget {
             child: Row(
               children: tabs.map((t) {
                 final active = activeTab == t.id;
+                final badge = tabBadges[t.id] ?? 0;
                 return Expanded(
                   child: InkWell(
                     onTap: () => onTabChanged(t.id),
@@ -140,7 +144,27 @@ class AppShell extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(t.icon, style: TextStyle(fontSize: 18, shadows: active ? [Shadow(color: AppColors.neon.withValues(alpha: 0.8), blurRadius: 5)] : null)),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Text(t.icon, style: TextStyle(fontSize: 18, shadows: active ? [Shadow(color: AppColors.neon.withValues(alpha: 0.8), blurRadius: 5)] : null)),
+                              if (badge > 0)
+                                Positioned(
+                                  right: -6,
+                                  top: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                    decoration: BoxDecoration(color: AppColors.red, borderRadius: BorderRadius.circular(8)),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      badge > 9 ? '9+' : '$badge',
+                                      style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.white, decoration: TextDecoration.none),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                           const SizedBox(height: 2),
                           Text(
                             t.label,

@@ -13,6 +13,11 @@ import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_produtos_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/widgets/theme_settings_tile.dart';
+import 'package:pulguinha/screens/admin/admin_desafios_screen.dart';
+import 'package:pulguinha/screens/admin/admin_dicas_screen.dart';
+import 'package:pulguinha/screens/admin/admin_turma_mural_screen.dart';
+import 'package:pulguinha/widgets/change_password_dialog.dart';
+import 'package:pulguinha/widgets/notification_settings_tile.dart';
 import 'package:pulguinha/widgets/admin_analytics.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -93,6 +98,43 @@ class AdminDashboardScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
+        const SectionTitle(icon: '📢', title: 'Comunicação'),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '📢',
+          title: 'Quadro de avisos e eventos',
+          subtitle: '${state.avisosAtivos().length} aviso(s) · ${state.eventosProximos(dias: 30).length} evento(s)',
+          color: AppColors.neon,
+          onTap: () => state.setAdminTab('comunicacao'),
+        ),
+        if (state.avisosAtivos().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          ...state.avisosAtivos().take(2).map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: () => state.setAdminTab('comunicacao'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: PulguinhaCard(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(a.titulo, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                              Text(a.texto.length > 60 ? '${a.texto.substring(0, 60)}...' : a.texto, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                            ],
+                          ),
+                        ),
+                        if (a.fixado) const Text('📌', style: TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+        ],
+        const SizedBox(height: 24),
         AdminAnalyticsSection(state: state),
         const SizedBox(height: 20),
         const SectionTitle(icon: '📋', title: 'Aulas de Hoje'),
@@ -107,6 +149,57 @@ class AdminDashboardScreen extends StatelessWidget {
         }).map(_alertaVencendo),
         const SizedBox(height: 24),
         const SectionTitle(icon: '⚙️', title: 'Configurações'),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '👥',
+          title: 'Mural das turmas',
+          subtitle: 'Moderar posts (sem dados privados)',
+          color: AppColors.blue,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminTurmaMuralScreen())),
+        ),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🏋️',
+          title: 'Dicas de Evolução',
+          subtitle: '${state.dicasAtivas().length} dicas ativas',
+          color: AppColors.neon,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminDicasScreen())),
+        ),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🏆',
+          title: 'Desafios & gamificação',
+          subtitle: '${state.desafiosAtivos().length} desafio(s) vigente(s)',
+          color: AppColors.yellow,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdminDesafiosScreen())),
+        ),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🔒',
+          title: 'Alterar minha senha',
+          subtitle: 'Senha de administrador',
+          color: AppColors.neon,
+          onTap: () async {
+            final email = context.read<AppState>().usuario?.email ?? 'admin@pulguinha.com';
+            final ok = await showChangePasswordDialog(
+              context,
+              titulo: 'Senha do admin',
+              exigeSenhaAtual: true,
+              onConfirm: (atual, nova) => context.read<AppState>().alterarSenhaAdmin(email, atual, nova),
+            );
+            if (ok == true && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Senha de admin alterada!'), behavior: SnackBarBehavior.floating),
+              );
+            }
+          },
+        ),
+        const SizedBox(height: 10),
+        const NotificationSettingsTile(),
         const SizedBox(height: 10),
         const ThemeSettingsTile(),
         const SizedBox(height: 10),
