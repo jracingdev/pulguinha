@@ -171,11 +171,11 @@ class Presenca {
   final String? nomeAluno;
 
   factory Presenca.fromJson(Map<String, dynamic> json) => Presenca(
-        id: json['id'] as int,
-        alunoId: json['aluno_id'] as int,
-        horarioId: json['horario_id'] as int,
+        id: _jsonInt(json['id']),
+        alunoId: _jsonInt(json['aluno_id']),
+        horarioId: _jsonInt(json['horario_id']),
         data: _formatDate(json['data']),
-        horario: json['horario'] as String,
+        horario: json['horario'] as String? ?? '',
         timestamp: DateTime.parse(json['timestamp'] as String? ?? json['created_at'] as String? ?? DateTime.now().toIso8601String()),
         tipo: TipoPresencaX.fromDb(json['tipo'] as String?),
         nomeAluno: json['nome_aluno'] as String?,
@@ -310,10 +310,10 @@ class Aluno {
   }
 
   factory Aluno.fromJson(Map<String, dynamic> json) => Aluno(
-        id: json['id'] as int,
-        nome: json['nome'] as String,
-        email: json['email'] as String,
-        senha: json['senha'] as String,
+        id: _jsonInt(json['id']),
+        nome: json['nome'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        senha: json['senha'] as String? ?? '',
         telefone: json['telefone'] as String? ?? '',
         plano: json['plano'] as String? ?? 'Mensal',
         vencimento: _formatDate(json['vencimento']),
@@ -322,15 +322,15 @@ class Aluno {
         dataNascimento: json['data_nascimento'] != null ? _formatDate(json['data_nascimento']) : null,
         anamnese: Anamnese.fromJson(json['anamnese']),
         foto: json['foto'] as String?,
-        streakPresenca: json['streak_presenca'] as int? ?? 0,
-        pulguinhaPoints: json['pulguinha_points'] as int? ?? 0,
+        streakPresenca: _jsonInt(json['streak_presenca']),
+        pulguinhaPoints: _jsonInt(json['pulguinha_points']),
         dataCadastro: json['data_cadastro'] != null ? _formatDate(json['data_cadastro']) : null,
         alunoDesde: json['aluno_desde'] != null
             ? _formatDate(json['aluno_desde'])
             : json['data_cadastro'] != null
                 ? _formatDate(json['data_cadastro'])
                 : null,
-        horarioId: json['horario_id'] as int?,
+        horarioId: _jsonIntOrNull(json['horario_id']),
         cep: json['cep'] as String? ?? '',
         logradouro: json['logradouro'] as String? ?? '',
         numero: json['numero'] as String? ?? '',
@@ -339,7 +339,7 @@ class Aluno {
         cidade: json['cidade'] as String? ?? '',
         uf: json['uf'] as String? ?? '',
         codigoIndicacao: (json['codigo_indicacao'] as String?) ?? '',
-        creditoIndicacao: (json['credito_indicacao'] as num?)?.toDouble() ?? 0,
+        creditoIndicacao: _jsonDouble(json['credito_indicacao']),
       );
 
   Map<String, dynamic> toJson() => {
@@ -434,9 +434,9 @@ class Indicacao {
   }
 
   factory Indicacao.fromJson(Map<String, dynamic> json) => Indicacao(
-        id: json['id'] as int,
-        indicadorId: json['indicador_id'] as int,
-        indicadoId: json['indicado_id'] as int,
+        id: _jsonInt(json['id']),
+        indicadorId: _jsonInt(json['indicador_id']),
+        indicadoId: _jsonInt(json['indicado_id']),
         codigoUsado: json['codigo_usado'] as String? ?? '',
         status: json['status'] as String? ?? 'pendente',
         dataCriacao: _formatDate(json['data_criacao']),
@@ -481,10 +481,10 @@ class Horario {
   }
 
   factory Horario.fromJson(Map<String, dynamic> json) => Horario(
-        id: json['id'] as int,
-        hora: json['hora'] as String,
-        dias: json['dias'] as String,
-        capacidade: json['capacidade'] as int,
+        id: _jsonInt(json['id']),
+        hora: json['hora'] as String? ?? '',
+        dias: json['dias'] as String? ?? '',
+        capacidade: _jsonInt(json['capacidade'], fallback: 12),
       );
 
   Map<String, dynamic> toJson() => {
@@ -514,12 +514,12 @@ class Agendamento {
   final String status;
 
   factory Agendamento.fromJson(Map<String, dynamic> json) => Agendamento(
-        id: json['id'] as int,
-        alunoId: json['aluno_id'] as int?,
-        nomeAluno: json['nome_aluno'] as String,
-        horarioId: json['horario_id'] as int,
+        id: _jsonInt(json['id']),
+        alunoId: _jsonIntOrNull(json['aluno_id']),
+        nomeAluno: json['nome_aluno'] as String? ?? 'Aluno',
+        horarioId: _jsonInt(json['horario_id']),
         data: _formatDate(json['data']),
-        horario: json['horario'] as String,
+        horario: json['horario'] as String? ?? '',
         status: json['status'] as String? ?? 'Confirmado',
       );
 
@@ -585,11 +585,11 @@ class Produto {
       grades = rawGrades.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     }
     return Produto(
-      id: json['id'] as int,
-      nome: json['nome'] as String,
+      id: _jsonInt(json['id']),
+      nome: json['nome'] as String? ?? '',
       desc: json['descricao'] as String? ?? '',
-      preco: (json['preco'] as num).toDouble(),
-      tipo: json['tipo'] as String,
+      preco: _jsonDouble(json['preco']),
+      tipo: json['tipo'] as String? ?? 'produto',
       emoji: json['emoji'] as String? ?? '📦',
       foto: json['foto'] as String?,
       grades: grades,
@@ -623,8 +623,8 @@ class ComentarioTurma {
   final DateTime dataHora;
 
   factory ComentarioTurma.fromJson(Map<String, dynamic> json) => ComentarioTurma(
-        id: json['id'] as int,
-        alunoId: json['aluno_id'] as int,
+        id: _jsonInt(json['id']),
+        alunoId: _jsonInt(json['aluno_id']),
         nomeAluno: json['nome_aluno'] as String,
         texto: json['texto'] as String,
         dataHora: DateTime.parse(json['data_hora'] as String),
@@ -753,13 +753,13 @@ class PostTurma {
     final rawVotos = json['enquete_votos'];
     Map<String, int> votos = {};
     if (rawVotos is Map) {
-      votos = rawVotos.map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+      votos = rawVotos.map((k, v) => MapEntry(k.toString(), _jsonInt(v)));
     }
     return PostTurma(
-      id: json['id'] as int,
-      alunoId: json['aluno_id'] as int,
-      nomeAluno: json['nome_aluno'] as String,
-      horarioId: json['horario_id'] as int,
+      id: _jsonInt(json['id']),
+      alunoId: _jsonInt(json['aluno_id']),
+      nomeAluno: json['nome_aluno'] as String? ?? '',
+      horarioId: _jsonInt(json['horario_id']),
       texto: json['texto'] as String? ?? '',
       dataHora: DateTime.parse(json['data_hora'] as String),
       tipo: _tipoFrom(json['tipo'] as String?),
@@ -770,7 +770,7 @@ class PostTurma {
       linkUrl: json['link_url'] as String?,
       enqueteOpcoes: rawOpcoes is List ? rawOpcoes.map((e) => e.toString()).toList() : const [],
       enqueteVotos: votos,
-      reacoes: rawReacoes is List ? rawReacoes.map((e) => (e as num).toInt()).toList() : const [],
+      reacoes: rawReacoes is List ? rawReacoes.where((e) => e != null).map((e) => _jsonInt(e)).toList() : const [],
       comentarios: rawComentarios is List
           ? rawComentarios.map((c) => ComentarioTurma.fromJson(Map<String, dynamic>.from(c as Map))).toList()
           : const [],
@@ -844,7 +844,7 @@ class Aviso {
   }
 
   factory Aviso.fromJson(Map<String, dynamic> json) => Aviso(
-        id: json['id'] as int,
+        id: _jsonInt(json['id']),
         titulo: json['titulo'] as String,
         texto: json['texto'] as String,
         autor: json['autor'] as String? ?? 'Admin',
@@ -923,15 +923,15 @@ class EventoEstudio {
   }
 
   factory EventoEstudio.fromJson(Map<String, dynamic> json) => EventoEstudio(
-        id: json['id'] as int,
-        titulo: json['titulo'] as String,
+        id: _jsonInt(json['id']),
+        titulo: json['titulo'] as String? ?? '',
         descricao: json['descricao'] as String? ?? '',
         dataInicio: DateTime.parse(json['data_inicio'] as String),
         dataFim: json['data_fim'] != null ? DateTime.parse(json['data_fim'] as String) : null,
         local: json['local'] as String?,
         mencoes: _parseBigIntArray(json['mencoes']),
         notificarTodos: json['notificar_todos'] as bool? ?? true,
-        lembreteDiasAntes: json['lembrete_dias_antes'] as int? ?? 1,
+        lembreteDiasAntes: _jsonInt(json['lembrete_dias_antes'], fallback: 1),
         ativo: json['ativo'] as bool? ?? true,
         criadoEm: json['criado_em'] != null ? DateTime.parse(json['criado_em'] as String) : null,
       );
@@ -949,10 +949,34 @@ class EventoEstudio {
       };
 }
 
+/// Postgres/Supabase no web pode devolver `null`, `double` ou `String` em colunas numéricas.
+int _jsonInt(dynamic value, {int fallback = 0}) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim()) ?? fallback;
+  return fallback;
+}
+
+int? _jsonIntOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim());
+  return null;
+}
+
+double _jsonDouble(dynamic value, {double fallback = 0}) {
+  if (value == null) return fallback;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value.trim()) ?? fallback;
+  return fallback;
+}
+
 List<int> _parseBigIntArray(dynamic raw) {
   if (raw == null) return [];
-  if (raw is List) return raw.map((e) => (e as num).toInt()).toList();
-  return [];
+  if (raw is! List) return [];
+  return raw.where((e) => e != null).map((e) => _jsonInt(e)).toList();
 }
 
 String _formatDate(dynamic value) {
@@ -1002,13 +1026,13 @@ class DicaTreino {
   }
 
   factory DicaTreino.fromJson(Map<String, dynamic> json) => DicaTreino(
-        id: json['id'] as int,
+        id: _jsonInt(json['id']),
         icon: json['icon'] as String? ?? '💡',
-        titulo: json['titulo'] as String,
-        texto: json['texto'] as String,
+        titulo: json['titulo'] as String? ?? '',
+        texto: json['texto'] as String? ?? '',
         categoria: json['categoria'] as String? ?? 'Geral',
         ativo: json['ativo'] as bool? ?? true,
-        ordem: json['ordem'] as int? ?? 0,
+        ordem: _jsonInt(json['ordem']),
       );
 
   Map<String, dynamic> toJson() => {
@@ -1091,12 +1115,12 @@ class Desafio {
       };
 
   factory Desafio.fromJson(Map<String, dynamic> json) => Desafio(
-        id: json['id'] as int,
-        titulo: json['titulo'] as String,
+        id: _jsonInt(json['id']),
+        titulo: json['titulo'] as String? ?? '',
         descricao: json['descricao'] as String? ?? '',
         tipo: _tipoFrom(json['tipo'] as String?),
-        meta: json['meta'] as int? ?? 5,
-        pontosRecompensa: json['pontos_recompensa'] as int? ?? 50,
+        meta: _jsonInt(json['meta'], fallback: 5),
+        pontosRecompensa: _jsonInt(json['pontos_recompensa'], fallback: 50),
         dataInicio: _formatDate(json['data_inicio']),
         dataFim: json['data_fim'] != null ? _formatDate(json['data_fim']) : null,
         ativo: json['ativo'] as bool? ?? true,
@@ -1144,9 +1168,9 @@ class DesafioProgresso {
   }
 
   factory DesafioProgresso.fromJson(Map<String, dynamic> json) => DesafioProgresso(
-        desafioId: json['desafio_id'] as int,
-        alunoId: json['aluno_id'] as int,
-        progresso: json['progresso'] as int? ?? 0,
+        desafioId: _jsonInt(json['desafio_id']),
+        alunoId: _jsonInt(json['aluno_id']),
+        progresso: _jsonInt(json['progresso']),
         concluidoEm: json['concluido_em'] != null ? DateTime.parse(json['concluido_em'] as String) : null,
       );
 

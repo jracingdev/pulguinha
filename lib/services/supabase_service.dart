@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -6,6 +7,18 @@ class SupabaseService {
   static final instance = SupabaseService._();
 
   SupabaseClient get _db => Supabase.instance.client;
+
+  List<T> _mapRows<T>(List<dynamic> rows, T Function(Map<String, dynamic>) fromJson, String table) {
+    final out = <T>[];
+    for (final raw in rows) {
+      try {
+        out.add(fromJson(Map<String, dynamic>.from(raw as Map)));
+      } catch (e, st) {
+        debugPrint('Ignorando linha inválida em $table: $e\n$st\n$raw');
+      }
+    }
+    return out;
+  }
 
   /// Colunas leves — sem `foto` (base64 pode passar de 200 KB por aluno e derrubar o web).
   static const _alunoColumnsSemFoto =
@@ -16,27 +29,27 @@ class SupabaseService {
   Future<List<Aluno>> fetchAlunos({bool includeFoto = false}) async {
     final columns = includeFoto ? '*' : _alunoColumnsSemFoto;
     final rows = await _db.from('alunos').select(columns).order('nome');
-    return (rows as List).map((r) => Aluno.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Aluno.fromJson, 'alunos');
   }
 
   Future<List<Horario>> fetchHorarios() async {
     final rows = await _db.from('horarios').select().order('hora');
-    return (rows as List).map((r) => Horario.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Horario.fromJson, 'horarios');
   }
 
   Future<List<Agendamento>> fetchAgendamentos() async {
     final rows = await _db.from('agendamentos').select().order('data');
-    return (rows as List).map((r) => Agendamento.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Agendamento.fromJson, 'agendamentos');
   }
 
   Future<List<Produto>> fetchProdutos() async {
     final rows = await _db.from('produtos').select().order('id');
-    return (rows as List).map((r) => Produto.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Produto.fromJson, 'produtos');
   }
 
   Future<List<Presenca>> fetchPresencas() async {
     final rows = await _db.from('presencas').select().order('timestamp', ascending: false);
-    return (rows as List).map((r) => Presenca.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Presenca.fromJson, 'presencas');
   }
 
   Future<Usuario?> autenticarAdmin(String email, String senha) async {
@@ -132,7 +145,7 @@ class SupabaseService {
 
   Future<List<PostTurma>> fetchPostsTurma() async {
     final rows = await _db.from('posts_turma').select().order('data_hora', ascending: false);
-    return (rows as List).map((r) => PostTurma.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, PostTurma.fromJson, 'posts_turma');
   }
 
   Future<PostTurma> insertPostTurma(PostTurma post) async {
@@ -167,7 +180,7 @@ class SupabaseService {
 
   Future<List<DicaTreino>> fetchDicas() async {
     final rows = await _db.from('dicas_treino').select().order('ordem');
-    return (rows as List).map((r) => DicaTreino.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, DicaTreino.fromJson, 'dicas_treino');
   }
 
   Future<DicaTreino> insertDica(DicaTreino dica) async {
@@ -186,7 +199,7 @@ class SupabaseService {
 
   Future<List<Desafio>> fetchDesafios() async {
     final rows = await _db.from('desafios').select().order('data_inicio', ascending: false);
-    return (rows as List).map((r) => Desafio.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Desafio.fromJson, 'desafios');
   }
 
   Future<Desafio> insertDesafio(Desafio d) async {
@@ -205,7 +218,7 @@ class SupabaseService {
 
   Future<List<DesafioProgresso>> fetchDesafioProgresso() async {
     final rows = await _db.from('desafio_progresso').select();
-    return (rows as List).map((r) => DesafioProgresso.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, DesafioProgresso.fromJson, 'desafio_progresso');
   }
 
   Future<void> upsertDesafioProgresso(DesafioProgresso prog) async {
@@ -214,7 +227,7 @@ class SupabaseService {
 
   Future<List<Aviso>> fetchAvisos() async {
     final rows = await _db.from('avisos').select().eq('ativo', true).order('fixado', ascending: false).order('data_hora', ascending: false);
-    return (rows as List).map((r) => Aviso.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Aviso.fromJson, 'avisos');
   }
 
   Future<Aviso> insertAviso(Aviso aviso) async {
@@ -233,7 +246,7 @@ class SupabaseService {
 
   Future<List<EventoEstudio>> fetchEventos() async {
     final rows = await _db.from('eventos').select().eq('ativo', true).order('data_inicio');
-    return (rows as List).map((r) => EventoEstudio.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, EventoEstudio.fromJson, 'eventos');
   }
 
   Future<EventoEstudio> insertEvento(EventoEstudio evento) async {
@@ -271,7 +284,7 @@ class SupabaseService {
 
   Future<List<Indicacao>> fetchIndicacoes() async {
     final rows = await _db.from('indicacoes').select().order('data_criacao', ascending: false);
-    return (rows as List).map((r) => Indicacao.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    return _mapRows(rows as List, Indicacao.fromJson, 'indicacoes');
   }
 
   Future<Indicacao> insertIndicacao(Indicacao indicacao) async {
