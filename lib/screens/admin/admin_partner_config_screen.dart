@@ -136,11 +136,12 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
       provider: PartnerProvider.totalpass,
       identifier: _testTotalpassCtrl.text,
       identifierType: TotalpassIdentifierType.token,
+      mode: PartnerAccessMode.use,
     );
     if (!mounted) return;
     setState(() {
       _testing = false;
-      _testResult = result.ok ? 'TotalPass: token válido ✓' : 'TotalPass: ${result.message}';
+      _testResult = result.ok ? 'TotalPass: check-in confirmado (token consumido) ✓' : 'TotalPass: ${result.message}';
     });
   }
 
@@ -188,9 +189,42 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Alunos com GymPass ou TotalPass fazem check-in no app do benefício e entram no Pulguinha validando o token/ID.\n\n'
-            'Para o site (web), configure também os secrets no Supabase: WELLHUB_BEARER_TOKEN, WELLHUB_GYM_ID, TOTALPASS_API_KEY, TOTALPASS_SERVICE_PROVIDER_CODE e deploy da Edge Function validate-partner-access.',
+            'Opcional: não altera login por e-mail/senha.\n\n'
+            'Fluxo oficial (repasse à academia):\n'
+            '• GymPass — aluno faz check-in no app; Pulguinha valida via API /access/v1/validate\n'
+            '• TotalPass — aluno faz check-in no app; Pulguinha confirma via track_usages (consome token)\n\n'
+            'No PC (PowerShell):\n'
+            '1. copy supabase\\secrets.local.env.example supabase\\secrets.local.env\n'
+            '2. Preencha os tokens\n'
+            '3. .\\scripts\\configurar-secrets-parceiros.ps1\n'
+            '4. .\\scripts\\deploy-partner-function.ps1\n\n'
+            'No app: salve Gym ID e códigos abaixo (tokens sensíveis podem ficar só no Supabase).',
             style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.45, decoration: TextDecoration.none),
+          ),
+          if (_unlocked) ...[
+            const SizedBox(height: 12),
+            _checklistRow('GymPass token local', _wellhubTokenCtrl.text.trim().isNotEmpty),
+            _checklistRow('GymPass Gym ID', _wellhubGymIdCtrl.text.trim().isNotEmpty),
+            _checklistRow('TotalPass API key local', _totalpassApiKeyCtrl.text.trim().isNotEmpty),
+            _checklistRow('TotalPass código academia', _totalpassServiceCodeCtrl.text.trim().isNotEmpty),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _checklistRow(String label, bool ok) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(ok ? '✅' : '⬜', style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 11, color: ok ? AppColors.neon : AppColors.gray, decoration: TextDecoration.none),
+            ),
           ),
         ],
       ),

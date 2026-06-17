@@ -73,6 +73,12 @@ class PartnerAccessService {
       );
     } catch (e) {
       debugPrint('Edge Function ${PartnerConfig.edgeFunctionName}: $e');
+      final msg = e.toString();
+      if (msg.contains('404') || msg.contains('NOT_FOUND') || msg.contains('Failed to fetch')) {
+        return PartnerAccessResult.failure(
+          'Função validate-partner-access ainda não publicada. Rode scripts\\deploy-partner-function.ps1 no PC.',
+        );
+      }
       return null;
     }
   }

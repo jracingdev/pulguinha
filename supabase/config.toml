@@ -1,0 +1,25 @@
+# Pulguinha — Supabase CLI (Edge Functions)
+# Projeto: https://supabase.com/dashboard/project/tvztfgjmhxmwjzsnugic
+
+project_id = "tvztfgjmhxmwjzsnugic"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[functions.validate-partner-access]
+verify_jwt = true
+
+[functions.create-mp-preference]
+verify_jwt = true

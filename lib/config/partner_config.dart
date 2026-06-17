@@ -1,3 +1,5 @@
+import 'package:pulguinha/config/supabase_config.dart';
+import 'package:pulguinha/models/partner_access.dart';
 import 'package:pulguinha/services/partner_config_storage.dart';
 
 class PartnerConfig {
@@ -24,6 +26,41 @@ class PartnerConfig {
       _stored.totalpassApiKey.trim().isNotEmpty && _stored.totalpassServiceProviderCode.trim().isNotEmpty;
 
   static bool get isAnyConfigured => wellhubConfigured || totalpassConfigured;
+
+  /// Gym ID / código da academia salvos no aparelho (Edge Function usa secrets do Supabase).
+  static bool get wellhubHasPublicConfig => _stored.wellhubGymId.trim().isNotEmpty;
+
+  static bool get totalpassHasPublicConfig => _stored.totalpassServiceProviderCode.trim().isNotEmpty;
+
+  /// Pode tentar login por benefício (falha graciosamente se secrets ainda não existirem).
+  static bool canAttemptBeneficioLogin(PartnerProvider provider) {
+    if (provider == PartnerProvider.wellhub) {
+      return wellhubConfigured || wellhubHasPublicConfig || SupabaseConfig.isConfigured;
+    }
+    return totalpassConfigured || totalpassHasPublicConfig || SupabaseConfig.isConfigured;
+  }
+
+  static List<String> missingWellhubItems() {
+    final missing = <String>[];
+    if (!_stored.wellhubBearerToken.trim().isNotEmpty) {
+      missing.add('Token Bearer GymPass (app ou secret WELLHUB_BEARER_TOKEN)');
+    }
+    if (!_stored.wellhubGymId.trim().isNotEmpty) {
+      missing.add('Gym ID (app ou secret WELLHUB_GYM_ID)');
+    }
+    return missing;
+  }
+
+  static List<String> missingTotalpassItems() {
+    final missing = <String>[];
+    if (!_stored.totalpassApiKey.trim().isNotEmpty) {
+      missing.add('API Key (app ou secret TOTALPASS_API_KEY)');
+    }
+    if (!_stored.totalpassServiceProviderCode.trim().isNotEmpty) {
+      missing.add('Código da academia (app ou secret TOTALPASS_SERVICE_PROVIDER_CODE)');
+    }
+    return missing;
+  }
 
   static String integrationLabel() {
     final parts = <String>[];

@@ -594,21 +594,25 @@ class AppState extends ChangeNotifier {
     return aluno.toUsuario();
   }
 
-  /// Valida check-in Wellhub/TotalPass e entra com aluno vinculado.
+  /// Confirma check-in GymPass/TotalPass (API oficial) e entra com aluno vinculado.
   /// Retorna (usuário, mensagem de erro).
   Future<(Usuario?, String?)> autenticarComBeneficio({
     required PartnerProvider provider,
     required String identifier,
-    TotalpassIdentifierType identifierType = TotalpassIdentifierType.token,
+    TotalpassIdentifierType identifierType = TotalpassIdentifierType.cpf,
   }) async {
+    final mode = provider.loginAccessMode;
     final validation = await PartnerAccessService.instance.validate(
       provider: provider,
       identifier: identifier,
       identifierType: identifierType,
-      mode: PartnerAccessMode.validate,
+      mode: mode,
     );
     if (!validation.ok) {
-      return (null, validation.message ?? 'Benefício inválido.');
+      final hint = provider == PartnerProvider.wellhub
+          ? ' Faça check-in no app GymPass nesta academia e tente de novo.'
+          : ' Faça check-in no app TotalPass nesta academia e tente de novo.';
+      return (null, '${validation.message ?? 'Check-in inválido.'}$hint');
     }
 
     final normalized = validation.identifier ?? identifier.trim();
@@ -620,16 +624,28 @@ class AppState extends ChangeNotifier {
         aluno = await SupabaseService.instance.buscarAlunoPorWellhubId(normalized);
       }
     } else {
-      aluno = alunos.where((a) => a.totalpassCpf == normalized).firstOrNull;
-      if (aluno == null && !useMock) {
+      aluno = _buscarAlunoTotalpass(
+        normalized: normalized,
+        identifierType: identifierType,
+      );
+      if (aluno == null && !useMock && identifierType == TotalpassIdentifierType.cpf) {
         aluno = await SupabaseService.instance.buscarAlunoPorTotalpassCpf(normalized);
       }
     }
 
     if (aluno == null) {
+      if (provider == PartnerProvider.totalpass &&
+          identifierType != TotalpassIdentifierType.cpf) {
+        return (
+          null,
+          'Check-in confirmado no TotalPass, mas nenhuma conta está vinculada. '
+              'Entre com o CPF cadastrado pelo professor ou peça o vínculo em Admin → Alunos.',
+        );
+      }
       return (
         null,
-        'Benefício validado, mas nenhuma conta está vinculada. Peça ao professor para cadastrar seu ID ${provider.label}.',
+        'Check-in confirmado, mas nenhuma conta está vinculada. '
+            'Peça ao professor para cadastrar seu ${provider == PartnerProvider.wellhub ? 'ID GymPass' : 'CPF TotalPass'}.',
       );
     }
     if (aluno.status == 'Pendente') {
@@ -640,6 +656,19 @@ class AppState extends ChangeNotifier {
     }
 
     return (aluno.toUsuario(), null);
+  }
+
+  Aluno? _buscarAlunoTotalpass({
+    required String normalized,
+    required TotalpassIdentifierType identifierType,
+  }) {
+    if (identifierType == TotalpassIdentifierType.cpf) {
+      final cpf = normalized.replaceAll(RegExp(r'\D'), '');
+      if (cpf.length != 11) return null;
+      return alunos.where((a) => a.totalpassCpf == cpf).firstOrNull;
+    }
+    // Token/código confirmam check-in na API, mas o vínculo da conta é pelo CPF.
+    return null;
   }
 
   Aluno? buscarAlunoPorBeneficio(PartnerProvider provider, String identifier) {

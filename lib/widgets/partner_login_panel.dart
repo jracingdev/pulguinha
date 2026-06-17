@@ -20,7 +20,7 @@ class PartnerLoginPanel extends StatefulWidget {
 
 class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
   PartnerProvider _provider = PartnerProvider.wellhub;
-  TotalpassIdentifierType _tpType = TotalpassIdentifierType.token;
+  TotalpassIdentifierType _tpType = TotalpassIdentifierType.cpf;
   final _identifierCtrl = TextEditingController();
 
   @override
@@ -43,23 +43,9 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
     }
   }
 
-  bool get _providerConfigured {
-    if (_provider == PartnerProvider.wellhub) return PartnerConfig.wellhubConfigured;
-    return PartnerConfig.totalpassConfigured;
-  }
+  bool get _providerConfigured => PartnerConfig.canAttemptBeneficioLogin(_provider);
 
   Future<void> _submit() async {
-    if (!_providerConfigured) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${_provider.label} ainda não está configurado. O professor precisa ativar em Admin → GymPass & TotalPass.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
     await widget.onLogin(_provider, _identifierCtrl.text.trim(), _tpType);
   }
 
@@ -74,7 +60,7 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
             Expanded(child: Divider(color: AppColors.border.withValues(alpha: 0.6))),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 10),
-              child: Text('ou entre com benefício', style: TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600)),
+              child: Text('ou entre com benefício (opcional)', style: TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600)),
             ),
             Expanded(child: Divider(color: AppColors.border.withValues(alpha: 0.6))),
           ],
@@ -105,8 +91,23 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Integração ${_provider.label} pendente — professor deve configurar no painel admin.',
+              'Integração ${_provider.label} pendente — configure em Admin → GymPass & TotalPass. Login por e-mail continua normal.',
               style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.35),
+            ),
+          )
+        else
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.neon.withValues(alpha: 0.06),
+              border: Border.all(color: AppColors.neon.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Check-in no app ${_provider.label} é obrigatório para a academia receber o repasse. '
+              'O Pulguinha confirma esse check-in pela API oficial.',
+              style: TextStyle(fontSize: 11, color: AppColors.neon.withValues(alpha: 0.9), height: 1.35),
             ),
           ),
         Container(
@@ -118,8 +119,10 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
           ),
           child: Text(
             _provider == PartnerProvider.wellhub
-                ? '1. Faça check-in no app GymPass nesta academia\n2. Informe seu ID GymPass abaixo'
-                : '1. Abra o app TotalPass e faça check-in nesta academia\n2. Informe o token ou CPF abaixo',
+                ? '1. Faça check-in no app GymPass nesta academia (obrigatório para repasse)\n'
+                    '2. Informe seu ID GymPass — validamos o check-in na API oficial'
+                : '1. Faça check-in no app TotalPass nesta academia (obrigatório para repasse)\n'
+                    '2. Informe seu CPF cadastrado — confirmamos o check-in na API (track_usages)',
             style: const TextStyle(fontSize: 11, color: AppColors.gray, height: 1.45),
           ),
         ),
@@ -130,8 +133,8 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
             dropdownColor: AppColors.card,
             decoration: const InputDecoration(labelText: 'Tipo de identificação'),
             items: const [
-              DropdownMenuItem(value: TotalpassIdentifierType.token, child: Text('Token diário')),
-              DropdownMenuItem(value: TotalpassIdentifierType.cpf, child: Text('CPF')),
+              DropdownMenuItem(value: TotalpassIdentifierType.cpf, child: Text('CPF (recomendado — vincula sua conta)')),
+              DropdownMenuItem(value: TotalpassIdentifierType.token, child: Text('Token diário (só teste/admin)')),
               DropdownMenuItem(value: TotalpassIdentifierType.code, child: Text('Código beneficiário')),
             ],
             onChanged: widget.loading
@@ -157,7 +160,9 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
         ),
         const SizedBox(height: 10),
         GhostButton(
-          label: widget.loading ? '⏳ Validando...' : 'Entrar com ${_provider.label}',
+          label: widget.loading
+              ? '⏳ Confirmando check-in...'
+              : 'Confirmar check-in ${_provider.label} e entrar',
           fullWidth: true,
           borderColor: AppColors.neon.withValues(alpha: 0.35),
           textColor: AppColors.neon,
