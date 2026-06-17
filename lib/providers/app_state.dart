@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/billing_rules.dart';
 import 'package:pulguinha/models/models.dart';
+import 'package:pulguinha/models/partner_access.dart';
+import 'package:pulguinha/services/partner_access_service.dart';
 import 'package:pulguinha/services/supabase_bootstrap.dart';
 import 'package:pulguinha/services/supabase_service.dart';
 import 'package:pulguinha/services/finance_settings_storage.dart';
@@ -590,6 +592,66 @@ class AppState extends ChangeNotifier {
     if (aluno == null) return null;
     if (aluno.status == 'Pendente') return null;
     return aluno.toUsuario();
+  }
+
+  /// Valida check-in Wellhub/TotalPass e entra com aluno vinculado.
+  /// Retorna (usuário, mensagem de erro).
+  Future<(Usuario?, String?)> autenticarComBeneficio({
+    required PartnerProvider provider,
+    required String identifier,
+    TotalpassIdentifierType identifierType = TotalpassIdentifierType.token,
+  }) async {
+    final validation = await PartnerAccessService.instance.validate(
+      provider: provider,
+      identifier: identifier,
+      identifierType: identifierType,
+      mode: PartnerAccessMode.validate,
+    );
+    if (!validation.ok) {
+      return (null, validation.message ?? 'Benefício inválido.');
+    }
+
+    final normalized = validation.identifier ?? identifier.trim();
+    Aluno? aluno;
+
+    if (provider == PartnerProvider.wellhub) {
+      aluno = alunos.where((a) => a.wellhubId == normalized).firstOrNull;
+      if (aluno == null && !useMock) {
+        aluno = await SupabaseService.instance.buscarAlunoPorWellhubId(normalized);
+      }
+    } else {
+      aluno = alunos.where((a) => a.totalpassCpf == normalized).firstOrNull;
+      if (aluno == null && !useMock) {
+        aluno = await SupabaseService.instance.buscarAlunoPorTotalpassCpf(normalized);
+      }
+    }
+
+    if (aluno == null) {
+      return (
+        null,
+        'Benefício validado, mas nenhuma conta está vinculada. Peça ao professor para cadastrar seu ID ${provider.label}.',
+      );
+    }
+    if (aluno.status == 'Pendente') {
+      return (null, 'Cadastro aguardando aprovação do professor.');
+    }
+    if (aluno.status != 'Ativo' && aluno.status != 'Inadimplente') {
+      return (null, 'Conta com status "${aluno.status}". Fale com o professor.');
+    }
+
+    return (aluno.toUsuario(), null);
+  }
+
+  Aluno? buscarAlunoPorBeneficio(PartnerProvider provider, String identifier) {
+    final normalized = identifier.replaceAll(RegExp(r'\D'), '');
+    if (normalized.isEmpty) return null;
+    if (provider == PartnerProvider.wellhub) {
+      final id = normalized.padLeft(13, '0');
+      final gympassId = id.length > 13 ? id.substring(id.length - 13) : id;
+      return alunos.where((a) => a.wellhubId == gympassId).firstOrNull;
+    }
+    final cpf = normalized.length > 11 ? normalized.substring(normalized.length - 11) : normalized;
+    return alunos.where((a) => a.totalpassCpf == cpf).firstOrNull;
   }
 
   bool emailJaCadastrado(String email) {

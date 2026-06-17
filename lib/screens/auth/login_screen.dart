@@ -9,7 +9,9 @@ import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
 import 'package:pulguinha/widgets/change_password_dialog.dart';
+import 'package:pulguinha/models/partner_access.dart';
 import 'package:pulguinha/widgets/mock_mode_banner.dart';
+import 'package:pulguinha/widgets/partner_login_panel.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -175,6 +177,33 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user.isAdmin && appState.precisaConfigurarSupabase) {
       await _mostrarDicaSupabaseOffline();
     }
+  }
+
+  Future<void> _tentarLoginBeneficio(PartnerProvider provider, String identifier, TotalpassIdentifierType type) async {
+    setState(() {
+      erro = '';
+      loading = true;
+    });
+
+    final appState = context.read<AppState>();
+    final (user, err) = await appState.autenticarComBeneficio(
+      provider: provider,
+      identifier: identifier,
+      identifierType: type,
+    );
+
+    if (!mounted) return;
+
+    if (user == null) {
+      setState(() {
+        loading = false;
+        erro = err ?? 'Não foi possível entrar com ${provider.label}.';
+      });
+      return;
+    }
+
+    setState(() => loading = false);
+    appState.login(user);
   }
 
   Future<void> _mostrarDicaSupabaseOffline() async {
@@ -400,6 +429,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
         if (role == UserType.aluno) ...[
+          const SizedBox(height: 20),
+          PartnerLoginPanel(
+            loading: loading,
+            onLogin: (provider, identifier, type) => _tentarLoginBeneficio(provider, identifier, type),
+          ),
           const SizedBox(height: 20),
           GhostButton(
             label: '📝 Criar conta de aluno',

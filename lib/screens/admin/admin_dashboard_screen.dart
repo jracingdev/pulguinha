@@ -9,6 +9,8 @@ import 'package:pulguinha/config/mercado_pago_config.dart';
 import 'package:pulguinha/screens/admin/admin_horarios_screen.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/screens/admin/admin_mp_config_screen.dart';
+import 'package:pulguinha/config/partner_config.dart';
+import 'package:pulguinha/screens/admin/admin_partner_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/screens/admin/admin_produtos_screen.dart';
 import 'package:pulguinha/screens/shared/sobre_app_screen.dart';
@@ -233,6 +235,17 @@ class AdminDashboardScreen extends StatelessWidget {
           color: AppColors.mercadoPago,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const AdminMpConfigScreen()),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _configTile(
+          context,
+          icon: '🎫',
+          title: 'GymPass & TotalPass',
+          subtitle: PartnerConfig.integrationLabel(),
+          color: AppColors.neon,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const AdminPartnerConfigScreen()),
           ),
         ),
         const SizedBox(height: 10),

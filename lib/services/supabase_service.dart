@@ -24,7 +24,7 @@ class SupabaseService {
   static const _alunoColumnsSemFoto =
       'id,nome,email,senha,telefone,plano,vencimento,status,avatar,data_nascimento,anamnese,'
       'streak_presenca,pulguinha_points,data_cadastro,aluno_desde,horario_id,cep,logradouro,'
-      'numero,complemento,bairro,cidade,uf,codigo_indicacao,credito_indicacao';
+      'numero,complemento,bairro,cidade,uf,codigo_indicacao,credito_indicacao,wellhub_id,totalpass_cpf,beneficio_origem';
 
   Future<List<Aluno>> fetchAlunos({bool includeFoto = false}) async {
     final columns = includeFoto ? '*' : _alunoColumnsSemFoto;
@@ -174,6 +174,22 @@ class SupabaseService {
 
   Future<Aluno?> buscarAlunoPorEmail(String email) async {
     final rows = await _db.from('alunos').select().eq('email', email.trim().toLowerCase()).maybeSingle();
+    if (rows == null) return null;
+    return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Aluno?> buscarAlunoPorWellhubId(String wellhubId) async {
+    final id = wellhubId.replaceAll(RegExp(r'\D'), '');
+    if (id.isEmpty) return null;
+    final rows = await _db.from('alunos').select().eq('wellhub_id', id).maybeSingle();
+    if (rows == null) return null;
+    return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  Future<Aluno?> buscarAlunoPorTotalpassCpf(String cpf) async {
+    final digits = cpf.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return null;
+    final rows = await _db.from('alunos').select().eq('totalpass_cpf', digits).maybeSingle();
     if (rows == null) return null;
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }

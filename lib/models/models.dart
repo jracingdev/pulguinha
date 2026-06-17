@@ -220,6 +220,9 @@ class Aluno {
     this.uf = '',
     this.codigoIndicacao = '',
     this.creditoIndicacao = 0,
+    this.wellhubId,
+    this.totalpassCpf,
+    this.beneficioOrigem,
   });
 
   final int id;
@@ -250,6 +253,12 @@ class Aluno {
   final String codigoIndicacao;
   /// Crédito acumulado por indicações convertidas (R\$).
   final double creditoIndicacao;
+  /// ID GymPass (13 dígitos) para login via benefício.
+  final String? wellhubId;
+  /// CPF só dígitos para login TotalPass.
+  final String? totalpassCpf;
+  /// wellhub | totalpass
+  final String? beneficioOrigem;
 
   Aluno copyWith({
     int? id,
@@ -278,6 +287,9 @@ class Aluno {
     String? uf,
     String? codigoIndicacao,
     double? creditoIndicacao,
+    String? wellhubId,
+    String? totalpassCpf,
+    String? beneficioOrigem,
   }) {
     return Aluno(
       id: id ?? this.id,
@@ -306,6 +318,9 @@ class Aluno {
       uf: uf ?? this.uf,
       codigoIndicacao: codigoIndicacao ?? this.codigoIndicacao,
       creditoIndicacao: creditoIndicacao ?? this.creditoIndicacao,
+      wellhubId: wellhubId ?? this.wellhubId,
+      totalpassCpf: totalpassCpf ?? this.totalpassCpf,
+      beneficioOrigem: beneficioOrigem ?? this.beneficioOrigem,
     );
   }
 
@@ -340,6 +355,9 @@ class Aluno {
         uf: json['uf'] as String? ?? '',
         codigoIndicacao: (json['codigo_indicacao'] as String?) ?? '',
         creditoIndicacao: _jsonDouble(json['credito_indicacao']),
+        wellhubId: _normalizePartnerId(json['wellhub_id'] as String?),
+        totalpassCpf: _normalizeCpf(json['totalpass_cpf'] as String?),
+        beneficioOrigem: json['beneficio_origem'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -368,6 +386,9 @@ class Aluno {
         'uf': uf,
         if (codigoIndicacao.isNotEmpty) 'codigo_indicacao': codigoIndicacao,
         if (creditoIndicacao > 0) 'credito_indicacao': creditoIndicacao,
+        if (wellhubId != null && wellhubId!.isNotEmpty) 'wellhub_id': wellhubId,
+        if (totalpassCpf != null && totalpassCpf!.isNotEmpty) 'totalpass_cpf': totalpassCpf,
+        if (beneficioOrigem != null && beneficioOrigem!.isNotEmpty) 'beneficio_origem': beneficioOrigem,
       };
 
   /// Payload para INSERT — nunca envia `id` (BIGSERIAL no Postgres).
@@ -982,6 +1003,18 @@ List<int> _parseBigIntArray(dynamic raw) {
 String _formatDate(dynamic value) {
   if (value is String) return value.split('T').first;
   return value.toString().split('T').first;
+}
+
+String? _normalizeCpf(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  return digits.isEmpty ? null : digits;
+}
+
+String? _normalizePartnerId(String? value) {
+  if (value == null || value.trim().isEmpty) return null;
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  return digits.isEmpty ? null : digits;
 }
 
 enum TipoDesafio { checkins, streak, agua }

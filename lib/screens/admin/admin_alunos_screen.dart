@@ -199,6 +199,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     final objCtrl = TextEditingController(text: editando?.anamnese.objetivoTreino ?? '');
     final emergCtrl = TextEditingController(text: editando?.anamnese.contatoEmergencia ?? '');
     final emergTelCtrl = TextEditingController(text: editando?.anamnese.telefoneEmergencia ?? '');
+    final wellhubCtrl = TextEditingController(text: editando?.wellhubId ?? '');
+    final totalpassCpfCtrl = TextEditingController(text: editando?.totalpassCpf ?? '');
     var plano = editando?.plano ?? 'Mensal';
     var status = editando?.status ?? 'Ativo';
     var nivel = editando?.anamnese.nivelExperiencia ?? 'Iniciante';
@@ -239,6 +241,24 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 FieldLabel(label: 'Nome *', child: TextField(controller: nomeCtrl)),
                 FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl)),
                 FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl)),
+                const SizedBox(height: 8),
+                const SectionTitle(icon: '🎫', title: 'GymPass / TotalPass'),
+                FieldLabel(
+                  label: 'ID GymPass (13 dígitos)',
+                  child: TextField(
+                    controller: wellhubCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(hintText: 'Para login via app GymPass'),
+                  ),
+                ),
+                FieldLabel(
+                  label: 'CPF TotalPass',
+                  child: TextField(
+                    controller: totalpassCpfCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(hintText: 'Somente números — para login TotalPass'),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 const SectionTitle(icon: '📍', title: 'Endereço'),
                 FieldLabel(
@@ -482,6 +502,15 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             horarioId: turmaId,
                             codigoIndicacao: editando?.codigoIndicacao ?? '',
                             creditoIndicacao: editando?.creditoIndicacao ?? 0,
+                            wellhubId: wellhubCtrl.text.trim().isEmpty
+                                ? null
+                                : wellhubCtrl.text.replaceAll(RegExp(r'\D'), ''),
+                            totalpassCpf: totalpassCpfCtrl.text.trim().isEmpty
+                                ? null
+                                : totalpassCpfCtrl.text.replaceAll(RegExp(r'\D'), ''),
+                            beneficioOrigem: wellhubCtrl.text.trim().isNotEmpty
+                                ? 'wellhub'
+                                : (totalpassCpfCtrl.text.trim().isNotEmpty ? 'totalpass' : editando?.beneficioOrigem),
                           );
                           state.salvarAluno(editando: editando, dados: dados);
                           Navigator.pop(ctx);
