@@ -429,12 +429,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
         if (role == UserType.aluno) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           PartnerLoginPanel(
             loading: loading,
             onLogin: (provider, identifier, type) => _tentarLoginBeneficio(provider, identifier, type),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           GhostButton(
             label: '📝 Criar conta de aluno',
             fullWidth: true,

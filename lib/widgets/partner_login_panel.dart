@@ -43,14 +43,28 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
     }
   }
 
+  bool get _providerConfigured {
+    if (_provider == PartnerProvider.wellhub) return PartnerConfig.wellhubConfigured;
+    return PartnerConfig.totalpassConfigured;
+  }
+
   Future<void> _submit() async {
+    if (!_providerConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_provider.label} ainda não está configurado. O professor precisa ativar em Admin → GymPass & TotalPass.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     await widget.onLogin(_provider, _identifierCtrl.text.trim(), _tpType);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!PartnerConfig.isAnyConfigured) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -81,6 +95,20 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
           ),
         ),
         const SizedBox(height: 12),
+        if (!_providerConfigured)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.yellow.withValues(alpha: 0.08),
+              border: Border.all(color: AppColors.yellow.withValues(alpha: 0.25)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Integração ${_provider.label} pendente — professor deve configurar no painel admin.',
+              style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.35),
+            ),
+          ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
