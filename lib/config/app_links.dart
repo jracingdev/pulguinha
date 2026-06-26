@@ -8,6 +8,12 @@ class AppLinks {
   static const String lojaSubdomainHost = 'loja.funcionaldopulguinha.com.br';
   static const String lojaPath = '/loja';
 
+  /// Política de privacidade (obrigatório na Play Store).
+  static String get privacyPolicyUrl => 'https://$productionHost/privacidade';
+
+  /// Termos de uso (recomendado na Play Store).
+  static String get termsOfUseUrl => 'https://$productionHost/termos';
+
   /// Link principal da loja pública (planos e produtos sem login).
   static String get lojaPublicUrl => 'https://$productionHost$lojaPath';
 

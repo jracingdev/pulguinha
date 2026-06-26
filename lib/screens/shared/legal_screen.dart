@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:pulguinha/config/app_links.dart';
 import 'package:pulguinha/data/legal_content.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum LegalDocType { termos, privacidade }
 
@@ -9,6 +11,14 @@ class LegalScreen extends StatelessWidget {
   const LegalScreen({super.key, required this.type});
 
   final LegalDocType type;
+
+  Future<void> _openOnline() async {
+    final url = type == LegalDocType.termos ? AppLinks.termsOfUseUrl : AppLinks.privacyPolicyUrl;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +40,18 @@ class LegalScreen extends StatelessWidget {
                 fontSize: 13,
                 color: Theme.of(context).colorScheme.onSurface,
                 height: 1.6,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: OutlinedButton.icon(
+              onPressed: _openOnline,
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Ver online'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.neon,
+                side: BorderSide(color: AppColors.neon.withValues(alpha: 0.5)),
               ),
             ),
           ),
