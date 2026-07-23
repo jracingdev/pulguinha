@@ -11,6 +11,10 @@ class PartnerLoginPanel extends StatefulWidget {
     required this.onLogin,
   });
 
+  /// TEMPORÁRIO: oculta a UI de login GymPass/TotalPass na tela inicial/login.
+  /// Para reativar, altere para `true`.
+  static const bool kShowPartnerLoginUi = false;
+
   final bool loading;
   final Future<void> Function(PartnerProvider provider, String identifier, TotalpassIdentifierType type) onLogin;
 
@@ -51,6 +55,11 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // TEMPORÁRIO: UI GymPass/TotalPass desativada na tela de login.
+    if (!PartnerLoginPanel.kShowPartnerLoginUi) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

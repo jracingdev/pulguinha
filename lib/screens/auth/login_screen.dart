@@ -248,7 +248,18 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              const SizedBox(height: 40),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: loading ? null : () => context.read<AppState>().irParaInicio(),
+                  icon: const Icon(Icons.chevron_left, color: AppColors.gray, size: 20),
+                  label: const Text(
+                    'Voltar ao início',
+                    style: TextStyle(color: AppColors.gray, fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               _buildLogo(),
               const SizedBox(height: 36),
               if (role == UserType.admin) const MockModeBanner(compact: true),
@@ -429,11 +440,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
         if (role == UserType.aluno) ...[
-          const SizedBox(height: 16),
-          PartnerLoginPanel(
-            loading: loading,
-            onLogin: (provider, identifier, type) => _tentarLoginBeneficio(provider, identifier, type),
-          ),
+          // TEMPORÁRIO: painel GymPass/TotalPass oculto (ver PartnerLoginPanel.kShowPartnerLoginUi).
+          if (PartnerLoginPanel.kShowPartnerLoginUi) ...[
+            const SizedBox(height: 16),
+            PartnerLoginPanel(
+              loading: loading,
+              onLogin: (provider, identifier, type) => _tentarLoginBeneficio(provider, identifier, type),
+            ),
+          ],
           const SizedBox(height: 16),
           GhostButton(
             label: '📝 Criar conta de aluno',
