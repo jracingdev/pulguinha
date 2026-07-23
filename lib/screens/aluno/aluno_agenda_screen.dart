@@ -4,6 +4,7 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/utils/agendamento_rules.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -59,6 +60,20 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
             NeonButton(label: '+ Agendar', onPressed: () => _modalAgendar(context, state, aluno)),
           ],
         ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.neon.withValues(alpha: 0.06),
+            border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            'Você só pode agendar entre 24 horas e 1 hora antes do horário do treino.',
+            style: TextStyle(fontSize: 11, color: AppColors.neon, height: 1.4, fontWeight: FontWeight.w600),
+          ),
+        ),
         if (aluno.horarioId != null) ...[
           const SizedBox(height: 12),
           Container(
@@ -70,7 +85,7 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Sua turma principal é ${state.labelTurma(aluno)} — para controle e mural. Você pode agendar qualquer horário com vaga disponível.',
+              'Sua turma principal é ${state.labelTurma(aluno)} — para controle e mural. Você pode agendar qualquer horário com vaga disponível na janela permitida.',
               style: const TextStyle(fontSize: 11, color: AppColors.neon, height: 1.4, fontWeight: FontWeight.w600),
             ),
           ),
@@ -124,14 +139,16 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
                 final lotado = ags.length >= h.capacidade;
                 final eu = state.agendamentos.where((ag) => ag.alunoId == aluno.id && ag.data == dia.iso && ag.horarioId == h.id).firstOrNull;
                 final turmaPrincipal = aluno.horarioId == h.id;
+                final naJanela = AgendamentoRules.podeAgendar(dia.iso, h.hora);
+                final podeEntrar = eu == null && !lotado && naJanela;
                 return HorarioSlotCard(
                   hora: h.hora,
                   ocupados: ags.length,
                   capacidade: h.capacidade,
                   subtitle: turmaPrincipal ? 'Sua turma principal' : null,
                   selected: eu != null,
-                  enabled: eu != null || !lotado,
-                  onTap: eu != null || lotado ? null : () => _agendarDireto(state, aluno, dia.iso, h),
+                  enabled: eu != null || podeEntrar,
+                  onTap: podeEntrar ? () => _agendarDireto(state, aluno, dia.iso, h) : null,
                   footer: eu != null
                       ? Align(
                           alignment: Alignment.centerLeft,
@@ -144,8 +161,12 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
                       : Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            lotado ? 'Lotada' : 'Toque para entrar',
-                            style: TextStyle(fontSize: 10, color: lotado ? AppColors.grayDim : AppColors.neon, fontWeight: FontWeight.w700),
+                            _footerSlot(lotado: lotado, naJanela: naJanela, data: dia.iso, hora: h.hora),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: podeEntrar ? AppColors.neon : AppColors.grayDim,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                 );
@@ -157,15 +178,35 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
     );
   }
 
+  String _footerSlot({required bool lotado, required bool naJanela, required String data, required String hora}) {
+    if (lotado) return 'Lotada';
+    if (naJanela) return 'Toque para entrar';
+    final inicio = AgendamentoRules.inicioAula(data, hora);
+    final now = DateTime.now();
+    if (now.isAfter(inicio.subtract(AgendamentoRules.antecedenciaMinima))) {
+      return 'Encerrado';
+    }
+    return 'Abre em 24h';
+  }
+
   void _agendarDireto(AppState state, Aluno aluno, String data, dynamic h) {
-    state.criarAgendamento(alunoId: aluno.id, nomeAluno: aluno.nome, horarioId: h.id, data: data, horario: h.hora);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Agendamento confirmado!')));
+    final result = state.criarAgendamento(
+      alunoId: aluno.id,
+      nomeAluno: aluno.nome,
+      horarioId: h.id,
+      data: data,
+      horario: h.hora,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.ok ? 'Agendamento confirmado!' : (result.mensagem ?? 'Não foi possível agendar.'))),
+    );
   }
 
   Future<void> _modalAgendar(BuildContext context, AppState state, Aluno aluno) async {
     var data = MockData.today;
     var horarioId = '';
     final dataCtrl = TextEditingController(text: DateHelper.formatarData(data));
+    final now = DateTime.now();
 
     await showPulguinhaModal(
       context: context,
@@ -182,16 +223,22 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
                   border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text('⏰ Você pode cancelar até 1h antes da aula', style: TextStyle(fontSize: 12, color: AppColors.neon)),
+                child: const Text(
+                  '⏰ Agende apenas entre 24h e 1h antes do treino',
+                  style: TextStyle(fontSize: 12, color: AppColors.neon),
+                ),
               ),
               const SizedBox(height: 14),
               FieldLabel(
                 label: 'Data',
                 child: DateField(
                   controller: dataCtrl,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 90)),
-                  onChanged: (iso) => setModal(() => data = iso),
+                  firstDate: now,
+                  lastDate: now.add(AgendamentoRules.antecedenciaMaxima),
+                  onChanged: (iso) => setModal(() {
+                    data = iso;
+                    horarioId = '';
+                  }),
                 ),
               ),
               FieldLabel(
@@ -202,10 +249,15 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
                   items: state.horariosOrdenados.map((h) {
                     final v = state.agendamentosPorDataHorario(data, h.id);
                     final lotado = v.length >= h.capacidade;
+                    final naJanela = AgendamentoRules.podeAgendar(data, h.hora);
+                    final disponivel = !lotado && naJanela;
+                    final sufixo = lotado
+                        ? ' LOTADO'
+                        : (!naJanela ? ' FORA DA JANELA' : '');
                     return DropdownMenuItem(
                       value: '${h.id}',
-                      enabled: !lotado,
-                      child: Text('${h.hora} (${v.length}/${h.capacidade})${lotado ? " LOTADO" : ""}'),
+                      enabled: disponivel,
+                      child: Text('${h.hora} (${v.length}/${h.capacidade})$sufixo'),
                     );
                   }).toList(),
                   onChanged: (v) => setModal(() => horarioId = v ?? ''),

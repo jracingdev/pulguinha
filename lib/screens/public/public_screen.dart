@@ -8,7 +8,6 @@ import 'package:pulguinha/screens/auth/cadastro_aluno_screen.dart';
 import 'package:pulguinha/screens/shared/legal_screen.dart';
 import 'package:pulguinha/screens/shared/loja_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
-import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/widgets/mock_mode_banner.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 import 'package:pulguinha/widgets/studio_contact_card.dart';
@@ -24,11 +23,6 @@ class PublicScreen extends StatefulWidget {
 
 class _PublicScreenState extends State<PublicScreen> {
   late String step;
-  int semana = 0;
-  final nomeCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  String horarioId = '';
-  String data = MockData.today;
 
   @override
   void initState() {
@@ -39,13 +33,6 @@ class _PublicScreenState extends State<PublicScreen> {
       final state = context.read<AppState>();
       if (state.useMock) state.garantirConexaoSupabase();
     });
-  }
-
-  @override
-  void dispose() {
-    nomeCtrl.dispose();
-    emailCtrl.dispose();
-    super.dispose();
   }
 
   @override
@@ -75,7 +62,6 @@ class _PublicScreenState extends State<PublicScreen> {
                       _buildHero(),
                       const MockModeBanner(adminOnly: true),
                       if (step == 'home') _buildHome(state),
-                      if (step == 'agendar') _buildAgendar(state),
                       if (step == 'loja') _buildLoja(),
                     ],
                   ),
@@ -110,7 +96,15 @@ class _PublicScreenState extends State<PublicScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _homeCard('📅', 'Agendar Aula', 'Escolha horário e garanta sua vaga', AppColors.neon, () => setState(() => step = 'agendar'))),
+            Expanded(
+              child: _homeCard(
+                '📅',
+                'Agendar Aula',
+                'Faça login para escolher horário e garantir sua vaga',
+                AppColors.neon,
+                () => state.irParaLogin(),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(child: _homeCard('💳', 'Assinar Plano', 'Planos mensais a partir de R\$$precoMensal', AppColors.mercadoPago, () => setState(() => step = 'loja'))),
           ],
@@ -121,6 +115,12 @@ class _PublicScreenState extends State<PublicScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SectionTitle(icon: '📋', title: 'Horários disponíveis'),
+              const SizedBox(height: 4),
+              const Text(
+                'Agendamento somente com login, entre 24h e 1h antes do treino.',
+                style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.4),
+              ),
+              const SizedBox(height: 12),
               HorarioGrid(
                 children: state.horariosOrdenados.map((h) {
                   final ocupadosHoje = state.agendamentosPorDataHorario(MockData.today, h.id).length;
@@ -129,11 +129,6 @@ class _PublicScreenState extends State<PublicScreen> {
                     dias: h.dias,
                     capacidade: h.capacidade,
                     ocupadosHoje: ocupadosHoje,
-                    onTap: () => setState(() {
-                      step = 'agendar';
-                      horarioId = '${h.id}';
-                      data = MockData.today;
-                    }),
                   );
                 }).toList(),
               ),
@@ -197,126 +192,6 @@ class _PublicScreenState extends State<PublicScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildAgendar(AppState state) {
-    final dias = DateHelper.diasDaSemana(semana);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextButton.icon(
-          onPressed: () => setState(() => step = 'home'),
-          icon: const Icon(Icons.chevron_left, color: AppColors.gray, size: 18),
-          label: const Text('Voltar', style: TextStyle(color: AppColors.gray)),
-        ),
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.white),
-            children: [
-              TextSpan(text: 'AGENDE SUA '),
-              TextSpan(text: 'AULA', style: TextStyle(color: AppColors.neon)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text('Escolha o melhor horário para seu treino funcional.', style: TextStyle(fontSize: 13, color: AppColors.gray)),
-        const SizedBox(height: 20),
-        FieldLabel(label: 'Seu nome', child: TextField(controller: nomeCtrl, decoration: const InputDecoration(hintText: 'Nome completo'))),
-        FieldLabel(label: 'E-mail (opcional)', child: TextField(controller: emailCtrl, decoration: const InputDecoration(hintText: 'email@exemplo.com'))),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _navBtn(() => setState(() => semana--)),
-            Text(DateHelper.labelSemana(dias), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray)),
-            _navBtn(() => setState(() => semana++), next: true),
-          ],
-        ),
-        const SizedBox(height: 16),
-        ...dias.map((dia) => _diaCard(state, dia)),
-        const SizedBox(height: 8),
-        NeonButton(
-          label: '✅ Confirmar Agendamento',
-          fullWidth: true,
-          onPressed: () => _confirmarAg(state),
-        ),
-      ],
-    );
-  }
-
-  Widget _navBtn(VoidCallback onTap, {bool next = false}) {
-    return IconButton(
-      onPressed: onTap,
-      style: IconButton.styleFrom(backgroundColor: AppColors.card2, side: const BorderSide(color: AppColors.border)),
-      icon: Icon(next ? Icons.chevron_right : Icons.chevron_left, color: AppColors.white),
-    );
-  }
-
-  Widget _diaCard(AppState state, DiaSemana dia) {
-    final isToday = dia.iso == MockData.today;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: PulguinhaCard(
-        borderColor: isToday ? AppColors.neon.withValues(alpha: 0.3) : AppColors.border,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(color: isToday ? AppColors.neon : AppColors.card2, borderRadius: BorderRadius.circular(8)),
-                  alignment: Alignment.center,
-                  child: Text('${dia.num}', style: TextStyle(fontWeight: FontWeight.w900, color: isToday ? const Color(0xFF111111) : AppColors.gray)),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(dia.nome, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: isToday ? AppColors.neon : AppColors.white)),
-                    Text('${dia.num} de ${dia.mes}', style: const TextStyle(fontSize: 11, color: AppColors.gray)),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            HorarioGrid(
-              children: state.horariosOrdenados.map((h) {
-                final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
-                final lotado = ags.length >= h.capacidade;
-                final sel = horarioId == '${h.id}' && data == dia.iso;
-                return HorarioSlotCard(
-                  hora: h.hora,
-                  ocupados: ags.length,
-                  capacidade: h.capacidade,
-                  selected: sel,
-                  enabled: !lotado,
-                  onTap: () => setState(() {
-                    horarioId = '${h.id}';
-                    data = dia.iso;
-                  }),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _confirmarAg(AppState state) {
-    if (nomeCtrl.text.trim().isEmpty || horarioId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preencha nome e horário.')));
-      return;
-    }
-    final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
-    if (state.aulaLotada(data, h.id)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aula lotada!')));
-      return;
-    }
-    state.criarAgendamento(nomeAluno: nomeCtrl.text.trim(), horarioId: h.id, data: data, horario: h.hora);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Agendamento confirmado! ${nomeCtrl.text} às ${h.hora}')));
-    setState(() => step = 'home');
   }
 
   Widget _buildLoja() {

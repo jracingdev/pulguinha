@@ -14,6 +14,7 @@ import 'package:pulguinha/services/referral_storage.dart';
 import 'package:pulguinha/services/notifications/notification_payload.dart';
 import 'package:pulguinha/services/notifications/notification_scheduler.dart';
 import 'package:pulguinha/services/notifications/notification_settings_storage.dart';
+import 'package:pulguinha/utils/agendamento_rules.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/utils/horario_helper.dart';
 import 'package:pulguinha/utils/mention_helper.dart';
@@ -37,6 +38,13 @@ class RegistrarPresencaResult {
   final int novoStreak;
   final int? milestoneAtingido;
   final int pointsGanhos;
+}
+
+class CriarAgendamentoResult {
+  const CriarAgendamentoResult({required this.ok, this.mensagem});
+
+  final bool ok;
+  final String? mensagem;
 }
 
 class AppState extends ChangeNotifier {
@@ -494,6 +502,11 @@ class AppState extends ChangeNotifier {
 
   void irParaLogin() {
     screen = AppScreen.login;
+    notifyListeners();
+  }
+
+  void irParaInicio() {
+    screen = AppScreen.public;
     notifyListeners();
   }
 
@@ -1235,13 +1248,34 @@ class AppState extends ChangeNotifier {
     return agendamentosPorDataHorario(data, horarioId).length >= h.capacidade;
   }
 
-  void criarAgendamento({
+  /// Cria agendamento. Alunos precisam estar identificados (`alunoId`) e
+  /// respeitar a janela de 24h–1h antes do treino, salvo [respeitarJanela] = false (admin).
+  CriarAgendamentoResult criarAgendamento({
     int? alunoId,
     required String nomeAluno,
     required int horarioId,
     required String data,
     required String horario,
+    bool respeitarJanela = true,
   }) {
+    if (alunoId == null) {
+      return const CriarAgendamentoResult(
+        ok: false,
+        mensagem: 'Faça login para agendar uma aula.',
+      );
+    }
+
+    if (aulaLotada(data, horarioId)) {
+      return const CriarAgendamentoResult(ok: false, mensagem: 'Aula lotada!');
+    }
+
+    if (respeitarJanela && !AgendamentoRules.podeAgendar(data, horario)) {
+      return CriarAgendamentoResult(
+        ok: false,
+        mensagem: AgendamentoRules.mensagemBloqueio(data, horario),
+      );
+    }
+
     final novo = Agendamento(
       id: DateTime.now().millisecondsSinceEpoch,
       alunoId: alunoId,
@@ -1257,7 +1291,7 @@ class AppState extends ChangeNotifier {
 
     if (useMock) {
       _agendarNotificacoesUsuario();
-      return;
+      return const CriarAgendamentoResult(ok: true);
     }
 
     SupabaseService.instance.insertAgendamento(novo).then((saved) {
@@ -1269,6 +1303,8 @@ class AppState extends ChangeNotifier {
       agendamentos = agendamentos.where((a) => a.id != novo.id).toList();
       notifyListeners();
     });
+
+    return const CriarAgendamentoResult(ok: true);
   }
 
   void cancelarAgendamento(int id) {

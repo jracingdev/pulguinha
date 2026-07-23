@@ -225,7 +225,14 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                         final aluno = state.alunos.firstWhere((a) => a.id == int.parse(alunoId));
                         final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
                         if (state.aulaLotada(data, h.id)) return;
-                        state.criarAgendamento(alunoId: aluno.id, nomeAluno: aluno.nome, horarioId: h.id, data: data, horario: h.hora);
+                        state.criarAgendamento(
+                          alunoId: aluno.id,
+                          nomeAluno: aluno.nome,
+                          horarioId: h.id,
+                          data: data,
+                          horario: h.hora,
+                          respeitarJanela: false,
+                        );
                         Navigator.pop(ctx);
                       },
                     ),
