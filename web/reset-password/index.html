@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Redefinir senha — Funcional do Pulguinha</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111111;
+      color: #aaff00;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      text-align: center;
+      padding: 24px;
+    }
+  </style>
+</head>
+<body>
+  <p>Abrindo o app para você criar a nova senha...</p>
+  <!--
+    Ponte para hospedagens estáticas sem reescrita de rotas (GitHub Pages, etc.).
+    O Supabase redireciona para /reset-password com o token no fragment
+    (#access_token=...&type=recovery) ou na query (?code=... no fluxo PKCE);
+    encaminhamos tudo para a raiz, onde o app Flutter processa o link.
+  -->
+  <script>
+    (function () {
+      var raiz = window.location.pathname.replace(/\/reset-password(\/index\.html)?\/?$/, '/');
+      if (!raiz) raiz = '/';
+      var query = window.location.search;
+      query = query ? query + '&recovery=1' : '?recovery=1';
+      window.location.replace(raiz + query + window.location.hash);
+    })();
+  </script>
+</body>
+</html>

@@ -1,6 +1,10 @@
 -- Estrutura do Pulguinha — execute no SQL Editor do Supabase (idempotente).
 -- Dados demo opcionais: supabase/seed.sql
 -- Migração mínima (banco já em produção): supabase/migration_minimal.sql
+--
+-- Supabase Auth: a coluna `senha` (texto claro) é LEGADA e será removida no fim
+-- da migração. Rode supabase/migration_supabase_auth.sql e siga
+-- docs/plano-migracao-supabase-auth.md.
 
 -- Admin
 CREATE TABLE IF NOT EXISTS admins (

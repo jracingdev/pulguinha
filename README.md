@@ -63,6 +63,21 @@ flutter run \
 
 > A chave **anon** é pública no modelo Supabase (protegida por RLS). Para o Pulguinha single-tenant, está commitada no código. **Nunca** commite a `service_role` key.
 
+### Autenticação e recuperação de senha (Supabase Auth)
+
+O login usa o **Supabase Auth** (`signInWithPassword`) e o "Esqueci a senha" envia o
+e-mail oficial de redefinição (`resetPasswordForEmail`). Enquanto houver contas não
+migradas, o login aceita as senhas legadas em texto como fallback.
+
+Passos de migração (banco, painel e provisionamento dos usuários atuais) e a
+configuração de SMTP/redirect URLs estão em
+[`docs/plano-migracao-supabase-auth.md`](docs/plano-migracao-supabase-auth.md).
+
+```bash
+# depois de provisionar todos os usuários no Auth, desligue o fallback legado:
+flutter build appbundle --release --dart-define=PULG_LOGIN_LEGADO=false
+```
+
 > **Fotos:** armazenadas em base64 no campo `foto` do aluno (demo). Em produção, prefira Supabase Storage.
 
 ### Mercado Pago (Checkout Pro)
@@ -265,6 +280,10 @@ lib/
 
 supabase/
 ├── schema.sql                              # Tabelas, RLS e dados iniciais (seed)
+├── migration_supabase_auth.sql             # Vínculo auth_user_id + funções/trigger do Auth
+├── migration_supabase_auth_rls.sql         # RLS com auth.uid() (parte B pendente)
+├── scripts/provisionar_auth_users.mjs      # Cria auth.users via Admin API (service_role por env)
+├── scripts/provisionar_auth_users.sql      # Alternativa em SQL
 └── functions/create-mp-preference/index.ts # Cria preferência MP (access token no secret)
 ```
 

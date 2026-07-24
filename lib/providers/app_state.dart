@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pulguinha/config/auth_config.dart';
 import 'package:pulguinha/config/supabase_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +8,7 @@ import 'package:pulguinha/models/billing_rules.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/models/partner_access.dart';
 import 'package:pulguinha/services/partner_access_service.dart';
+import 'package:pulguinha/services/password_recovery_notifier.dart';
 import 'package:pulguinha/services/supabase_bootstrap.dart';
 import 'package:pulguinha/services/supabase_service.dart';
 import 'package:pulguinha/services/finance_settings_storage.dart';
@@ -535,6 +537,7 @@ class AppState extends ChangeNotifier {
     usuario = null;
     screen = AppScreen.public;
     notifyListeners();
+    SupabaseService.instance.encerrarSessaoAuth();
   }
 
   void setAdminTab(String tab) {
@@ -595,7 +598,10 @@ class AppState extends ChangeNotifier {
     if (!useMock) {
       final aluno = await SupabaseService.instance.autenticarAluno(em, sn);
       if (aluno == null) return null;
-      if (aluno.status == 'Pendente') return null;
+      if (aluno.status == 'Pendente') {
+        await SupabaseService.instance.encerrarSessaoAuth();
+        return null;
+      }
       return aluno.toUsuario();
     }
 
@@ -733,6 +739,9 @@ class AppState extends ChangeNotifier {
       if (!confirmado) {
         return 'Cadastro não confirmado no servidor. Verifique a conexão e tente novamente.';
       }
+      // Provisiona a conta no Supabase Auth para o aluno já poder usar o
+      // "esqueci a senha" oficial. Falha aqui não invalida o cadastro.
+      await SupabaseService.instance.criarContaAuth(saved.email, novo.senha);
       alunos = _aplicarCodigosIndicacao([...alunos, saved]);
       if (codigoIndicacao != null && codigoIndicacao.trim().isNotEmpty) {
         final errInd = await registrarIndicacao(codigoIndicacao, saved.id);
@@ -1839,70 +1848,148 @@ class AppState extends ChangeNotifier {
 
   // —— Senhas ——
 
+  /// Resposta única do "esqueci a senha" — não revela se o e-mail existe.
+  static const mensagemResetSenhaEnviado =
+      'Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha. '
+      'Verifique também a caixa de spam.';
+
+  static String? validarSenha(String senha) {
+    if (senha.length < AuthConfig.senhaMinima) {
+      return 'A senha precisa ter ao menos ${AuthConfig.senhaMinima} caracteres.';
+    }
+    return null;
+  }
+
+  /// Dispara o e-mail oficial de redefinição do Supabase Auth (aluno ou admin).
+  /// Retorna sempre a mesma mensagem, independente de o e-mail existir.
+  Future<String> solicitarRedefinicaoSenha(String email) async {
+    final em = email.trim().toLowerCase();
+    if (em.isEmpty || !SupabaseConfig.isConfigured) return mensagemResetSenhaEnviado;
+    try {
+      // Só garante o cliente inicializado — sem sincronizar dados (seria lento).
+      await SupabaseBootstrap.ensureInitialized(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
+    } catch (e) {
+      debugPrint('Supabase indisponível para reset de senha: $e');
+    }
+    await SupabaseService.instance.enviarLinkRedefinicaoSenha(em);
+    return mensagemResetSenhaEnviado;
+  }
+
+  /// Grava a nova senha depois do retorno do link (evento `PASSWORD_RECOVERY`).
+  /// A sessão de recuperação é encerrada em seguida — o usuário entra de novo
+  /// com a senha nova. Retorna `null` em caso de sucesso.
+  Future<String?> definirNovaSenhaRecuperacao(String novaSenha) async {
+    final invalida = validarSenha(novaSenha);
+    if (invalida != null) return invalida;
+
+    final service = SupabaseService.instance;
+    final email = service.emailSessaoAuth;
+    final erro = await service.definirNovaSenhaSessaoAtual(novaSenha);
+    if (erro != null) return erro;
+
+    if (email != null) await service.invalidarSenhaLegada(email);
+    await service.encerrarSessaoAuth();
+    return null;
+  }
+
+  /// Fecha o fluxo de recuperação e volta para a tela de login.
+  Future<void> encerrarRecuperacaoSenha() async {
+    await SupabaseService.instance.encerrarSessaoAuth();
+    PasswordRecoveryNotifier.instance.encerrar();
+    usuario = null;
+    screen = AppScreen.login;
+    notifyListeners();
+  }
+
   Future<String?> alterarSenhaAluno(int alunoId, String senhaAtual, String novaSenha) async {
     final aluno = alunoPorId(alunoId);
     if (aluno == null) return 'Aluno não encontrado.';
-    if (aluno.senha != senhaAtual) return 'Senha atual incorreta.';
-    if (novaSenha.length < 4) return 'Mínimo 4 caracteres.';
-    alunos = alunos.map((a) => a.id == alunoId ? a.copyWith(senha: novaSenha) : a).toList();
-    if (usuario?.id == alunoId) usuario = alunos.firstWhere((a) => a.id == alunoId).toUsuario();
-    notifyListeners();
-    if (!useMock) {
-      try {
-        await SupabaseService.instance.updateAlunoSenha(alunoId, novaSenha);
-      } catch (e) {
-        return 'Erro ao salvar senha: $e';
-      }
+    final invalida = validarSenha(novaSenha);
+    if (invalida != null) return invalida;
+
+    if (useMock) {
+      if (aluno.senha != senhaAtual) return 'Senha atual incorreta.';
+      _aplicarSenhaLocalAluno(alunoId, novaSenha);
+      return null;
     }
+
+    final service = SupabaseService.instance;
+    if (await service.reautenticar(aluno.email, senhaAtual)) {
+      final erro = await service.definirNovaSenhaSessaoAtual(novaSenha);
+      if (erro != null) return erro;
+      await service.invalidarSenhaLegada(aluno.email);
+      _aplicarSenhaLocalAluno(alunoId, '');
+      return null;
+    }
+
+    // Conta ainda não migrada para o Supabase Auth.
+    if (!AuthConfig.loginLegadoHabilitado) return 'Senha atual incorreta.';
+    final confere = await service.senhaLegadaConfere(tabela: 'alunos', email: aluno.email, senha: senhaAtual);
+    if (!confere) return 'Senha atual incorreta.';
+    try {
+      await service.updateAlunoSenha(alunoId, novaSenha);
+    } catch (e) {
+      return 'Erro ao salvar senha: ${e.toString().split('\n').first}';
+    }
+    _aplicarSenhaLocalAluno(alunoId, novaSenha);
     return null;
   }
 
   Future<String?> alterarSenhaAdmin(String email, String senhaAtual, String novaSenha) async {
-    if (novaSenha.length < 4) return 'Mínimo 4 caracteres.';
+    final invalida = validarSenha(novaSenha);
+    if (invalida != null) return invalida;
+    final em = email.trim().toLowerCase();
+
     if (useMock) {
-      if (senhaAtual != 'admin123') return 'Senha atual incorreta.';
+      if (senhaAtual != MockData.adminSenha) return 'Senha atual incorreta.';
       return null;
     }
+
+    final service = SupabaseService.instance;
+    if (await service.reautenticar(em, senhaAtual)) {
+      final erro = await service.definirNovaSenhaSessaoAtual(novaSenha);
+      if (erro != null) return erro;
+      await service.invalidarSenhaLegada(em);
+      return null;
+    }
+
+    if (!AuthConfig.loginLegadoHabilitado) return 'Senha atual incorreta.';
+    final confere = await service.senhaLegadaConfere(tabela: 'admins', email: em, senha: senhaAtual);
+    if (!confere) return 'Senha atual incorreta.';
     try {
-      final ok = await SupabaseService.instance.autenticarAdmin(email, senhaAtual);
-      if (ok == null) return 'Senha atual incorreta.';
-      await SupabaseService.instance.updateAdminSenha(email, novaSenha);
+      await service.updateAdminSenha(em, novaSenha);
       return null;
     } catch (e) {
-      return 'Erro ao salvar: $e';
+      return 'Erro ao salvar: ${e.toString().split('\n').first}';
     }
   }
 
+  /// Senha temporária definida pelo admin — só vale para contas ainda não
+  /// migradas para o Supabase Auth. Prefira [solicitarRedefinicaoSenha].
   Future<String?> resetarSenhaAlunoAdmin(int alunoId, String novaSenha) async {
-    if (novaSenha.length < 4) return 'Mínimo 4 caracteres.';
-    alunos = alunos.map((a) => a.id == alunoId ? a.copyWith(senha: novaSenha) : a).toList();
-    notifyListeners();
+    final invalida = validarSenha(novaSenha);
+    if (invalida != null) return invalida;
     if (!useMock) {
       try {
         await SupabaseService.instance.updateAlunoSenha(alunoId, novaSenha);
       } catch (e) {
-        return 'Erro: $e';
+        return 'Erro ao resetar senha: ${e.toString().split('\n').first}';
       }
     }
+    _aplicarSenhaLocalAluno(alunoId, novaSenha);
     return null;
   }
 
-  Future<String?> dicaRecuperacaoSenha(String email) async {
-    final em = email.trim().toLowerCase();
-    Aluno? aluno;
-    if (useMock) {
-      aluno = alunos.where((a) => a.email.toLowerCase() == em).firstOrNull;
-    } else {
-      try {
-        aluno = await SupabaseService.instance.buscarAlunoPorEmail(em);
-      } catch (_) {
-        aluno = alunos.where((a) => a.email.toLowerCase() == em).firstOrNull;
-      }
+  void _aplicarSenhaLocalAluno(int alunoId, String senha) {
+    alunos = alunos.map((a) => a.id == alunoId ? a.copyWith(senha: senha) : a).toList();
+    if (usuario?.id == alunoId) {
+      final atualizado = alunos.where((a) => a.id == alunoId).firstOrNull;
+      if (atualizado != null) usuario = atualizado.toUsuario();
     }
-    if (aluno == null) return null;
-    final primeiro = aluno.nome.split(' ').first;
-    final tel = aluno.telefone.length >= 4 ? '***${aluno.telefone.substring(aluno.telefone.length - 4)}' : '';
-    return 'Cadastro encontrado ($primeiro). Fale com a recepção do Pulguinha para resetar sua senha${tel.isNotEmpty ? ' (tel. $tel)' : ''}.';
+    notifyListeners();
   }
 
   // —— Mural moderação ——

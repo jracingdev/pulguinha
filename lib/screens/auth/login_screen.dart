@@ -407,7 +407,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () => showForgotPasswordDialog(
                 context,
-                buscarDica: context.read<AppState>().dicaRecuperacaoSenha,
+                onEnviarLink: context.read<AppState>().solicitarRedefinicaoSenha,
               ),
               child: const Text('Esqueci a senha', style: TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700)),
             ),

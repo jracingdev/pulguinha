@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pulguinha/config/auth_config.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -23,8 +24,8 @@ Future<bool?> showChangePasswordDialog(
             setLocal(() => erro = 'Informe a senha atual.');
             return;
           }
-          if (novaCtrl.text.length < 4) {
-            setLocal(() => erro = 'Nova senha: mínimo 4 caracteres.');
+          if (novaCtrl.text.length < AuthConfig.senhaMinima) {
+            setLocal(() => erro = 'Nova senha: mínimo ${AuthConfig.senhaMinima} caracteres.');
             return;
           }
           if (novaCtrl.text != confCtrl.text) {
@@ -87,13 +88,14 @@ Future<String?> showResetPasswordDialog(BuildContext context, {required String n
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.card,
-      title: Text('Resetar senha — $nomeAluno', style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+      title: Text('Senha temporária — $nomeAluno', style: const TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 15)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'A nova senha será exibida uma vez. O aluno deve alterá-la no perfil.',
+            'Use apenas se o aluno não tiver acesso ao e-mail. A senha será exibida uma vez '
+            'e não se aplica a contas já migradas para o login por e-mail.',
             style: TextStyle(fontSize: 12, color: AppColors.gray, height: 1.4),
           ),
           const SizedBox(height: 12),
@@ -108,34 +110,39 @@ Future<String?> showResetPasswordDialog(BuildContext context, {required String n
   );
 }
 
-String _gerarSenhaTemp() => 'pul${DateTime.now().millisecondsSinceEpoch % 10000}';
+String _gerarSenhaTemp() => 'pulg${DateTime.now().millisecondsSinceEpoch % 100000}';
 
+/// Solicita o e-mail oficial de redefinição de senha (Supabase Auth).
+///
+/// [onEnviarLink] deve retornar sempre a mesma mensagem, com ou sem cadastro,
+/// para não revelar a existência da conta.
 Future<void> showForgotPasswordDialog(
   BuildContext context, {
-  required Future<String?> Function(String email) buscarDica,
+  required Future<String> Function(String email) onEnviarLink,
 }) {
   final emailCtrl = TextEditingController();
   var resultado = '';
-  var buscando = false;
+  var enviando = false;
 
   return showDialog<void>(
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setLocal) {
-        Future<void> buscar() async {
-          if (emailCtrl.text.trim().isEmpty) {
-            setLocal(() => resultado = 'Informe seu e-mail de cadastro.');
+        Future<void> enviar() async {
+          final email = emailCtrl.text.trim();
+          if (email.isEmpty || !email.contains('@')) {
+            setLocal(() => resultado = 'Informe um e-mail válido.');
             return;
           }
           setLocal(() {
-            buscando = true;
+            enviando = true;
             resultado = '';
           });
-          final dica = await buscarDica(emailCtrl.text.trim());
+          final msg = await onEnviarLink(email);
           if (!ctx.mounted) return;
           setLocal(() {
-            buscando = false;
-            resultado = dica ?? 'E-mail não encontrado. Verifique ou cadastre-se.';
+            enviando = false;
+            resultado = msg;
           });
         }
 
@@ -147,27 +154,32 @@ Future<void> showForgotPasswordDialog(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Por segurança, a recuperação é feita pela recepção. Informe seu e-mail para confirmar o cadastro.',
+                'Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.',
                 style: TextStyle(fontSize: 12, color: AppColors.gray, height: 1.4),
               ),
               const SizedBox(height: 12),
-              FieldLabel(label: 'E-mail', child: TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress)),
+              FieldLabel(
+                label: 'E-mail',
+                child: TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  onSubmitted: (_) => enviando ? null : enviar(),
+                ),
+              ),
               if (resultado.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Text(
-                  resultado,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: resultado.startsWith('Cadastro encontrado') ? AppColors.neon : AppColors.yellow,
-                    height: 1.4,
-                  ),
-                ),
+                Text(resultado, style: const TextStyle(fontSize: 12, color: AppColors.neon, height: 1.4)),
               ],
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fechar')),
-            NeonButton(label: buscando ? 'Buscando...' : 'Verificar', enabled: !buscando, onPressed: buscando ? null : buscar),
+            TextButton(onPressed: enviando ? null : () => Navigator.pop(ctx), child: const Text('Fechar')),
+            NeonButton(
+              label: enviando ? 'Enviando...' : 'Enviar link',
+              enabled: !enviando,
+              onPressed: enviando ? null : enviar,
+            ),
           ],
         );
       },

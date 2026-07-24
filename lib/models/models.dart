@@ -360,10 +360,11 @@ class Aluno {
         beneficioOrigem: json['beneficio_origem'] as String?,
       );
 
+  /// Não inclui `senha`: a credencial vive no Supabase Auth e um update de
+  /// perfil não pode sobrescrever a coluna legada.
   Map<String, dynamic> toJson() => {
         'nome': nome,
         'email': email,
-        'senha': senha,
         'telefone': telefone,
         'plano': plano,
         'vencimento': vencimento,
@@ -392,7 +393,9 @@ class Aluno {
       };
 
   /// Payload para INSERT — nunca envia `id` (BIGSERIAL no Postgres).
-  Map<String, dynamic> toInsertJson() => toJson();
+  /// A coluna `senha` é NOT NULL no banco legado, então segue no insert até a
+  /// migração completa para o Supabase Auth (ver docs/plano-migracao-supabase-auth.md).
+  Map<String, dynamic> toInsertJson() => {...toJson(), 'senha': senha};
 
   Usuario toUsuario() => Usuario(
         tipo: UserType.aluno,

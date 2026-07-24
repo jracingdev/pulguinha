@@ -15,6 +15,7 @@ class RealtimeInAppListener extends StatefulWidget {
 }
 
 class _RealtimeInAppListenerState extends State<RealtimeInAppListener> {
+  AppState? _state;
   bool _ready = false;
   int _avisosCount = 0;
   int _eventosCount = 0;
@@ -26,7 +27,9 @@ class _RealtimeInAppListenerState extends State<RealtimeInAppListener> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final state = context.read<AppState>();
+      _state = state;
       _snapshot(state);
       state.addListener(_onStateChanged);
       _ready = true;
@@ -35,7 +38,8 @@ class _RealtimeInAppListenerState extends State<RealtimeInAppListener> {
 
   @override
   void dispose() {
-    context.read<AppState>().removeListener(_onStateChanged);
+    // Guardamos a referência: `context.read` não pode ser usado após o unmount.
+    _state?.removeListener(_onStateChanged);
     super.dispose();
   }
 

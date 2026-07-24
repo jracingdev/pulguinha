@@ -18,9 +18,11 @@ import 'package:pulguinha/screens/aluno/aluno_home_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_evolucao_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_turma_screen.dart';
 import 'package:pulguinha/screens/aluno/aluno_perfil_screen.dart';
+import 'package:pulguinha/screens/auth/definir_nova_senha_screen.dart';
 import 'package:pulguinha/screens/auth/login_screen.dart';
 import 'package:pulguinha/screens/public/public_screen.dart';
 import 'package:pulguinha/screens/shared/loja_screen.dart';
+import 'package:pulguinha/services/password_recovery_notifier.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/theme/app_theme.dart';
 import 'package:pulguinha/widgets/app_shell.dart';
@@ -61,26 +63,48 @@ class _RootRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
 
-    if (state.loading) {
-      return Scaffold(
-        backgroundColor: AppColors.bg,
-        body: Center(
-          child: Image.asset(
-            'assets/images/logo1.png',
-            width: 280,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-          ),
-        ),
-      );
-    }
+    if (state.loading) return const _SplashScreen();
 
-    return switch (state.screen) {
-      AppScreen.public => PublicScreen(initialStep: AppLinks.publicInitialStep),
-      AppScreen.login => const LoginScreen(),
-      AppScreen.admin => _AdminShell(state: state),
-      AppScreen.aluno => _AlunoShell(state: state),
-    };
+    return ListenableBuilder(
+      listenable: PasswordRecoveryNotifier.instance,
+      builder: (context, _) {
+        final recuperacao = PasswordRecoveryNotifier.instance;
+        if (recuperacao.ativo) {
+          if (recuperacao.validando) return const _SplashScreen();
+          return DefinirNovaSenhaScreen(
+            linkValido: recuperacao.comSessao,
+            onSalvar: state.definirNovaSenhaRecuperacao,
+            onConcluir: state.encerrarRecuperacaoSenha,
+          );
+        }
+
+        return switch (state.screen) {
+          AppScreen.public => PublicScreen(initialStep: AppLinks.publicInitialStep),
+          AppScreen.login => const LoginScreen(),
+          AppScreen.admin => _AdminShell(state: state),
+          AppScreen.aluno => _AlunoShell(state: state),
+        };
+      },
+    );
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Center(
+        child: Image.asset(
+          'assets/images/logo1.png',
+          width: 280,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
+    );
   }
 }
 

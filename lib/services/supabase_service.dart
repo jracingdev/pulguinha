@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
+import 'package:pulguinha/config/auth_config.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -52,17 +56,218 @@ class SupabaseService {
     return _mapRows(rows as List, Presenca.fromJson, 'presencas');
   }
 
+  // —— Autenticação (Supabase Auth com fallback para as senhas legadas) ——
+
+  /// Seguro antes de `Supabase.initialize` (modo offline/mock).
+  bool get temSessaoAuth {
+    try {
+      return _db.auth.currentSession != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  String? get emailSessaoAuth {
+    try {
+      return _db.auth.currentUser?.email?.toLowerCase();
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<Usuario?> autenticarAdmin(String email, String senha) async {
+    final em = email.trim().toLowerCase();
+    if (await _entrarComSenha(em, senha)) {
+      final admin = await buscarAdminPorEmail(em);
+      if (admin != null) {
+        await _vincularAuthUserId('admins', em);
+        return admin;
+      }
+      // Conta válida no Auth, mas sem perfil de administrador.
+      await encerrarSessaoAuth();
+      return null;
+    }
+    if (!AuthConfig.loginLegadoHabilitado) return null;
+    return _autenticarAdminLegado(em, senha);
+  }
+
+  Future<Aluno?> autenticarAluno(String email, String senha) async {
+    final em = email.trim().toLowerCase();
+    if (await _entrarComSenha(em, senha)) {
+      final aluno = await buscarAlunoPorEmail(em);
+      if (aluno != null) {
+        await _vincularAuthUserId('alunos', em);
+        return aluno;
+      }
+      await encerrarSessaoAuth();
+      return null;
+    }
+    if (!AuthConfig.loginLegadoHabilitado) return null;
+    return _autenticarAlunoLegado(em, senha);
+  }
+
+  Future<Usuario?> buscarAdminPorEmail(String email) async {
+    final rows = await _db.from('admins').select('nome,email').eq('email', email.trim().toLowerCase()).maybeSingle();
+    if (rows == null) return null;
+    final map = Map<String, dynamic>.from(rows as Map);
+    return Usuario(
+      tipo: UserType.admin,
+      nome: (map['nome'] as String?) ?? 'Administrador',
+      email: (map['email'] as String?) ?? email,
+    );
+  }
+
+  /// Dispara o e-mail oficial de redefinição de senha do Supabase Auth.
+  ///
+  /// Falhas são apenas registradas: a UI mostra sempre a mesma mensagem para
+  /// não revelar se o e-mail existe (evita enumeração de contas).
+  Future<void> enviarLinkRedefinicaoSenha(String email) async {
+    try {
+      await _db.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        redirectTo: AuthConfig.resetRedirectUrl,
+      );
+    } catch (e) {
+      debugPrint('resetPasswordForEmail: $e');
+    }
+  }
+
+  /// Grava a nova senha do usuário da sessão atual (recovery ou usuário logado).
+  /// Retorna `null` em caso de sucesso ou a mensagem de erro.
+  Future<String?> definirNovaSenhaSessaoAtual(String novaSenha) async {
+    if (!temSessaoAuth) {
+      return 'Link expirado ou inválido. Solicite um novo e-mail de redefinição.';
+    }
+    try {
+      await _db.auth.updateUser(UserAttributes(password: novaSenha));
+      return null;
+    } on AuthException catch (e) {
+      return _mensagemAuth(e);
+    } catch (e) {
+      debugPrint('updateUser: $e');
+      return 'Não foi possível salvar a nova senha. Tente novamente.';
+    }
+  }
+
+  /// Confere a senha atual reautenticando no Auth (exigido antes de trocar senha).
+  Future<bool> reautenticar(String email, String senha) => _entrarComSenha(email, senha);
+
+  /// Cria a conta no Supabase Auth de um cadastro novo. Best-effort: o cadastro
+  /// na tabela `alunos` continua valendo se o provisionamento falhar.
+  Future<void> criarContaAuth(String email, String senha) async {
+    try {
+      await _db.auth.signUp(
+        email: email.trim().toLowerCase(),
+        password: senha,
+        emailRedirectTo: AuthConfig.resetRedirectUrl,
+      );
+      // Cadastro público não deve deixar o visitante logado.
+      await encerrarSessaoAuth();
+    } catch (e) {
+      debugPrint('signUp: $e');
+    }
+  }
+
+  Future<void> encerrarSessaoAuth() async {
+    if (!temSessaoAuth) return;
+    try {
+      await _db.auth.signOut();
+    } catch (e) {
+      debugPrint('signOut: $e');
+    }
+  }
+
+  Future<bool> _entrarComSenha(String email, String senha) async {
+    if (senha.isEmpty) return false;
+    try {
+      final res = await _db.auth.signInWithPassword(email: email, password: senha);
+      return res.session != null;
+    } on AuthException catch (e) {
+      debugPrint('signInWithPassword: ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('signInWithPassword: $e');
+      return false;
+    }
+  }
+
+  /// Preenche `auth_user_id` na primeira entrada via Auth (contas migradas).
+  Future<void> _vincularAuthUserId(String tabela, String email) async {
+    final uid = _db.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      await _db.from(tabela).update({'auth_user_id': uid}).eq('email', email).isFilter('auth_user_id', null);
+    } catch (e) {
+      debugPrint('Vínculo auth_user_id em $tabela: $e');
+    }
+  }
+
+  /// Confere a senha em texto do esquema legado (contas ainda não migradas).
+  Future<bool> senhaLegadaConfere({
+    required String tabela,
+    required String email,
+    required String senha,
+  }) async {
+    if (senha.isEmpty) return false;
+    try {
+      final row = await _db
+          .from(tabela)
+          .select('id')
+          .eq('email', email.trim().toLowerCase())
+          .eq('senha', senha)
+          .maybeSingle();
+      return row != null;
+    } catch (e) {
+      debugPrint('Conferência de senha legada em $tabela: $e');
+      return false;
+    }
+  }
+
+  /// Substitui a senha legada por um marcador opaco depois que a conta passou a
+  /// usar o Supabase Auth, para que a senha antiga não continue valendo no
+  /// fallback de login.
+  Future<void> invalidarSenhaLegada(String email) async {
+    final em = email.trim().toLowerCase();
+    final marcador = _marcadorSenhaMigrada();
+    for (final tabela in const ['alunos', 'admins']) {
+      try {
+        await _db.from(tabela).update({'senha': marcador}).eq('email', em);
+      } catch (e) {
+        debugPrint('Invalidar senha legada em $tabela: $e');
+      }
+    }
+  }
+
+  String _marcadorSenhaMigrada() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(24, (_) => rnd.nextInt(256));
+    return 'supabase_auth:${base64Url.encode(bytes)}';
+  }
+
+  Future<Usuario?> _autenticarAdminLegado(String email, String senha) async {
+    if (senha.isEmpty) return null;
     final rows = await _db.from('admins').select().eq('email', email).eq('senha', senha).maybeSingle();
     if (rows == null) return null;
     final map = Map<String, dynamic>.from(rows as Map);
     return Usuario(tipo: UserType.admin, nome: map['nome'] as String, email: map['email'] as String);
   }
 
-  Future<Aluno?> autenticarAluno(String email, String senha) async {
+  Future<Aluno?> _autenticarAlunoLegado(String email, String senha) async {
+    if (senha.isEmpty) return null;
     final rows = await _db.from('alunos').select().eq('email', email).eq('senha', senha).maybeSingle();
     if (rows == null) return null;
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
+  }
+
+  String _mensagemAuth(AuthException e) {
+    final msg = e.message.toLowerCase();
+    if (msg.contains('should be at least') || msg.contains('password')) {
+      return 'Senha muito curta ou fraca. Use ao menos ${AuthConfig.senhaMinima} caracteres.';
+    }
+    if (msg.contains('expired') || msg.contains('invalid')) {
+      return 'Link expirado ou inválido. Solicite um novo e-mail de redefinição.';
+    }
+    return 'Não foi possível salvar a nova senha: ${e.message}';
   }
 
   Future<bool> emailExiste(String email) async {

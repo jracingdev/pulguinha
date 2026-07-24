@@ -430,7 +430,19 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                 if (editando != null) ...[
                   const SizedBox(height: 8),
                   GhostButton(
-                    label: '🔑 Resetar senha do aluno',
+                    label: '📧 Enviar link de redefinição por e-mail',
+                    fullWidth: true,
+                    onPressed: () async {
+                      final msg = await state.solicitarRedefinicaoSenha(editando.email);
+                      if (!ctx.mounted) return;
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text(msg), duration: const Duration(seconds: 6)),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  GhostButton(
+                    label: '🔑 Definir senha temporária',
                     fullWidth: true,
                     onPressed: () async {
                       final nova = await showResetPasswordDialog(ctx, nomeAluno: editando.nome);

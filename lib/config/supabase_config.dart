@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:pulguinha/services/supabase_settings_storage.dart';
 
 /// Credenciais do projeto Pulguinha (chave anon é pública no modelo Supabase; RLS protege os dados).
@@ -10,9 +11,17 @@ class SupabaseConfig {
   static const _envAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
   static SupabaseStoredSettings _stored = const SupabaseStoredSettings();
+  static bool _desabilitado = false;
 
   static Future<void> initialize() async {
     _stored = await SupabaseSettingsStorage.instance.load();
+  }
+
+  /// Mantém o app em modo local nos testes (sem rede nem timers do Supabase).
+  @visibleForTesting
+  static void desabilitarParaTestes() {
+    _stored = const SupabaseStoredSettings();
+    _desabilitado = true;
   }
 
   static Future<void> reload() async {
@@ -25,7 +34,7 @@ class SupabaseConfig {
 
   static bool get hasStoredSettings => _stored.isConfigured;
   static bool get hasEmbeddedDefaults => defaultUrl.isNotEmpty && defaultAnonKey.isNotEmpty;
-  static bool get isConfigured => url.isNotEmpty && anonKey.isNotEmpty;
+  static bool get isConfigured => !_desabilitado && url.isNotEmpty && anonKey.isNotEmpty;
 
   /// Verdadeiro quando o admin sobrescreveu as credenciais embutidas no aparelho.
   static bool get usesStoredOverride => _stored.isConfigured;
