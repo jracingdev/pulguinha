@@ -67,7 +67,9 @@ jobs:
         env:
           CUSTOM_DOMAIN: ${{ vars.PAGES_CUSTOM_DOMAIN || 'funcionaldopulguinha.com.br' }}
         run: |
+          # Impede o Jekyll de processar o artefato (senão some arquivos _* do Flutter).
           touch build/web/.nojekyll
+          # SPA fallback: rotas profundas caem no index do Flutter.
           cp build/web/index.html build/web/404.html
           mkdir -p build/web/privacidade build/web/termos
           cp docs/privacidade/index.html build/web/privacidade/
@@ -75,6 +77,13 @@ jobs:
           if [ -n "$CUSTOM_DOMAIN" ]; then
             echo "$CUSTOM_DOMAIN" > build/web/CNAME
           fi
+          # Guardas: falhar o job se o artefato não for o app Flutter web.
+          test -f build/web/flutter_bootstrap.js || test -f build/web/flutter.js
+          test -f build/web/main.dart.js
+          test -f build/web/reset-password/index.html
+          test -f build/web/.nojekyll
+          test -f build/web/CNAME
+          echo "Artefato Pages OK (Flutter + .nojekyll + CNAME + /reset-password)."
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
