@@ -1,0 +1,7 @@
+# Copie para android/key.properties (arquivo local, NÃO versionado) e preencha.
+# Obtenha o .jks e as senhas do computador que publicou a versão atual na Play Store.
+
+storePassword=SENHA_DA_KEYSTORE
+keyPassword=SENHA_DA_CHAVE
+keyAlias=pulguinha
+storeFile=../pulguinha-release.jks

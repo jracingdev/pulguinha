@@ -257,8 +257,28 @@ class Aluno {
   final String? wellhubId;
   /// CPF só dígitos para login TotalPass.
   final String? totalpassCpf;
-  /// wellhub | totalpass
+  /// wellhub | totalpass — alunos parceiros não pagam mensalidade no app.
   final String? beneficioOrigem;
+
+  /// GymPass/Wellhub ou TotalPass: agenda normalmente, sem mensalidade no financeiro.
+  bool get ehAlunoParceiro {
+    final o = beneficioOrigem?.toLowerCase().trim();
+    if (o == 'wellhub' || o == 'gympass' || o == 'totalpass') return true;
+    final temWellhub = wellhubId != null && wellhubId!.trim().isNotEmpty;
+    final temTotalpass = totalpassCpf != null && totalpassCpf!.trim().isNotEmpty;
+    return temWellhub || temTotalpass;
+  }
+
+  bool get pagaMensalidade => !ehAlunoParceiro;
+
+  String get labelBeneficio {
+    final o = beneficioOrigem?.toLowerCase().trim();
+    if (o == 'totalpass') return 'TotalPass';
+    if (o == 'wellhub' || o == 'gympass') return 'GymPass';
+    if (totalpassCpf != null && totalpassCpf!.trim().isNotEmpty) return 'TotalPass';
+    if (wellhubId != null && wellhubId!.trim().isNotEmpty) return 'GymPass';
+    return '';
+  }
 
   Aluno copyWith({
     int? id,
@@ -387,9 +407,9 @@ class Aluno {
         'uf': uf,
         if (codigoIndicacao.isNotEmpty) 'codigo_indicacao': codigoIndicacao,
         if (creditoIndicacao > 0) 'credito_indicacao': creditoIndicacao,
-        if (wellhubId != null && wellhubId!.isNotEmpty) 'wellhub_id': wellhubId,
-        if (totalpassCpf != null && totalpassCpf!.isNotEmpty) 'totalpass_cpf': totalpassCpf,
-        if (beneficioOrigem != null && beneficioOrigem!.isNotEmpty) 'beneficio_origem': beneficioOrigem,
+        'wellhub_id': (wellhubId != null && wellhubId!.isNotEmpty) ? wellhubId : null,
+        'totalpass_cpf': (totalpassCpf != null && totalpassCpf!.isNotEmpty) ? totalpassCpf : null,
+        'beneficio_origem': (beneficioOrigem != null && beneficioOrigem!.isNotEmpty) ? beneficioOrigem : null,
       };
 
   /// Payload para INSERT — nunca envia `id` (BIGSERIAL no Postgres).

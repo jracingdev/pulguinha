@@ -248,9 +248,10 @@ class AdminAnalyticsSection extends StatelessWidget {
   }
 
   Widget _statusChart() {
-    final ativos = state.alunos.where((a) => a.status == 'Ativo').length;
-    final inad = state.alunos.where((a) => a.status == 'Inadimplente').length;
-    final total = ativos + inad;
+    final mensalistasAtivos = state.alunos.where((a) => a.pagaMensalidade && a.status == 'Ativo').length;
+    final inad = state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').length;
+    final parceiros = state.alunosParceirosAtivos.length;
+    final total = mensalistasAtivos + inad + parceiros;
     if (total == 0) return const SizedBox.shrink();
 
     return PulguinhaCard(
@@ -258,7 +259,7 @@ class AdminAnalyticsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Ativos x Inadimplentes',
+            'Mensalistas x Parceiros',
             style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 13, decoration: TextDecoration.none),
           ),
           const SizedBox(height: 8),
@@ -267,16 +268,38 @@ class AdminAnalyticsSection extends StatelessWidget {
             child: PieChart(
               PieChartData(
                 sections: [
-                  PieChartSectionData(value: ativos.toDouble(), color: AppColors.neon, title: '${(ativos / total * 100).toStringAsFixed(0)}%', radius: 42, titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF111111))),
-                  PieChartSectionData(value: inad.toDouble(), color: AppColors.red, title: '${(inad / total * 100).toStringAsFixed(0)}%', radius: 38, titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.white)),
+                  PieChartSectionData(
+                    value: mensalistasAtivos.toDouble(),
+                    color: AppColors.neon,
+                    title: mensalistasAtivos > 0 ? '${(mensalistasAtivos / total * 100).toStringAsFixed(0)}%' : '',
+                    radius: 42,
+                    titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF111111)),
+                  ),
+                  if (inad > 0)
+                    PieChartSectionData(
+                      value: inad.toDouble(),
+                      color: AppColors.red,
+                      title: '${(inad / total * 100).toStringAsFixed(0)}%',
+                      radius: 38,
+                      titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.white),
+                    ),
+                  if (parceiros > 0)
+                    PieChartSectionData(
+                      value: parceiros.toDouble(),
+                      color: AppColors.blue,
+                      title: '${(parceiros / total * 100).toStringAsFixed(0)}%',
+                      radius: 38,
+                      titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppColors.white),
+                    ),
                 ],
                 centerSpaceRadius: 22,
               ),
             ),
           ),
           const SizedBox(height: 8),
-          Text('✅ $ativos ativos', style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+          Text('✅ $mensalistasAtivos mensalistas ativos', style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
           Text('⚠️ $inad inadimplentes', style: const TextStyle(fontSize: 12, color: AppColors.red, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+          Text('🎫 $parceiros GymPass/TotalPass', style: const TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
         ],
       ),
     );

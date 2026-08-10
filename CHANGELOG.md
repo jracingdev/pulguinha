@@ -3,6 +3,17 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 Versão segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.4.0] - 2026-08-10
+
+### Adicionado
+- Diferenciação de alunos GymPass/Wellhub e TotalPass no cadastro e no financeiro (sem mensalidade no app)
+- Contadores e seção própria de parceiros no financeiro; exclusão da receita estimada e da inadimplência
+- Guia `docs/assinatura-play-store.md` e suporte a `android/key.properties` no build de release
+
+### Alterado
+- Versão do app: **1.4.0+6**
+- Alertas de vencimento/inadimplência e notificações de mensalidade ignoram alunos parceiros
+
 ## [1.3.0] - 2026-06-15
 
 ### Adicionado

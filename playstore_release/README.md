@@ -19,7 +19,7 @@ Esta pasta centraliza tudo que voce precisa para publicar o app na Google Play.
 - `minSdk`: `23`
 - `targetSdk`: via Flutter (ok, mas conferir no build final)
 - Permissoes declaradas: camera e notificacoes (exige justificativa na ficha de dados/uso)
-- **Atencao**: assinatura de release configurada com keystore propria (`pulguinha-release.jks` + `android/key.properties`). **Faca backup da keystore e das senhas** antes de publicar.
+- **Atencao**: assinatura de release usa `android/key.properties` + `.jks` quando presentes (veja `docs/assinatura-play-store.md`). Sem esses arquivos o release cai no debug — **nao publique assim**. **Faca backup da keystore e das senhas** antes de publicar.
 
 ## URLs legais (Play Store)
 

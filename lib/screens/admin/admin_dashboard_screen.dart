@@ -30,11 +30,11 @@ class AdminDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final ativos = state.alunos.where((a) => a.status == 'Ativo').length;
-    final inadimp = state.alunos.where((a) => a.status == 'Inadimplente').length;
+    final inadimp = state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').length;
     final agHoje = state.agendamentos.where((ag) => ag.data == MockData.today).length;
     final presHoje = state.presencasHoje().length;
     final venc7 = state.alunos.where((a) {
-      if (a.status != 'Ativo') return false;
+      if (!a.pagaMensalidade || a.status != 'Ativo') return false;
       final d = DateHelper.diasAteVencimento(a.vencimento);
       return d >= 0 && d <= 7;
     }).length;
@@ -143,9 +143,10 @@ class AdminDashboardScreen extends StatelessWidget {
         ...aulasHoje.map((e) => _aulaCard(e.$1, e.$2, state)),
         const SizedBox(height: 20),
         const SectionTitle(icon: '🔔', title: 'Alertas'),
-        ...state.alunos.where((a) => a.status == 'Inadimplente').map(_alertaInadimplente),
+        ...state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').map(_alertaInadimplente),
         ...state.alunos.where((a) => a.status == 'Pendente').map(_alertaPendente),
         ...state.alunos.where((a) {
+          if (!a.pagaMensalidade) return false;
           final d = DateHelper.diasAteVencimento(a.vencimento);
           return d >= 0 && d <= 7 && a.status == 'Ativo';
         }).map(_alertaVencendo),

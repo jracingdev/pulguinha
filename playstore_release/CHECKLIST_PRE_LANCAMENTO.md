@@ -2,7 +2,7 @@
 
 ## 1) Build e assinatura
 
-- [ ] Configurar assinatura de release (keystore propria) em `android/app/build.gradle.kts`.
+- [ ] Configurar assinatura de release (`android/key.properties` + `.jks`) — ver `docs/assinatura-play-store.md`.
 - [ ] Garantir que **nao** esta usando debug signing em release.
 - [ ] Incrementar `version` no `pubspec.yaml`.
 - [ ] Gerar bundle: `flutter build appbundle --release`.

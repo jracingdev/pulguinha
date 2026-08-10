@@ -19,8 +19,10 @@ class AdminFinanceiroScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final rec = state.receitaMensalEstimada;
-    final inad = state.alunos.where((a) => a.status == 'Inadimplente').toList();
-    final venc = state.alunos.where((a) {
+    final mensalistas = state.alunosMensalistas;
+    final parceiros = state.alunosParceirosAtivos;
+    final inad = mensalistas.where((a) => a.status == 'Inadimplente').toList();
+    final venc = mensalistas.where((a) {
       final d = DateHelper.diasAteVencimento(a.vencimento);
       return a.status == 'Ativo' && d >= 0 && d <= 7;
     }).toList();
@@ -43,6 +45,33 @@ class AdminFinanceiroScreen extends StatelessWidget {
             Expanded(child: _valorCard('INADIMPLENTES', '${inad.length}', AppColors.red, AppColors.red.withValues(alpha: 0.08))),
           ],
         ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _valorCard(
+                'MENSALISTAS',
+                '${mensalistas.where((a) => a.status == 'Ativo').length}',
+                AppColors.yellow,
+                AppColors.yellow.withValues(alpha: 0.08),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _valorCard(
+                'GYMPASS / TOTALPASS',
+                '${parceiros.length}',
+                AppColors.blue,
+                AppColors.blue.withValues(alpha: 0.08),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Alunos GymPass/TotalPass agendam normalmente; o repasse fica fora do financeiro do app.',
+          style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35),
+        ),
         const SizedBox(height: 20),
         _mpCard(context, rec),
         _pagbankCard(context),
@@ -56,8 +85,13 @@ class AdminFinanceiroScreen extends StatelessWidget {
           ...venc.map((a) => _alunoFinanceiro(context, state, a, tipo: 'venc')),
           const SizedBox(height: 20),
         ],
-        const SectionTitle(icon: '👥', title: 'Todos os Alunos'),
-        ...state.alunos.map((a) => _alunoFinanceiro(context, state, a, tipo: 'todos')),
+        if (parceiros.isNotEmpty) ...[
+          const SectionTitle(icon: '🎫', title: 'GymPass / TotalPass (sem mensalidade)'),
+          ...parceiros.map((a) => _alunoFinanceiro(context, state, a, tipo: 'parceiro')),
+          const SizedBox(height: 20),
+        ],
+        const SectionTitle(icon: '👥', title: 'Mensalistas'),
+        ...mensalistas.map((a) => _alunoFinanceiro(context, state, a, tipo: 'todos')),
       ],
     );
   }
@@ -190,6 +224,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
     Color border = AppColors.border;
     if (tipo == 'inad') border = AppColors.red.withValues(alpha: 0.2);
     if (tipo == 'venc') border = AppColors.yellow.withValues(alpha: 0.2);
+    if (tipo == 'parceiro') border = AppColors.blue.withValues(alpha: 0.25);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -207,26 +242,45 @@ class AdminFinanceiroScreen extends StatelessWidget {
                     spacing: 8,
                     children: [
                       Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
-                      PulguinhaBadge(
-                        label: a.status,
-                        variant: a.status == 'Ativo' ? BadgeVariant.neon : a.status == 'Inadimplente' ? BadgeVariant.red : BadgeVariant.gray,
-                      ),
+                      if (a.ehAlunoParceiro)
+                        PulguinhaBadge(label: a.labelBeneficio, variant: BadgeVariant.blue)
+                      else
+                        PulguinhaBadge(
+                          label: a.status,
+                          variant: a.status == 'Ativo'
+                              ? BadgeVariant.neon
+                              : a.status == 'Inadimplente'
+                                  ? BadgeVariant.red
+                                  : BadgeVariant.gray,
+                        ),
                     ],
                   ),
                   Text(
-                    a.status == 'Pendente'
-                        ? 'Aguardando aprovação · ${a.plano}'
-                        : tipo == 'inad'
-                            ? 'Venceu ${DateHelper.formatarData(a.vencimento)} · ${a.plano}'
-                            : tipo == 'venc'
-                                ? 'Vence em ${DateHelper.diasAteVencimento(a.vencimento)}d · ${a.plano}'
-                                : '${a.plano} · ${VencimentoHelper.temPlanoAtivo(a) ? 'Venc. ${DateHelper.formatarData(a.vencimento)}' : 'Sem vencimento'}',
-                    style: TextStyle(fontSize: 11, color: tipo == 'inad' ? AppColors.red : tipo == 'venc' ? AppColors.yellow : AppColors.gray),
+                    a.ehAlunoParceiro
+                        ? 'Check-in via ${a.labelBeneficio} · sem mensalidade no app'
+                        : a.status == 'Pendente'
+                            ? 'Aguardando aprovação · ${a.plano}'
+                            : tipo == 'inad'
+                                ? 'Venceu ${DateHelper.formatarData(a.vencimento)} · ${a.plano}'
+                                : tipo == 'venc'
+                                    ? 'Vence em ${DateHelper.diasAteVencimento(a.vencimento)}d · ${a.plano}'
+                                    : '${a.plano} · ${VencimentoHelper.temPlanoAtivo(a) ? 'Venc. ${DateHelper.formatarData(a.vencimento)}' : 'Sem vencimento'}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: tipo == 'inad'
+                          ? AppColors.red
+                          : tipo == 'venc'
+                              ? AppColors.yellow
+                              : tipo == 'parceiro'
+                                  ? AppColors.blue
+                                  : AppColors.gray,
+                    ),
                   ),
                 ],
               ),
             ),
-            if (tipo == 'inad' || (a.status == 'Ativo' && DateHelper.diasAteVencimento(a.vencimento) <= 0))
+            if (!a.ehAlunoParceiro &&
+                (tipo == 'inad' || (a.status == 'Ativo' && DateHelper.diasAteVencimento(a.vencimento) <= 0)))
               TextButton(
                 onPressed: () {
                   state.marcarPago(a.id);
@@ -234,11 +288,14 @@ class AdminFinanceiroScreen extends StatelessWidget {
                 },
                 child: const Text('✓ Baixa', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w800)),
               )
-            else if (a.status == 'Ativo')
+            else if (!a.ehAlunoParceiro && a.status == 'Ativo')
               OutlinedButton(
                 onPressed: () => state.renovarPlano(a),
-                style: OutlinedButton.styleFrom(foregroundColor: tipo == 'venc' ? AppColors.yellow : AppColors.neon, side: BorderSide(color: AppColors.border)),
-                child: Text(tipo == 'venc' ? 'Renovar' : 'Renovar', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: tipo == 'venc' ? AppColors.yellow : AppColors.neon,
+                  side: const BorderSide(color: AppColors.border),
+                ),
+                child: const Text('Renovar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
               ),
           ],
         ),

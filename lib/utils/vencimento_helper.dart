@@ -7,8 +7,11 @@ import 'package:pulguinha/utils/date_helper.dart';
 
 /// Textos, cores e cálculo de vencimento de mensalidades.
 class VencimentoHelper {
+  /// Plano pago com vencimento real (exclui Pendente e alunos GymPass/TotalPass).
   static bool temPlanoAtivo(Aluno aluno) =>
-      aluno.status != 'Pendente' && aluno.vencimento != MockData.vencimentoPendente;
+      aluno.pagaMensalidade &&
+      aluno.status != 'Pendente' &&
+      aluno.vencimento != MockData.vencimentoPendente;
 
   /// Primeiro vencimento ao cadastrar/aprovar — sempre no futuro, no dia configurado.
   static String calcularVencimentoInicial(
@@ -83,6 +86,9 @@ class VencimentoHelper {
   }
 
   static String textoCurto(Aluno aluno, {int diasParaInadimplencia = 7}) {
+    if (aluno.ehAlunoParceiro) {
+      return '${aluno.labelBeneficio} · sem mensalidade';
+    }
     if (aluno.status == 'Pendente') return 'Aguardando aprovação';
     if (aluno.status == 'Inadimplente') return 'Inadimplente';
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
@@ -94,6 +100,9 @@ class VencimentoHelper {
   }
 
   static String textoLongo(Aluno aluno, {int diasParaInadimplencia = 7}) {
+    if (aluno.ehAlunoParceiro) {
+      return 'Vínculo ${aluno.labelBeneficio}: check-in na plataforma; sem mensalidade no app';
+    }
     if (aluno.status == 'Pendente') return 'Aguardando aprovação do professor';
     if (aluno.status == 'Inadimplente') return 'Mensalidade inadimplente — regularize com o estúdio';
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
@@ -105,6 +114,7 @@ class VencimentoHelper {
   }
 
   static Color cor(Aluno aluno, {int diasParaInadimplencia = 7}) {
+    if (aluno.ehAlunoParceiro) return AppColors.blue;
     if (aluno.status == 'Pendente') return AppColors.yellow;
     if (aluno.status == 'Inadimplente') return AppColors.red;
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
@@ -115,6 +125,7 @@ class VencimentoHelper {
   }
 
   static Color corDestaque(Aluno aluno, {int diasParaInadimplencia = 7}) {
+    if (aluno.ehAlunoParceiro) return AppColors.blue;
     if (aluno.status == 'Pendente') return AppColors.yellow;
     if (aluno.status == 'Inadimplente') return AppColors.red;
     final d = DateHelper.diasAteVencimento(aluno.vencimento);

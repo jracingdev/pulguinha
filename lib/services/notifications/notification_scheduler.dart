@@ -102,7 +102,7 @@ class NotificationScheduler {
 
       final aluno = alunos.where((a) => a.id == alunoLogadoId).firstOrNull;
 
-      if (aluno != null && VencimentoHelper.temPlanoAtivo(aluno)) {
+      if (aluno != null && aluno.pagaMensalidade && VencimentoHelper.temPlanoAtivo(aluno)) {
 
         await _scheduleVencimento(aluno);
 

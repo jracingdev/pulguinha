@@ -87,6 +87,10 @@ class AlunoPerfilScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   PulguinhaBadge(label: aluno.status, variant: aluno.status == 'Ativo' ? BadgeVariant.neon : BadgeVariant.red),
+                  if (aluno.ehAlunoParceiro) ...[
+                    const SizedBox(width: 8),
+                    PulguinhaBadge(label: aluno.labelBeneficio, variant: BadgeVariant.blue),
+                  ],
                   if (aluno.streakPresenca >= 2) ...[
                     const SizedBox(width: 8),
                     PulguinhaBadge(label: '🔥 ${aluno.streakPresenca}', variant: BadgeVariant.yellow),
@@ -108,7 +112,9 @@ class AlunoPerfilScreen extends StatelessWidget {
                 children: [
                   _infoBox('Plano', aluno.plano),
                   _infoBox('Status', aluno.status),
-                  if (VencimentoHelper.temPlanoAtivo(aluno)) ...[
+                  if (aluno.ehAlunoParceiro)
+                    _infoBox('Mensalidade', 'Via ${aluno.labelBeneficio} (fora do app)')
+                  else if (VencimentoHelper.temPlanoAtivo(aluno)) ...[
                     _infoBox('Vencimento', DateHelper.formatarData(aluno.vencimento)),
                     _infoBox('Dias restantes', d < 0 ? '${d.abs()}d atrasado' : d == 0 ? 'Hoje!' : '${d}d', highlight: d < 0),
                   ] else

@@ -884,7 +884,10 @@ class AppState extends ChangeNotifier {
   void _atualizarInadimplentes() {
     final idsAlterados = <int>[];
     alunos = alunos.map((a) {
-      if (a.status != 'Ativo' || !VencimentoHelper.temPlanoAtivo(a)) return a;
+      // GymPass/TotalPass não entram na cobrança de mensalidade do app.
+      if (a.ehAlunoParceiro || a.status != 'Ativo' || !VencimentoHelper.temPlanoAtivo(a)) {
+        return a;
+      }
       final dias = DateHelper.diasAteVencimento(a.vencimento);
       if (dias < -diasParaInadimplencia) {
         idsAlterados.add(a.id);
@@ -1549,12 +1552,21 @@ class AppState extends ChangeNotifier {
   }
 
   double get receitaMensalEstimada {
-    return alunos.where((a) => a.status == 'Ativo').fold<double>(0, (s, a) {
+    return alunos
+        .where((a) => a.status == 'Ativo' && a.pagaMensalidade)
+        .fold<double>(0, (s, a) {
       final valor = precoPlano(a.plano);
       final meses = MockData.mesesPlano[a.plano] ?? 1;
       return s + valor / meses;
     });
   }
+
+  /// Alunos GymPass/TotalPass (ativos) — fora da receita de mensalidade.
+  List<Aluno> get alunosParceirosAtivos =>
+      alunos.where((a) => a.ehAlunoParceiro && a.status != 'Inativo').toList();
+
+  List<Aluno> get alunosMensalistas =>
+      alunos.where((a) => a.pagaMensalidade).toList();
 
   Aluno? alunoPorId(int? id) {
     if (id == null) return null;
