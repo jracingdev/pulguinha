@@ -3,6 +3,14 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 Versão segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.4.1] - 2026-08-12
+
+### Corrigido
+- Agendamento: confirmação só após persistir no Supabase (fim do “sucesso falso”)
+- Cancelamento com feedback real e sem apagar localmente se o servidor falhar
+- Grade do aluno filtra horários pelo dia da semana (`Seg/Qua/Sex`, `Seg a Sex`, etc.)
+- Anti-duplicata de agendamento no app + índice único no banco
+
 ## [1.4.0] - 2026-08-10
 
 ### Adicionado

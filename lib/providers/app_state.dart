@@ -1262,18 +1262,41 @@ class AppState extends ChangeNotifier {
 
   /// Cria agendamento. Alunos precisam estar identificados (`alunoId`) e
   /// respeitar a janela de 24h–1h antes do treino, salvo [respeitarJanela] = false (admin).
-  CriarAgendamentoResult criarAgendamento({
+  /// Aguarda o Supabase — só retorna sucesso após persistir (evita “confirmado” falso).
+  Future<CriarAgendamentoResult> criarAgendamento({
     int? alunoId,
     required String nomeAluno,
     required int horarioId,
     required String data,
     required String horario,
     bool respeitarJanela = true,
-  }) {
+  }) async {
     if (alunoId == null) {
       return const CriarAgendamentoResult(
         ok: false,
         mensagem: 'Faça login para agendar uma aula.',
+      );
+    }
+
+    final hor = horarios.where((h) => h.id == horarioId).firstOrNull;
+    if (hor == null) {
+      return const CriarAgendamentoResult(ok: false, mensagem: 'Horário inválido.');
+    }
+
+    if (!HorarioHelper.ocorreNoDia(hor.dias, data)) {
+      return CriarAgendamentoResult(
+        ok: false,
+        mensagem: 'Esta aula não ocorre neste dia (${hor.dias}).',
+      );
+    }
+
+    final jaAgendado = agendamentos.any(
+      (a) => a.alunoId == alunoId && a.horarioId == horarioId && a.data == data,
+    );
+    if (jaAgendado) {
+      return const CriarAgendamentoResult(
+        ok: false,
+        mensagem: 'Você já está agendado nesta aula.',
       );
     }
 
@@ -1298,34 +1321,66 @@ class AppState extends ChangeNotifier {
       status: 'Confirmado',
     );
 
-    agendamentos = [...agendamentos, novo];
-    notifyListeners();
-
     if (useMock) {
+      agendamentos = [...agendamentos, novo];
+      notifyListeners();
       _agendarNotificacoesUsuario();
-      return const CriarAgendamentoResult(ok: true);
+      return const CriarAgendamentoResult(ok: true, mensagem: 'Agendamento confirmado!');
     }
 
-    SupabaseService.instance.insertAgendamento(novo).then((saved) {
-      agendamentos = agendamentos.map((a) => a.id == novo.id ? saved : a).toList();
+    try {
+      final saved = await SupabaseService.instance.insertAgendamento(novo);
+      agendamentos = [
+        ...agendamentos.where(
+          (a) => !(a.alunoId == saved.alunoId && a.horarioId == saved.horarioId && a.data == saved.data),
+        ),
+        saved,
+      ];
       notifyListeners();
       _agendarNotificacoesUsuario();
-    }).catchError((Object e) {
+      return const CriarAgendamentoResult(ok: true, mensagem: 'Agendamento confirmado!');
+    } catch (e) {
       debugPrint('Erro ao criar agendamento: $e');
-      agendamentos = agendamentos.where((a) => a.id != novo.id).toList();
-      notifyListeners();
-    });
-
-    return const CriarAgendamentoResult(ok: true);
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('unique') || msg.contains('duplicate')) {
+        await recarregarAgendamentos();
+        return const CriarAgendamentoResult(
+          ok: false,
+          mensagem: 'Você já está agendado nesta aula.',
+        );
+      }
+      return const CriarAgendamentoResult(
+        ok: false,
+        mensagem: 'Não foi possível confirmar o agendamento. Tente novamente.',
+      );
+    }
   }
 
-  void cancelarAgendamento(int id) {
-    agendamentos = agendamentos.where((a) => a.id != id).toList();
-    notifyListeners();
-    if (!useMock) {
-      SupabaseService.instance.deleteAgendamento(id).catchError((Object e) {
-        debugPrint('Erro ao cancelar agendamento: $e');
-      });
+  /// Cancela no servidor primeiro; só remove da UI se o delete funcionar.
+  Future<CriarAgendamentoResult> cancelarAgendamento(int id) async {
+    final existente = agendamentos.where((a) => a.id == id).firstOrNull;
+    if (existente == null) {
+      return const CriarAgendamentoResult(ok: false, mensagem: 'Agendamento não encontrado.');
+    }
+
+    if (useMock) {
+      agendamentos = agendamentos.where((a) => a.id != id).toList();
+      notifyListeners();
+      return const CriarAgendamentoResult(ok: true, mensagem: 'Agendamento cancelado.');
+    }
+
+    try {
+      await SupabaseService.instance.deleteAgendamento(id);
+      agendamentos = agendamentos.where((a) => a.id != id).toList();
+      notifyListeners();
+      _agendarNotificacoesUsuario();
+      return const CriarAgendamentoResult(ok: true, mensagem: 'Agendamento cancelado.');
+    } catch (e) {
+      debugPrint('Erro ao cancelar agendamento: $e');
+      return const CriarAgendamentoResult(
+        ok: false,
+        mensagem: 'Não foi possível cancelar. Tente novamente.',
+      );
     }
   }
 

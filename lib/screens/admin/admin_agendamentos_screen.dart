@@ -220,12 +220,12 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                   Expanded(
                     child: NeonButton(
                       label: 'Confirmar',
-                      onPressed: () {
+                      onPressed: () async {
                         if (alunoId.isEmpty || horarioId.isEmpty) return;
                         final aluno = state.alunos.firstWhere((a) => a.id == int.parse(alunoId));
                         final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
                         if (state.aulaLotada(data, h.id)) return;
-                        state.criarAgendamento(
+                        final result = await state.criarAgendamento(
                           alunoId: aluno.id,
                           nomeAluno: aluno.nome,
                           horarioId: h.id,
@@ -233,7 +233,12 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                           horario: h.hora,
                           respeitarJanela: false,
                         );
-                        Navigator.pop(ctx);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(result.mensagem ?? (result.ok ? 'Agendado!' : 'Falha ao agendar'))),
+                          );
+                        }
                       },
                     ),
                   ),
@@ -247,23 +252,26 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
     dataCtrl.dispose();
   }
 
-  void _cancelar(BuildContext context, AppState state, int id) {
-    showDialog<void>(
+  Future<void> _cancelar(BuildContext context, AppState state, int id) async {
+    final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: const Text('Cancelar agendamento?', style: TextStyle(color: AppColors.white)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Não')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Não')),
           TextButton(
-            onPressed: () {
-              state.cancelarAgendamento(id);
-              Navigator.pop(ctx);
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Sim', style: TextStyle(color: AppColors.red)),
           ),
         ],
       ),
+    );
+    if (ok != true || !context.mounted) return;
+    final result = await state.cancelarAgendamento(id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.mensagem ?? (result.ok ? 'Cancelado.' : 'Falha ao cancelar.'))),
     );
   }
 }
