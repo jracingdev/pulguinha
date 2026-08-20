@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/config/mercado_pago_config.dart';
+import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/config/pagbank_config.dart';
@@ -10,6 +11,7 @@ import 'package:pulguinha/screens/admin/admin_pagbank_config_screen.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/utils/vencimento_helper.dart';
+import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class AdminFinanceiroScreen extends StatelessWidget {
@@ -59,7 +61,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _valorCard(
-                'GYMPASS / TOTALPASS',
+                'SEM MENSALIDADE',
                 '${parceiros.length}',
                 AppColors.blue,
                 AppColors.blue.withValues(alpha: 0.08),
@@ -69,7 +71,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Alunos GymPass/TotalPass agendam normalmente; o repasse fica fora do financeiro do app.',
+          'Avulso, GymPass e TotalPass agendam normalmente e ficam fora da receita/inadimplência.',
           style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35),
         ),
         const SizedBox(height: 20),
@@ -86,7 +88,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
           const SizedBox(height: 20),
         ],
         if (parceiros.isNotEmpty) ...[
-          const SectionTitle(icon: '🎫', title: 'GymPass / TotalPass (sem mensalidade)'),
+          const SectionTitle(icon: '🎫', title: 'Sem mensalidade (avulso / GymPass / TotalPass)'),
           ...parceiros.map((a) => _alunoFinanceiro(context, state, a, tipo: 'parceiro')),
           const SizedBox(height: 20),
         ],
@@ -242,7 +244,7 @@ class AdminFinanceiroScreen extends StatelessWidget {
                     spacing: 8,
                     children: [
                       Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
-                      if (a.ehAlunoParceiro)
+                      if (a.ehSemMensalidade)
                         PulguinhaBadge(label: a.labelBeneficio, variant: BadgeVariant.blue)
                       else
                         PulguinhaBadge(
@@ -256,8 +258,10 @@ class AdminFinanceiroScreen extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    a.ehAlunoParceiro
-                        ? 'Check-in via ${a.labelBeneficio} · sem mensalidade no app'
+                    a.ehSemMensalidade
+                        ? (a.ehAlunoAvulso
+                            ? 'Só agendamento · sem mensalidade no financeiro'
+                            : 'Check-in via ${a.labelBeneficio} · sem mensalidade no app')
                         : a.status == 'Pendente'
                             ? 'Aguardando aprovação · ${a.plano}'
                             : tipo == 'inad'
@@ -279,27 +283,78 @@ class AdminFinanceiroScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (!a.ehAlunoParceiro &&
-                (tipo == 'inad' || (a.status == 'Ativo' && DateHelper.diasAteVencimento(a.vencimento) <= 0)))
+            if (!a.ehSemMensalidade) ...[
               TextButton(
-                onPressed: () {
-                  state.marcarPago(a.id);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pagamento registrado — ${a.nome}')));
-                },
-                child: const Text('✓ Baixa', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w800)),
-              )
-            else if (!a.ehAlunoParceiro && a.status == 'Ativo')
-              OutlinedButton(
-                onPressed: () => state.renovarPlano(a),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: tipo == 'venc' ? AppColors.yellow : AppColors.neon,
-                  side: const BorderSide(color: AppColors.border),
-                ),
-                child: const Text('Renovar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                onPressed: () => _editarVencimento(context, state, a),
+                child: const Text('📅 Venc.', style: TextStyle(color: AppColors.blue, fontWeight: FontWeight.w800, fontSize: 11)),
               ),
+              if (tipo == 'inad' || (a.status == 'Ativo' && DateHelper.diasAteVencimento(a.vencimento) <= 0))
+                TextButton(
+                  onPressed: () {
+                    state.marcarPago(a.id);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pagamento registrado — ${a.nome}')));
+                  },
+                  child: const Text('✓ Baixa', style: TextStyle(color: AppColors.neon, fontWeight: FontWeight.w800)),
+                )
+              else if (a.status == 'Ativo')
+                OutlinedButton(
+                  onPressed: () => state.renovarPlano(a),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: tipo == 'venc' ? AppColors.yellow : AppColors.neon,
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  child: const Text('Renovar', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _editarVencimento(BuildContext context, AppState state, Aluno a) async {
+    final ctrl = TextEditingController(
+      text: VencimentoHelper.temPlanoAtivo(a) ? DateHelper.formatarData(a.vencimento) : DateHelper.formatarData(MockData.today),
+    );
+    final ok = await showPulguinhaModal<bool>(
+      context: context,
+      title: 'Vencimento — ${a.nome}',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Defina a data de vencimento deste aluno. O dia padrão global continua valendo para novas renovações.',
+            style: TextStyle(fontSize: 12, color: AppColors.gray, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          FieldLabel(
+            label: 'Data de vencimento',
+            child: DateField(
+              controller: ctrl,
+              firstDate: DateTime.now().subtract(const Duration(days: 365)),
+              lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          NeonButton(
+            label: 'Salvar vencimento',
+            fullWidth: true,
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) {
+      ctrl.dispose();
+      return;
+    }
+    final iso = DateHelper.paraIso(ctrl.text.trim());
+    ctrl.dispose();
+    final err = await state.definirVencimentoAluno(a.id, iso);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(err ?? 'Vencimento atualizado — ${a.nome}')),
     );
   }
 

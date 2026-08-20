@@ -28,7 +28,7 @@ class SupabaseService {
   static const _alunoColumnsSemFoto =
       'id,nome,email,senha,telefone,plano,vencimento,status,avatar,data_nascimento,anamnese,'
       'streak_presenca,pulguinha_points,data_cadastro,aluno_desde,horario_id,cep,logradouro,'
-      'numero,complemento,bairro,cidade,uf,codigo_indicacao,credito_indicacao,wellhub_id,totalpass_cpf,beneficio_origem';
+      'numero,complemento,bairro,cidade,uf,codigo_indicacao,credito_indicacao,wellhub_id,totalpass_cpf,beneficio_origem,fcm_token';
 
   Future<List<Aluno>> fetchAlunos({bool includeFoto = false}) async {
     final columns = includeFoto ? '*' : _alunoColumnsSemFoto;
@@ -375,6 +375,25 @@ class SupabaseService {
 
   Future<void> updateAdminSenha(String email, String novaSenha) async {
     await _db.from('admins').update({'senha': novaSenha}).eq('email', email);
+  }
+
+  /// Persiste o token FCM do dispositivo logado.
+  Future<void> saveFcmToken({
+    required bool isAdmin,
+    required String token,
+    int? alunoId,
+    String? adminEmail,
+  }) async {
+    final t = token.trim();
+    if (t.isEmpty) return;
+    if (isAdmin) {
+      final email = adminEmail?.trim().toLowerCase();
+      if (email == null || email.isEmpty) return;
+      await _db.from('admins').update({'fcm_token': t}).eq('email', email);
+      return;
+    }
+    if (alunoId == null) return;
+    await _db.from('alunos').update({'fcm_token': t}).eq('id', alunoId);
   }
 
   Future<Aluno?> buscarAlunoPorEmail(String email) async {

@@ -31,7 +31,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
       final mb = a.nome.toLowerCase().contains(busca.toLowerCase()) || a.email.toLowerCase().contains(busca.toLowerCase());
       final mf = switch (filtro) {
         'Todos' => true,
-        'Parceiros' => a.ehAlunoParceiro,
+        'Parceiros' => a.ehSemMensalidade,
         'Mensalistas' => a.pagaMensalidade,
         _ => a.status == filtro && a.pagaMensalidade,
       };
@@ -58,8 +58,9 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
           spacing: 8,
           children: ['Todos', 'Mensalistas', 'Parceiros', 'Ativo', 'Pendente', 'Inadimplente'].map((f) {
             final selected = filtro == f;
+            final label = f == 'Parceiros' ? 'Sem mensalidade' : f;
             return ChoiceChip(
-              label: Text(f),
+              label: Text(label),
               selected: selected,
               onSelected: (_) => setState(() => filtro = f),
               selectedColor: AppColors.neon,
@@ -116,14 +117,14 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                     children: [
                       Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white)),
                       PulguinhaBadge(label: a.status, variant: _badgeVariant(a.status)),
-                      if (a.ehAlunoParceiro)
+                      if (a.ehSemMensalidade)
                         PulguinhaBadge(label: a.labelBeneficio, variant: BadgeVariant.blue),
                       if (isAniv) const PulguinhaBadge(label: '🎂 Hoje!', variant: BadgeVariant.yellow),
                       if (a.streakPresenca >= 3) PulguinhaBadge(label: '🔥 ${a.streakPresenca}', variant: BadgeVariant.yellow),
                     ],
                   ),
                   Text(
-                    a.ehAlunoParceiro
+                    a.ehSemMensalidade
                         ? '${a.telefone} · ${a.labelBeneficio} (sem mensalidade)'
                         : '${a.telefone} · ${a.plano}',
                     style: const TextStyle(fontSize: 11, color: AppColors.gray),
@@ -220,9 +221,10 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
     String? fotoBase64 = editando?.foto;
     var cepLoading = false;
     String? cepErro;
-    // mensalidade | wellhub | totalpass
+    // mensalidade | wellhub | totalpass | avulso
     var tipoVinculo = () {
       final o = editando?.beneficioOrigem?.toLowerCase().trim();
+      if (o == 'avulso' || o == 'sem_mensalidade' || o == 'agendamento') return 'avulso';
       if (o == 'totalpass') return 'totalpass';
       if (o == 'wellhub' || o == 'gympass') return 'wellhub';
       if ((editando?.totalpassCpf ?? '').trim().isNotEmpty) return 'totalpass';
@@ -269,7 +271,8 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                   child: DropdownButtonFormField<String>(
                     value: tipoVinculo,
                     items: const [
-                      DropdownMenuItem(value: 'mensalidade', child: Text('Mensalidade (paga no app)')),
+                      DropdownMenuItem(value: 'mensalidade', child: Text('Mensalidade (periódico / pagante)')),
+                      DropdownMenuItem(value: 'avulso', child: Text('Avulso (só agenda — sem mensalidade)')),
                       DropdownMenuItem(value: 'wellhub', child: Text('GymPass / Wellhub')),
                       DropdownMenuItem(value: 'totalpass', child: Text('TotalPass')),
                     ],
@@ -281,7 +284,11 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                       } else if (tipoVinculo == 'totalpass') {
                         plano = 'TotalPass';
                         wellhubCtrl.clear();
-                      } else if (plano == 'GymPass' || plano == 'TotalPass') {
+                      } else if (tipoVinculo == 'avulso') {
+                        plano = 'Avulso';
+                        wellhubCtrl.clear();
+                        totalpassCpfCtrl.clear();
+                      } else if (plano == 'GymPass' || plano == 'TotalPass' || plano == 'Avulso') {
                         plano = 'Mensal';
                         if (status != 'Pendente') {
                           vencCtrl.text = DateHelper.formatarData(state.calcularVencimentoParaPlano(plano));
@@ -291,11 +298,13 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                   ),
                 ),
                 if (tipoVinculo != 'mensalidade')
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
-                      'Aluno parceiro: agenda normalmente, sem mensalidade no financeiro. O repasse vem da plataforma.',
-                      style: TextStyle(fontSize: 11, color: AppColors.blue, height: 1.35),
+                      tipoVinculo == 'avulso'
+                          ? 'Aluno avulso: agenda aulas normalmente e NÃO entra na receita/inadimplência do financeiro.'
+                          : 'Aluno parceiro: agenda normalmente, sem mensalidade no financeiro. O repasse vem da plataforma.',
+                      style: const TextStyle(fontSize: 11, color: AppColors.blue, height: 1.35),
                     ),
                   ),
                 if (tipoVinculo == 'wellhub')
@@ -410,9 +419,13 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                   )
                 else
                   FieldLabel(
-                    label: 'Plano (parceiro)',
+                    label: 'Plano (sem mensalidade)',
                     child: Text(
-                      tipoVinculo == 'wellhub' ? 'GymPass — sem mensalidade' : 'TotalPass — sem mensalidade',
+                      switch (tipoVinculo) {
+                        'wellhub' => 'GymPass — sem mensalidade',
+                        'totalpass' => 'TotalPass — sem mensalidade',
+                        _ => 'Avulso — só agendamento',
+                      },
                       style: const TextStyle(color: AppColors.blue, fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -547,14 +560,16 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             telefoneEmergencia: emergTelCtrl.text.trim(),
                           );
                           final alunoDesde = alunoDesdeCtrl.text.trim().isEmpty ? MockData.today : DateHelper.paraIso(alunoDesdeCtrl.text.trim());
-                          final isParceiro = tipoVinculo == 'wellhub' || tipoVinculo == 'totalpass';
-                          final planoSalvo = tipoVinculo == 'wellhub'
-                              ? 'GymPass'
-                              : tipoVinculo == 'totalpass'
-                                  ? 'TotalPass'
-                                  : plano;
+                          final isSemMensalidade =
+                              tipoVinculo == 'wellhub' || tipoVinculo == 'totalpass' || tipoVinculo == 'avulso';
+                          final planoSalvo = switch (tipoVinculo) {
+                            'wellhub' => 'GymPass',
+                            'totalpass' => 'TotalPass',
+                            'avulso' => 'Avulso',
+                            _ => plano,
+                          };
                           String vencimento;
-                          if (isParceiro) {
+                          if (isSemMensalidade) {
                             // Sem cobrança no app — placeholder longe do radar de inadimplência.
                             vencimento = MockData.vencimentoPendente;
                           } else if (status == 'Pendente') {
@@ -592,7 +607,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             uf: ufCtrl.text.trim(),
                             plano: planoSalvo,
                             vencimento: vencimento,
-                            status: isParceiro && status == 'Inadimplente' ? 'Ativo' : status,
+                            status: isSemMensalidade && status == 'Inadimplente' ? 'Ativo' : status,
                             senha: senhaCtrl.text,
                             avatar: editando?.avatar ?? avatar,
                             dataNascimento: nascCtrl.text.trim().isEmpty ? null : DateHelper.paraIso(nascCtrl.text.trim()),
@@ -607,7 +622,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
                             creditoIndicacao: editando?.creditoIndicacao ?? 0,
                             wellhubId: tipoVinculo == 'wellhub' ? wh : null,
                             totalpassCpf: tipoVinculo == 'totalpass' ? tp : null,
-                            beneficioOrigem: isParceiro ? tipoVinculo : null,
+                            beneficioOrigem: isSemMensalidade ? tipoVinculo : null,
                           );
                           state.salvarAluno(editando: editando, dados: dados);
                           Navigator.pop(ctx);
@@ -634,7 +649,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
   }
 
   Future<void> _validar(BuildContext context, AppState state, Aluno a) async {
-    if (a.ehAlunoParceiro) {
+    if (a.ehSemMensalidade) {
       state.validarAluno(a.id, vencimento: MockData.vencimentoPendente);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

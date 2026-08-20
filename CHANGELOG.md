@@ -3,6 +3,18 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 Versão segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.5.0] - 2026-08-20
+
+### Adicionado
+- Tipo de vínculo **Avulso** (só agenda, sem mensalidade) além de GymPass/TotalPass
+- Edição de **vencimento por aluno** direto no Financeiro
+- Base de **FCM** (Firebase Messaging + token no Supabase) com guia `docs/fcm-setup.md`
+- Migration `supabase/migration_fcm_tokens.sql`
+
+### Corrigido
+- Admin consegue agendar aluno com filtro por dia da semana e feedback real de erro
+- Financeiro mais realista: receita/inadimplência só de mensalistas
+
 ## [1.4.1] - 2026-08-12
 
 ### Corrigido

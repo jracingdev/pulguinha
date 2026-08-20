@@ -257,10 +257,10 @@ class Aluno {
   final String? wellhubId;
   /// CPF só dígitos para login TotalPass.
   final String? totalpassCpf;
-  /// wellhub | totalpass — alunos parceiros não pagam mensalidade no app.
+  /// wellhub | totalpass | avulso — sem mensalidade no financeiro do app.
   final String? beneficioOrigem;
 
-  /// GymPass/Wellhub ou TotalPass: agenda normalmente, sem mensalidade no financeiro.
+  /// GymPass/Wellhub ou TotalPass (integração de benefício).
   bool get ehAlunoParceiro {
     final o = beneficioOrigem?.toLowerCase().trim();
     if (o == 'wellhub' || o == 'gympass' || o == 'totalpass') return true;
@@ -269,10 +269,20 @@ class Aluno {
     return temWellhub || temTotalpass;
   }
 
-  bool get pagaMensalidade => !ehAlunoParceiro;
+  /// Avulso: usa o app só para agendar, sem mensalidade nem benefício parceiro.
+  bool get ehAlunoAvulso {
+    final o = beneficioOrigem?.toLowerCase().trim();
+    return o == 'avulso' || o == 'sem_mensalidade' || o == 'agendamento';
+  }
+
+  /// Não entra na receita/inadimplência: GymPass, TotalPass ou avulso.
+  bool get ehSemMensalidade => ehAlunoParceiro || ehAlunoAvulso;
+
+  bool get pagaMensalidade => !ehSemMensalidade;
 
   String get labelBeneficio {
     final o = beneficioOrigem?.toLowerCase().trim();
+    if (o == 'avulso' || o == 'sem_mensalidade' || o == 'agendamento') return 'Avulso';
     if (o == 'totalpass') return 'TotalPass';
     if (o == 'wellhub' || o == 'gympass') return 'GymPass';
     if (totalpassCpf != null && totalpassCpf!.trim().isNotEmpty) return 'TotalPass';

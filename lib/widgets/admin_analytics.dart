@@ -259,7 +259,7 @@ class AdminAnalyticsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Mensalistas x Parceiros',
+            'Mensalistas x Sem mensalidade',
             style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 13, decoration: TextDecoration.none),
           ),
           const SizedBox(height: 8),
@@ -299,7 +299,7 @@ class AdminAnalyticsSection extends StatelessWidget {
           const SizedBox(height: 8),
           Text('✅ $mensalistasAtivos mensalistas ativos', style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
           Text('⚠️ $inad inadimplentes', style: const TextStyle(fontSize: 12, color: AppColors.red, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
-          Text('🎫 $parceiros GymPass/TotalPass', style: const TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+          Text('🎫 $parceiros sem mensalidade', style: const TextStyle(fontSize: 12, color: AppColors.blue, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
         ],
       ),
     );

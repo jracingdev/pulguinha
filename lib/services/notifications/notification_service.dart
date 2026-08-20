@@ -3,7 +3,7 @@ import 'package:pulguinha/services/notifications/fcm_notification_service.dart';
 import 'package:pulguinha/services/notifications/local_notification_service.dart';
 import 'package:pulguinha/services/notifications/notification_payload.dart';
 
-/// Fachada de notificações — local agora; FCM no futuro.
+/// Fachada de notificações — local + FCM quando Firebase estiver configurado.
 abstract class NotificationService {
   Future<void> initialize();
   Future<bool> requestPermission();
@@ -23,7 +23,9 @@ abstract class NotificationService {
   });
   Future<void> cancel(int id);
   Future<void> cancelAll();
-  Future<void> registerPushToken();
+
+  /// Registra o token FCM (quando disponível) e retorna o valor.
+  Future<String?> registerPushToken();
 
   static NotificationService instance = _create();
 
@@ -32,8 +34,11 @@ abstract class NotificationService {
     return LocalNotificationService();
   }
 
-  static void useFcmWhenReady() {
-    instance = FcmNotificationService(delegate: LocalNotificationService());
+  /// Troca a implementação para FCM (mantém o local como fallback de agenda).
+  static FcmNotificationService useFcmWhenReady() {
+    final fcm = FcmNotificationService(delegate: LocalNotificationService());
+    instance = fcm;
+    return fcm;
   }
 }
 
@@ -51,7 +56,7 @@ class _NoopNotificationService implements NotificationService {
   Future<bool> requestPermission() async => false;
 
   @override
-  Future<void> registerPushToken() async {}
+  Future<String?> registerPushToken() async => null;
 
   @override
   Future<void> schedule({

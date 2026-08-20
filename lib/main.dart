@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -23,8 +24,23 @@ Future<void> main() async {
   await MercadoPagoConfig.initialize();
   await PagBankConfig.initialize();
   await PartnerConfig.initialize();
-  await NotificationService.instance.initialize();
-  await NotificationService.instance.requestPermission();
+
+  // FCM opcional — sem google-services.json o app segue só com notificações locais.
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp();
+      final fcm = NotificationService.useFcmWhenReady();
+      await fcm.initialize();
+      await fcm.requestPermission();
+    } catch (e) {
+      debugPrint('Firebase/FCM indisponível (usando notificações locais): $e');
+      await NotificationService.instance.initialize();
+      await NotificationService.instance.requestPermission();
+    }
+  } else {
+    await NotificationService.instance.initialize();
+  }
+
   await AppSoundService.instance.initialize();
 
   if (SupabaseConfig.isConfigured) {

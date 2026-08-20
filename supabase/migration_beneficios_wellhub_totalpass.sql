@@ -8,4 +8,4 @@ CREATE INDEX IF NOT EXISTS idx_alunos_totalpass_cpf ON alunos(totalpass_cpf) WHE
 
 COMMENT ON COLUMN alunos.wellhub_id IS 'ID Gympass/Wellhub (13 dígitos) para login via Access Control API';
 COMMENT ON COLUMN alunos.totalpass_cpf IS 'CPF só dígitos para login TotalPass';
-COMMENT ON COLUMN alunos.beneficio_origem IS 'wellhub | totalpass | vazio';
+COMMENT ON COLUMN alunos.beneficio_origem IS 'wellhub | totalpass | avulso | vazio (mensalidade)';

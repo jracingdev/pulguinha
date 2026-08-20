@@ -4,6 +4,7 @@ import 'package:pulguinha/data/mock_data.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
+import 'package:pulguinha/utils/horario_helper.dart';
 import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -66,6 +67,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
 
   Widget _diaCard(AppState state, DiaSemana dia) {
     final isToday = dia.iso == MockData.today;
+    final slots = state.horariosOrdenados.where((h) => HorarioHelper.ocorreNoDia(h.dias, dia.iso)).toList();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: PulguinhaCard(
@@ -99,54 +101,59 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
             const Divider(height: 1, color: AppColors.border),
             Padding(
               padding: const EdgeInsets.all(14),
-              child: HorarioGrid(
-                spacing: 10,
-                children: state.horariosOrdenados.map((h) {
-                  final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
-                  final isVer = verAula?.d == dia.iso && verAula?.h == h.id;
-                  return Column(
-                    children: [
-                      HorarioSlotCard(
-                        hora: h.hora,
-                        ocupados: ags.length,
-                        capacidade: h.capacidade,
-                        selected: isVer,
-                        enabled: ags.isNotEmpty,
-                        onTap: ags.isEmpty ? null : () => setState(() => verAula = isVer ? null : (d: dia.iso, h: h.id)),
-                      ),
-                      if (isVer)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF111111),
-                            border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
-                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
-                          ),
-                          child: Column(
-                            children: ags.map((ag) {
-                              final aluno = state.alunoPorId(ag.alunoId);
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Row(
-                                  children: [
-                                    PulguinhaAvatar(initials: aluno?.avatar ?? ag.nomeAluno.substring(0, 2).toUpperCase(), size: AvatarSize.sm),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(ag.nomeAluno.split(' ').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white))),
-                                    TextButton(
-                                      onPressed: () => _cancelar(context, state, ag.id),
-                                      child: const Text('Cancelar', style: TextStyle(fontSize: 11, color: AppColors.red, fontWeight: FontWeight.w700)),
-                                    ),
-                                  ],
+              child: slots.isEmpty
+                  ? const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Sem aulas neste dia.', style: TextStyle(fontSize: 12, color: AppColors.grayDim)),
+                    )
+                  : HorarioGrid(
+                      spacing: 10,
+                      children: slots.map((h) {
+                        final ags = state.agendamentosPorDataHorario(dia.iso, h.id);
+                        final isVer = verAula?.d == dia.iso && verAula?.h == h.id;
+                        return Column(
+                          children: [
+                            HorarioSlotCard(
+                              hora: h.hora,
+                              ocupados: ags.length,
+                              capacidade: h.capacidade,
+                              selected: isVer,
+                              enabled: ags.isNotEmpty,
+                              onTap: ags.isEmpty ? null : () => setState(() => verAula = isVer ? null : (d: dia.iso, h: h.id)),
+                            ),
+                            if (isVer)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF111111),
+                                  border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
+                                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(10)),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                    ],
-                  );
-                }).toList(),
-              ),
+                                child: Column(
+                                  children: ags.map((ag) {
+                                    final aluno = state.alunoPorId(ag.alunoId);
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Row(
+                                        children: [
+                                          PulguinhaAvatar(initials: aluno?.avatar ?? ag.nomeAluno.substring(0, 2).toUpperCase(), size: AvatarSize.sm),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Text(ag.nomeAluno.split(' ').first, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.white))),
+                                          TextButton(
+                                            onPressed: () => _cancelar(context, state, ag.id),
+                                            child: const Text('Cancelar', style: TextStyle(fontSize: 11, color: AppColors.red, fontWeight: FontWeight.w700)),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
             ),
           ],
         ),
@@ -158,6 +165,7 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
     var data = MockData.today;
     var alunoId = '';
     var horarioId = '';
+    var salvando = false;
     final dataCtrl = TextEditingController(text: DateHelper.formatarData(data));
 
     await showPulguinhaModal(
@@ -165,6 +173,10 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
       title: 'Novo Agendamento',
       child: StatefulBuilder(
         builder: (ctx, setModal) {
+          final horariosDia = state.horariosOrdenados.where((h) => HorarioHelper.ocorreNoDia(h.dias, data)).toList();
+          final alunosOk = state.alunos.where((a) => a.status == 'Ativo' || a.status == 'Inadimplente').toList()
+            ..sort((a, b) => a.nome.compareTo(b.nome));
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -175,16 +187,22 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                   border: Border.all(color: AppColors.neon.withValues(alpha: 0.15)),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text('⏰ Cancelamentos: entre 24h e 1h antes', style: TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Admin: sem janela de 24h–1h. Só aparecem horários do dia da semana selecionado.',
+                  style: TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w600),
+                ),
               ),
               const SizedBox(height: 14),
               FieldLabel(
                 label: 'Data',
                 child: DateField(
                   controller: dataCtrl,
-                  firstDate: DateTime.now(),
+                  firstDate: DateTime.now().subtract(const Duration(days: 7)),
                   lastDate: DateTime.now().add(const Duration(days: 90)),
-                  onChanged: (iso) => setModal(() => data = iso),
+                  onChanged: (iso) => setModal(() {
+                    data = iso;
+                    horarioId = '';
+                  }),
                 ),
               ),
               FieldLabel(
@@ -192,7 +210,18 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                 child: DropdownButtonFormField<String>(
                   value: alunoId.isEmpty ? null : alunoId,
                   hint: const Text('Selecione...'),
-                  items: state.alunos.where((a) => a.status == 'Ativo').map((a) => DropdownMenuItem(value: '${a.id}', child: Text(a.nome))).toList(),
+                  items: alunosOk
+                      .map(
+                        (a) => DropdownMenuItem(
+                          value: '${a.id}',
+                          child: Text(
+                            a.ehSemMensalidade
+                                ? '${a.nome} · ${a.labelBeneficio}'
+                                : '${a.nome}${a.status == 'Inadimplente' ? ' (inadimplente)' : ''}',
+                          ),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setModal(() => alunoId = v ?? ''),
                 ),
               ),
@@ -200,8 +229,8 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                 label: 'Horário *',
                 child: DropdownButtonFormField<String>(
                   value: horarioId.isEmpty ? null : horarioId,
-                  hint: const Text('Selecione...'),
-                  items: state.horariosOrdenados.map((h) {
+                  hint: Text(horariosDia.isEmpty ? 'Sem aulas neste dia' : 'Selecione...'),
+                  items: horariosDia.map((h) {
                     final v = state.agendamentosPorDataHorario(data, h.id);
                     final lotado = v.length >= h.capacidade;
                     return DropdownMenuItem(
@@ -210,36 +239,55 @@ class _AdminAgendamentosScreenState extends State<AdminAgendamentosScreen> {
                       child: Text('${h.hora} — ${h.dias} (${v.length}/${h.capacidade})${lotado ? " LOTADO" : ""}'),
                     );
                   }).toList(),
-                  onChanged: (v) => setModal(() => horarioId = v ?? ''),
+                  onChanged: horariosDia.isEmpty ? null : (v) => setModal(() => horarioId = v ?? ''),
                 ),
               ),
               Row(
                 children: [
-                  Expanded(child: GhostButton(label: 'Cancelar', onPressed: () => Navigator.pop(ctx))),
+                  Expanded(child: GhostButton(label: 'Cancelar', onPressed: salvando ? null : () => Navigator.pop(ctx))),
                   const SizedBox(width: 10),
                   Expanded(
                     child: NeonButton(
-                      label: 'Confirmar',
-                      onPressed: () async {
-                        if (alunoId.isEmpty || horarioId.isEmpty) return;
-                        final aluno = state.alunos.firstWhere((a) => a.id == int.parse(alunoId));
-                        final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
-                        if (state.aulaLotada(data, h.id)) return;
-                        final result = await state.criarAgendamento(
-                          alunoId: aluno.id,
-                          nomeAluno: aluno.nome,
-                          horarioId: h.id,
-                          data: data,
-                          horario: h.hora,
-                          respeitarJanela: false,
-                        );
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(result.mensagem ?? (result.ok ? 'Agendado!' : 'Falha ao agendar'))),
-                          );
-                        }
-                      },
+                      label: salvando ? 'Salvando...' : 'Confirmar',
+                      onPressed: salvando
+                          ? null
+                          : () async {
+                              if (alunoId.isEmpty || horarioId.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Selecione aluno e horário.')),
+                                );
+                                return;
+                              }
+                              final aluno = state.alunos.firstWhere((a) => a.id == int.parse(alunoId));
+                              final h = state.horariosOrdenados.firstWhere((x) => x.id == int.parse(horarioId));
+                              if (state.aulaLotada(data, h.id)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Aula lotada.')),
+                                );
+                                return;
+                              }
+                              setModal(() => salvando = true);
+                              final result = await state.criarAgendamento(
+                                alunoId: aluno.id,
+                                nomeAluno: aluno.nome,
+                                horarioId: h.id,
+                                data: data,
+                                horario: h.hora,
+                                respeitarJanela: false,
+                              );
+                              if (!context.mounted) return;
+                              if (result.ok) {
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result.mensagem ?? 'Agendado!')),
+                                );
+                              } else {
+                                setModal(() => salvando = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result.mensagem ?? 'Falha ao agendar')),
+                                );
+                              }
+                            },
                     ),
                   ),
                 ],

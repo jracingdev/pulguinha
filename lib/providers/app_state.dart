@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pulguinha/config/auth_config.dart';
 import 'package:pulguinha/config/supabase_config.dart';
@@ -15,6 +16,7 @@ import 'package:pulguinha/services/finance_settings_storage.dart';
 import 'package:pulguinha/services/referral_storage.dart';
 import 'package:pulguinha/services/notifications/notification_payload.dart';
 import 'package:pulguinha/services/notifications/notification_scheduler.dart';
+import 'package:pulguinha/services/notifications/notification_service.dart';
 import 'package:pulguinha/services/notifications/notification_settings_storage.dart';
 import 'package:pulguinha/utils/agendamento_rules.dart';
 import 'package:pulguinha/utils/date_helper.dart';
@@ -531,6 +533,23 @@ class AppState extends ChangeNotifier {
       _atualizarFotoAlunoLogado(user.email);
     }
     _agendarNotificacoesUsuario();
+    _registrarTokenFcm(user);
+  }
+
+  Future<void> _registrarTokenFcm(Usuario user) async {
+    if (kIsWeb || useMock || !SupabaseConfig.isConfigured) return;
+    try {
+      final token = await NotificationService.instance.registerPushToken();
+      if (token == null || token.isEmpty) return;
+      await SupabaseService.instance.saveFcmToken(
+        isAdmin: user.isAdmin,
+        token: token,
+        alunoId: user.isAdmin ? null : user.id,
+        adminEmail: user.isAdmin ? user.email : null,
+      );
+    } catch (e) {
+      debugPrint('Falha ao salvar FCM token: $e');
+    }
   }
 
   void logout() {
@@ -885,7 +904,7 @@ class AppState extends ChangeNotifier {
     final idsAlterados = <int>[];
     alunos = alunos.map((a) {
       // GymPass/TotalPass não entram na cobrança de mensalidade do app.
-      if (a.ehAlunoParceiro || a.status != 'Ativo' || !VencimentoHelper.temPlanoAtivo(a)) {
+      if (a.ehSemMensalidade || a.status != 'Ativo' || !VencimentoHelper.temPlanoAtivo(a)) {
         return a;
       }
       final dias = DateHelper.diasAteVencimento(a.vencimento);
@@ -1616,12 +1635,35 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  /// Alunos GymPass/TotalPass (ativos) — fora da receita de mensalidade.
+  /// Alunos sem mensalidade (GymPass/TotalPass/avulso) — fora da receita.
   List<Aluno> get alunosParceirosAtivos =>
-      alunos.where((a) => a.ehAlunoParceiro && a.status != 'Inativo').toList();
+      alunos.where((a) => a.ehSemMensalidade && a.status != 'Inativo').toList();
 
   List<Aluno> get alunosMensalistas =>
       alunos.where((a) => a.pagaMensalidade).toList();
+
+  /// Define vencimento livre de um aluno (financeiro / cadastro).
+  Future<String?> definirVencimentoAluno(int alunoId, String vencimentoIso, {bool reativarSeInadimplente = true}) async {
+    final idx = alunos.indexWhere((a) => a.id == alunoId);
+    if (idx < 0) return 'Aluno não encontrado.';
+    final atual = alunos[idx];
+    if (atual.ehSemMensalidade) {
+      return 'Este aluno não paga mensalidade (${atual.labelBeneficio}).';
+    }
+    final novoStatus = (reativarSeInadimplente && atual.status == 'Inadimplente') ? 'Ativo' : atual.status;
+    final atualizado = atual.copyWith(vencimento: vencimentoIso, status: novoStatus);
+    alunos = [...alunos]..[idx] = atualizado;
+    notifyListeners();
+    if (!useMock) {
+      try {
+        await SupabaseService.instance.updateAluno(atualizado);
+      } catch (e) {
+        debugPrint('Erro ao definir vencimento: $e');
+        return 'Não foi possível salvar o vencimento.';
+      }
+    }
+    return null;
+  }
 
   Aluno? alunoPorId(int? id) {
     if (id == null) return null;

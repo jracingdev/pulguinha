@@ -48,3 +48,6 @@ app.*.map.json
 .env
 .env.*
 supabase/secrets.local.env
+
+*.aab
+playstore_release/*.aab

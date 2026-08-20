@@ -108,5 +108,5 @@ class LocalNotificationService implements NotificationService {
   Future<void> cancelAll() => _plugin.cancelAll();
 
   @override
-  Future<void> registerPushToken() async {}
+  Future<String?> registerPushToken() async => null;
 }

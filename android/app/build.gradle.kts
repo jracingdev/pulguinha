@@ -8,6 +8,12 @@ plugins {
 import java.util.Properties
 import java.io.FileInputStream
 
+// FCM: só aplica se google-services.json existir (ver docs/fcm-setup.md).
+val googleServicesFile = file("google-services.json")
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 val hasReleaseKeystore = keystorePropertiesFile.exists()
@@ -32,7 +38,7 @@ android {
 
     defaultConfig {
         applicationId = "com.pulguinha.pulguinha"
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

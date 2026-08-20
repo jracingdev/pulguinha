@@ -86,7 +86,7 @@ class VencimentoHelper {
   }
 
   static String textoCurto(Aluno aluno, {int diasParaInadimplencia = 7}) {
-    if (aluno.ehAlunoParceiro) {
+    if (aluno.ehSemMensalidade) {
       return '${aluno.labelBeneficio} · sem mensalidade';
     }
     if (aluno.status == 'Pendente') return 'Aguardando aprovação';
@@ -100,8 +100,10 @@ class VencimentoHelper {
   }
 
   static String textoLongo(Aluno aluno, {int diasParaInadimplencia = 7}) {
-    if (aluno.ehAlunoParceiro) {
-      return 'Vínculo ${aluno.labelBeneficio}: check-in na plataforma; sem mensalidade no app';
+    if (aluno.ehSemMensalidade) {
+      return aluno.ehAlunoAvulso
+          ? 'Aluno avulso: agenda aulas, sem mensalidade no financeiro'
+          : 'Vínculo ${aluno.labelBeneficio}: check-in na plataforma; sem mensalidade no app';
     }
     if (aluno.status == 'Pendente') return 'Aguardando aprovação do professor';
     if (aluno.status == 'Inadimplente') return 'Mensalidade inadimplente — regularize com o estúdio';
@@ -114,7 +116,7 @@ class VencimentoHelper {
   }
 
   static Color cor(Aluno aluno, {int diasParaInadimplencia = 7}) {
-    if (aluno.ehAlunoParceiro) return AppColors.blue;
+    if (aluno.ehSemMensalidade) return AppColors.blue;
     if (aluno.status == 'Pendente') return AppColors.yellow;
     if (aluno.status == 'Inadimplente') return AppColors.red;
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
@@ -125,7 +127,7 @@ class VencimentoHelper {
   }
 
   static Color corDestaque(Aluno aluno, {int diasParaInadimplencia = 7}) {
-    if (aluno.ehAlunoParceiro) return AppColors.blue;
+    if (aluno.ehSemMensalidade) return AppColors.blue;
     if (aluno.status == 'Pendente') return AppColors.yellow;
     if (aluno.status == 'Inadimplente') return AppColors.red;
     final d = DateHelper.diasAteVencimento(aluno.vencimento);
