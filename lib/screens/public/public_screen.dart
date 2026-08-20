@@ -54,7 +54,7 @@ class _PublicScreenState extends State<PublicScreen> {
             builder: (context, constraints) {
               return SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: Column(
@@ -76,15 +76,42 @@ class _PublicScreenState extends State<PublicScreen> {
 
   Widget _buildHero() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
+      padding: const EdgeInsets.only(bottom: 16, top: 4),
+      child: Row(
         children: [
-          const PulguinhaLogo(size: 136, borderRadius: 24),
-          const SizedBox(height: 12),
-          const Text('FUNCIONAL DO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.white, letterSpacing: 2)),
-          const Text('PULGUINHA', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.neon, letterSpacing: 2)),
-          const SizedBox(height: 6),
-          const Text('Treino funcional de verdade', style: TextStyle(fontSize: 13, color: AppColors.gray)),
+          const PulguinhaLogo(size: 64, borderRadius: 14),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'FUNCIONAL DO',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.white,
+                    letterSpacing: 1.6,
+                  ),
+                ),
+                Text(
+                  'PULGUINHA',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.neon,
+                    letterSpacing: 1.4,
+                    height: 1.1,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Treino funcional de verdade',
+                  style: TextStyle(fontSize: 12, color: AppColors.gray, height: 1.3),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -92,105 +119,123 @@ class _PublicScreenState extends State<PublicScreen> {
 
   Widget _buildHome(AppState state) {
     final precoMensal = state.precoPlano('Mensal').toStringAsFixed(0);
+    final horarios = state.horariosOrdenados;
+    final diasUnicos = horarios.map((h) => h.dias.trim()).where((d) => d.isNotEmpty).toSet();
+    final capacidadeMax = horarios.isEmpty ? 0 : horarios.map((h) => h.capacidade).reduce((a, b) => a > b ? a : b);
+    final resumoHorarios = [
+      if (diasUnicos.length == 1) diasUnicos.first,
+      if (capacidadeMax > 0) 'até $capacidadeMax alunos',
+      'agende com login (24h–1h antes)',
+    ].join(' · ');
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        NeonButton(
+          label: 'Já sou aluno — Entrar',
+          fullWidth: true,
+          onPressed: () => state.irParaLogin(),
+        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: _homeCard(
-                '📅',
-                'Agendar Aula',
-                'Faça login para escolher horário e garantir sua vaga',
-                AppColors.neon,
-                () => state.irParaLogin(),
+              child: GhostButton(
+                label: 'Criar conta',
+                fullWidth: true,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => const CadastroAlunoScreen()),
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(child: _homeCard('💳', 'Assinar Plano', 'Planos mensais a partir de R\$$precoMensal', AppColors.mercadoPago, () => setState(() => step = 'loja'))),
+            const SizedBox(width: 10),
+            Expanded(
+              child: GhostButton(
+                label: 'Planos a R\$$precoMensal',
+                fullWidth: true,
+                borderColor: AppColors.mercadoPago.withValues(alpha: 0.35),
+                textColor: AppColors.mercadoPago,
+                onPressed: () => setState(() => step = 'loja'),
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         PulguinhaCard(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionTitle(icon: '📋', title: 'Horários disponíveis'),
-              const SizedBox(height: 4),
               const Text(
-                'Agendamento somente com login, entre 24h e 1h antes do treino.',
-                style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.4),
+                'HORÁRIOS DISPONÍVEIS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.gray,
+                  letterSpacing: 1.4,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
+              Text(
+                resumoHorarios,
+                style: const TextStyle(fontSize: 11, color: AppColors.grayDim, height: 1.3),
+              ),
+              const SizedBox(height: 10),
               HorarioGrid(
-                children: state.horariosOrdenados.map((h) {
+                columns: 3,
+                spacing: 8,
+                childAspectRatio: 1.15,
+                children: horarios.map((h) {
                   final ocupadosHoje = state.agendamentosPorDataHorario(MockData.today, h.id).length;
                   return HorarioInfoCard(
                     hora: h.hora,
                     dias: h.dias,
                     capacidade: h.capacidade,
                     ocupadosHoje: ocupadosHoje,
+                    compact: true,
+                    showDias: false,
+                    onTap: () => state.irParaLogin(),
                   );
                 }).toList(),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        GhostButton(
-          label: '🔐 Já sou aluno — Fazer login',
-          fullWidth: true,
-          borderColor: AppColors.neon.withValues(alpha: 0.2),
-          textColor: AppColors.neon,
-          onPressed: () => state.irParaLogin(),
-        ),
         const SizedBox(height: 12),
-        GhostButton(
-          label: '📝 Criar conta de aluno',
-          fullWidth: true,
-          onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const CadastroAlunoScreen())),
-        ),
-        const SizedBox(height: 16),
         const StudioContactCard(compact: true),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.termos))),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.termos)),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               child: const Text('Termos de Uso', style: TextStyle(fontSize: 11, color: AppColors.gray)),
             ),
             const Text('·', style: TextStyle(color: AppColors.grayDim)),
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.privacidade))),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const LegalScreen(type: LegalDocType.privacidade)),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               child: const Text('Privacidade', style: TextStyle(fontSize: 11, color: AppColors.gray)),
             ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _homeCard(String icon, String title, String sub, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 28)),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.white)),
-            const SizedBox(height: 4),
-            Text(sub, style: const TextStyle(fontSize: 11, color: AppColors.gray, height: 1.4)),
-          ],
-        ),
-      ),
     );
   }
 

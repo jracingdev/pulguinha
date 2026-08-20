@@ -44,80 +44,136 @@ class AdminDashboardScreen extends StatelessWidget {
       return (h, ags);
     }).where((e) => e.$2.isNotEmpty || ['06:00', '18:00', '19:00'].contains(e.$1.hora)).toList();
 
+    final hora = DateTime.now().hour;
+    final saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+    final alertas = <Widget>[
+      ...state.alunos.where((a) => a.status == 'Pendente').map(_alertaPendente),
+      ...state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').map(_alertaInadimplente),
+      ...state.alunos.where((a) {
+        if (!a.pagaMensalidade) return false;
+        final d = DateHelper.diasAteVencimento(a.vencimento);
+        return d >= 0 && d <= 7 && a.status == 'Ativo';
+      }).map(_alertaVencendo),
+    ];
+    final avisos = state.avisosAtivos();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF1A1A1A), AppColors.bg]),
-            borderRadius: BorderRadius.circular(20),
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.border),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              const Text('⚡ PAINEL ADMIN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 2)),
-              const Text.rich(
-                TextSpan(
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppColors.white, height: 1.1),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextSpan(text: 'BOM DIA, '),
-                    TextSpan(text: 'PULGUINHA!', style: TextStyle(color: AppColors.neon)),
+                    Text(
+                      '$saudacao, Pulguinha',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.white, height: 1.15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(DateHelper.hojeFormatado(), style: const TextStyle(fontSize: 11, color: AppColors.gray)),
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(DateHelper.hojeFormatado(), style: const TextStyle(fontSize: 12, color: AppColors.gray)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.neon.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.neon.withValues(alpha: 0.25)),
+                ),
+                child: const Text('ADMIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.neon, letterSpacing: 0.8)),
+              ),
             ],
           ),
         ),
         if (state.useMock) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           PulguinhaCard(
+            padding: const EdgeInsets.all(12),
             borderColor: AppColors.yellow.withValues(alpha: 0.35),
             backgroundColor: AppColors.yellow.withValues(alpha: 0.06),
             child: Text(
               SupabaseConfig.isConfigured
-                  ? '⚠️ Sem conexão com o banco — cadastros do site não sincronizam até a internet voltar. Puxe a tela para baixo para tentar de novo.'
+                  ? '⚠️ Sem conexão com o banco — puxe para atualizar.'
                   : '⚠️ Modo local — reinstale o APK oficial do Pulguinha.',
-              style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.4, decoration: TextDecoration.none),
+              style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.35, decoration: TextDecoration.none),
             ),
           ),
         ],
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
+        const SizedBox(height: 14),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          primary: false,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1.05,
           children: [
-            _statCard('👥', '$ativos', 'Alunos Ativos', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
-            _statCard('⚠️', '$inadimp', 'Inadimplentes', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
-            _statCard('✅', '$presHoje', 'Presenças Hoje', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
-            _statCard('📅', '$agHoje', 'Agendados Hoje', AppColors.blue, AppColors.blue.withValues(alpha: 0.08)),
-            _statCard('💰', '$venc7', 'Vencendo 7d', AppColors.yellow, AppColors.yellow.withValues(alpha: 0.08)),
-            _statCard('🎂', '${state.aniversariantesDoMes()}', 'Aniv. do Mês', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
+            _statCard('👥', '$ativos', 'Ativos', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
+            _statCard('⚠️', '$inadimp', 'Inadimp.', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
+            _statCard('✅', '$presHoje', 'Presenças', AppColors.neon, AppColors.neon.withValues(alpha: 0.08)),
+            _statCard('📅', '$agHoje', 'Agendados', AppColors.blue, AppColors.blue.withValues(alpha: 0.08)),
+            _statCard('💰', '$venc7', 'Vence 7d', AppColors.yellow, AppColors.yellow.withValues(alpha: 0.08)),
+            _statCard('🎂', '${state.aniversariantesDoMes()}', 'Aniv. mês', AppColors.red, AppColors.red.withValues(alpha: 0.08)),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
+        const SectionTitle(icon: '📋', title: 'Aulas de Hoje'),
+        if (aulasHoje.isEmpty)
+          const PulguinhaCard(
+            padding: EdgeInsets.all(12),
+            child: Text('Nenhuma turma com movimento hoje.', style: TextStyle(fontSize: 12, color: AppColors.gray)),
+          )
+        else
+          ...aulasHoje.map((e) => _aulaCard(e.$1, e.$2, state)),
+        if (alertas.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(child: SectionTitle(icon: '🔔', title: 'Alertas')),
+              Text(
+                '${alertas.length}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gray),
+              ),
+            ],
+          ),
+          ...alertas.take(4),
+          if (alertas.length > 4)
+            TextButton(
+              onPressed: () => state.setAdminTab('financeiro'),
+              child: Text('Ver todos os ${alertas.length} alertas', style: const TextStyle(color: AppColors.neon, fontWeight: FontWeight.w700)),
+            ),
+        ],
+        const SizedBox(height: 16),
         const SectionTitle(icon: '📢', title: 'Comunicação'),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _configTile(
           context,
           icon: '📢',
           title: 'Quadro de avisos e eventos',
-          subtitle: '${state.avisosAtivos().length} aviso(s) · ${state.eventosProximos(dias: 30).length} evento(s)',
+          subtitle: '${avisos.length} aviso(s) · ${state.eventosProximos(dias: 30).length} evento(s)',
           color: AppColors.neon,
           onTap: () => state.setAdminTab('comunicacao'),
         ),
-        if (state.avisosAtivos().isNotEmpty) ...[
-          const SizedBox(height: 10),
-          ...state.avisosAtivos().take(2).map((a) => Padding(
+        if (avisos.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...avisos.take(2).map((a) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: InkWell(
                   onTap: () => state.setAdminTab('comunicacao'),
                   borderRadius: BorderRadius.circular(12),
                   child: PulguinhaCard(
+                    padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
                         Expanded(
@@ -136,23 +192,11 @@ class AdminDashboardScreen extends StatelessWidget {
                 ),
               )),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         AdminAnalyticsSection(state: state),
-        const SizedBox(height: 20),
-        const SectionTitle(icon: '📋', title: 'Aulas de Hoje'),
-        ...aulasHoje.map((e) => _aulaCard(e.$1, e.$2, state)),
-        const SizedBox(height: 20),
-        const SectionTitle(icon: '🔔', title: 'Alertas'),
-        ...state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').map(_alertaInadimplente),
-        ...state.alunos.where((a) => a.status == 'Pendente').map(_alertaPendente),
-        ...state.alunos.where((a) {
-          if (!a.pagaMensalidade) return false;
-          final d = DateHelper.diasAteVencimento(a.vencimento);
-          return d >= 0 && d <= 7 && a.status == 'Ativo';
-        }).map(_alertaVencendo),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         const SectionTitle(icon: '⚙️', title: 'Configurações'),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _configTile(
           context,
           icon: '👥',
@@ -301,12 +345,12 @@ class AdminDashboardScreen extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(color: AppColors.card2, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 12),
+            Text(icon, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +360,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.grayDim),
+            const Icon(Icons.chevron_right, color: AppColors.grayDim, size: 18),
           ],
         ),
       ),
@@ -324,67 +368,67 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 
   Widget _statCard(String icon, String value, String label, Color color, Color bg) {
-    return SizedBox(
-      width: 160,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: bg, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 20)),
-            Text(value, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: color, height: 1)),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 16)),
+          const Spacer(),
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color, height: 1)),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
 
   Widget _aulaCard(dynamic h, List ags, AppState state) {
     final pres = state.presencasHoje().where((p) => p.horarioId == h.id).length;
-    final pct = ags.length / h.capacidade * 100;
+    final pct = ags.isEmpty ? 0.0 : ags.length / h.capacidade * 100;
     final barC = pct >= 90 ? AppColors.red : pct >= 60 ? AppColors.yellow : AppColors.neon;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: PulguinhaCard(
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Text(h.hora, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.neon)),
-                    const SizedBox(width: 8),
-                    Text(h.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
-                  ],
-                ),
-                Row(
-                  children: [
-                    if (pres > 0) PulguinhaBadge(label: '✅ $pres', variant: BadgeVariant.neon),
-                    const SizedBox(width: 6),
-                    Text('${ags.length}/${h.capacidade}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gray)),
-                  ],
-                ),
+                Text(h.hora, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.neon)),
+                const SizedBox(width: 8),
+                Expanded(child: Text(h.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                if (pres > 0) PulguinhaBadge(label: '✅ $pres', variant: BadgeVariant.neon),
+                const SizedBox(width: 6),
+                Text('${ags.length}/${h.capacidade}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gray)),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(value: pct / 100, minHeight: 4, backgroundColor: AppColors.card2, color: barC),
+              child: LinearProgressIndicator(value: (pct / 100).clamp(0.0, 1.0), minHeight: 3, backgroundColor: AppColors.card2, color: barC),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             if (ags.isEmpty)
               const Text('Nenhum aluno agendado', style: TextStyle(fontSize: 12, color: AppColors.grayDim))
             else
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: ags.map<Widget>((ag) {
+                children: ags.take(12).map<Widget>((ag) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.neon.withValues(alpha: 0.1),
                       border: Border.all(color: AppColors.neon.withValues(alpha: 0.2)),

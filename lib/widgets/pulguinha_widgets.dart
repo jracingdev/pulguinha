@@ -365,10 +365,20 @@ String horarioBadgeLabel(HorarioOccupancy level, int vagasRestantes) {
 }
 
 class HorarioGrid extends StatelessWidget {
-  const HorarioGrid({super.key, required this.children, this.spacing = 8});
+  const HorarioGrid({
+    super.key,
+    required this.children,
+    this.spacing = 8,
+    this.columns,
+    this.childAspectRatio,
+  });
 
   final List<Widget> children;
   final double spacing;
+  /// Se nulo, escolhe 1 ou 2 colunas conforme a largura.
+  final int? columns;
+  /// Usado quando [columns] é definido (GridView). Padrão 1.05.
+  final double? childAspectRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -377,13 +387,30 @@ class HorarioGrid extends StatelessWidget {
         final rawMax = constraints.maxWidth;
         final maxW = rawMax.isFinite && rawMax > 0
             ? rawMax
-            : MediaQuery.sizeOf(context).width;
-        final cols = maxW < 280 ? 1 : 2;
-        final double itemWidth = (cols == 1 ? maxW : (maxW - spacing) / 2).clamp(0.0, double.infinity);
+            : (MediaQuery.sizeOf(context).width - 48).clamp(0.0, double.infinity);
+        final cols = columns ?? (maxW < 280 ? 1 : 2);
+
+        // GridView respeita a largura do pai; Wrap com MediaQuery fallback
+        // podia gerar itemWidth maior que o card e cair em 2 colunas.
+        if (columns != null) {
+          return GridView.count(
+            crossAxisCount: cols,
+            shrinkWrap: true,
+            primary: false,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            childAspectRatio: childAspectRatio ?? 1.05,
+            children: children,
+          );
+        }
+
+        final gaps = spacing * (cols - 1);
+        final itemWidth = ((maxW - gaps) / cols) - 0.5;
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
-          children: children.map((child) => SizedBox(width: itemWidth, child: child)).toList(),
+          children: children.map((child) => SizedBox(width: itemWidth.clamp(0.0, double.infinity), child: child)).toList(),
         );
       },
     );
@@ -533,6 +560,8 @@ class HorarioInfoCard extends StatefulWidget {
     required this.capacidade,
     required this.ocupadosHoje,
     this.onTap,
+    this.compact = false,
+    this.showDias = true,
   });
 
   final String hora;
@@ -540,6 +569,8 @@ class HorarioInfoCard extends StatefulWidget {
   final int capacidade;
   final int ocupadosHoje;
   final VoidCallback? onTap;
+  final bool compact;
+  final bool showDias;
 
   @override
   State<HorarioInfoCard> createState() => _HorarioInfoCardState();
@@ -552,6 +583,7 @@ class _HorarioInfoCardState extends State<HorarioInfoCard> {
   Widget build(BuildContext context) {
     final level = horarioOccupancy(widget.ocupadosHoje, widget.capacidade);
     final vagas = (widget.capacidade - widget.ocupadosHoje).clamp(0, widget.capacidade);
+    final compact = widget.compact;
 
     return GestureDetector(
       onTapDown: widget.onTap != null ? (_) => setState(() => _pressed = true) : null,
@@ -563,27 +595,45 @@ class _HorarioInfoCardState extends State<HorarioInfoCard> {
         duration: const Duration(milliseconds: 100),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(compact ? 10 : 12),
           decoration: BoxDecoration(
             color: AppColors.card2,
             border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(compact ? 12 : 10),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(widget.hora, style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.neon, fontSize: 15)),
-                  ),
-                  PulguinhaBadge(label: horarioBadgeLabel(level, vagas), variant: horarioBadgeVariant(level)),
+              if (compact) ...[
+                Text(
+                  widget.hora,
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.neon, fontSize: 15, height: 1.1),
+                ),
+                const SizedBox(height: 6),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: PulguinhaBadge(label: horarioBadgeLabel(level, vagas), variant: horarioBadgeVariant(level)),
+                ),
+                const SizedBox(height: 8),
+                HorarioOccupancyBar(ocupados: widget.ocupadosHoje, capacidade: widget.capacidade),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(widget.hora, style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.neon, fontSize: 15)),
+                    ),
+                    PulguinhaBadge(label: horarioBadgeLabel(level, vagas), variant: horarioBadgeVariant(level)),
+                  ],
+                ),
+                if (widget.showDias) ...[
+                  const SizedBox(height: 4),
+                  Text(widget.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
+                  Text('até ${widget.capacidade} alunos', style: const TextStyle(fontSize: 10, color: AppColors.grayDim, height: 1.6)),
                 ],
-              ),
-              Text(widget.dias, style: const TextStyle(fontSize: 11, color: AppColors.gray)),
-              Text('até ${widget.capacidade} alunos', style: const TextStyle(fontSize: 10, color: AppColors.grayDim, height: 1.6)),
-              const SizedBox(height: 6),
-              HorarioOccupancyBar(ocupados: widget.ocupadosHoje, capacidade: widget.capacidade),
+                const SizedBox(height: 6),
+                HorarioOccupancyBar(ocupados: widget.ocupadosHoje, capacidade: widget.capacidade),
+              ],
             ],
           ),
         ),

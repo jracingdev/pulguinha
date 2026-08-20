@@ -25,19 +25,24 @@ class AdminAnalyticsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionTitle(icon: '📊', title: 'Analytics'),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          primary: false,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1.1,
           children: [
-            _kpi('✅', '$presHoje', 'Presenças Hoje', AppColors.neon),
-            _kpi('📈', '$presSemana', 'Esta Semana', AppColors.blue),
-            _kpi('🎯', '${taxa.toStringAsFixed(0)}%', 'Freq. Média', AppColors.yellow),
-            _kpi('🎂', '$anivMes', 'Aniv. do Mês', AppColors.red),
-            _kpi('🆕', '$novos', 'Novos Alunos', AppColors.neon),
-            _kpi('💰', 'R\$ ${receita.toStringAsFixed(0)}', 'Receita Est.', AppColors.yellow),
+            _kpi('✅', '$presHoje', 'Presenças', AppColors.neon),
+            _kpi('📈', '$presSemana', 'Semana', AppColors.blue),
+            _kpi('🎯', '${taxa.toStringAsFixed(0)}%', 'Freq.', AppColors.yellow),
+            _kpi('🎂', '$anivMes', 'Aniv.', AppColors.red),
+            _kpi('🆕', '$novos', 'Novos', AppColors.neon),
+            _kpi('💰', 'R\$${receita.toStringAsFixed(0)}', 'Receita', AppColors.yellow),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         if (ranking.isNotEmpty) ...[
           const SectionTitle(icon: '🏆', title: 'Ranking da Semana'),
           ...ranking.asMap().entries.map((e) {
@@ -95,23 +100,26 @@ class AdminAnalyticsSection extends StatelessWidget {
   }
 
   Widget _kpi(String icon, String val, String label, Color color) {
-    return SizedBox(
-      width: 110,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 18)),
-            Text(val, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.white, fontWeight: FontWeight.w600)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 15)),
+          const Spacer(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color, height: 1)),
+          ),
+          const SizedBox(height: 2),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
@@ -129,7 +137,7 @@ class AdminAnalyticsSection extends StatelessWidget {
           const Text('Presenças — 7 dias', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 13)),
           const SizedBox(height: 16),
           SizedBox(
-            height: 160,
+            height: 120,
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 1, getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.border, strokeWidth: 1)),
@@ -178,7 +186,7 @@ class AdminAnalyticsSection extends StatelessWidget {
           const Text('Presenças por horário (7d)', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.white, fontSize: 13)),
           const SizedBox(height: 16),
           SizedBox(
-            height: 160,
+            height: 120,
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,

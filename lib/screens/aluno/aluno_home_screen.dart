@@ -61,26 +61,26 @@ class AlunoHomeScreen extends StatelessWidget {
             ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1A1A1A), AppColors.bg]),
-              borderRadius: BorderRadius.circular(20),
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: [
                 Row(
                   children: [
-                    PulguinhaAvatar(initials: aluno.avatar, size: AvatarSize.lg, fotoBase64: aluno.foto),
+                    PulguinhaAvatar(initials: aluno.avatar, size: AvatarSize.md, fotoBase64: aluno.foto),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Olá, ${aluno.nome.split(' ').first}! 💪', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.white)),
+                          Text('Olá, ${aluno.nome.split(' ').first}! 💪', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.white)),
                           const Text('Pronto para treinar?', style: TextStyle(fontSize: 12, color: AppColors.gray)),
                           if (aluno.streakPresenca >= 2) ...[
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 4),
                             PulguinhaBadge(label: '🔥 ${aluno.streakPresenca} treinos seguidos', variant: BadgeVariant.yellow),
                           ],
                         ],
@@ -88,7 +88,7 @@ class AlunoHomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 NeonButton(
                   label: jaCheckinHoje ? '✅ Check-in feito hoje!' : '📷 Fazer Check-in',
                   fullWidth: true,
@@ -96,12 +96,12 @@ class AlunoHomeScreen extends StatelessWidget {
                   onPressed: () => state.setAlunoTab('checkin'),
                 ),
                 if (aluno.pulguinhaPoints > 0) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text('⭐ ${aluno.pulguinhaPoints} Pulguinha Points', style: const TextStyle(fontSize: 11, color: AppColors.neon, fontWeight: FontWeight.w700)),
                 ],
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: AppColors.card2,
                     border: Border.all(color: VencimentoHelper.corDestaque(aluno).withValues(alpha: aluno.status == 'Pendente' ? 0.4 : d < 0 ? 1 : d <= 7 ? 0.4 : 0.2)),
@@ -115,11 +115,11 @@ class AlunoHomeScreen extends StatelessWidget {
                           children: [
                             Text(
                               aluno.status == 'Pendente' ? 'CADASTRO' : 'PLANO ${aluno.plano.toUpperCase()}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w700),
+                              style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w700),
                             ),
                             Text(
                               VencimentoHelper.textoLongo(aluno),
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: VencimentoHelper.corDestaque(aluno)),
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: VencimentoHelper.corDestaque(aluno)),
                             ),
                           ],
                         ),
@@ -138,16 +138,16 @@ class AlunoHomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           _comunicacaoResumo(context, state, aluno.id),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           MegaAguaCard(
             compact: true,
             onVerMais: () => state.setAlunoTab('evolucao'),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           DicaDoDiaCard(onVerTodas: () => state.setAlunoTab('evolucao')),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           const SectionTitle(icon: '👥', title: 'Minha Turma'),
           if (aluno.horarioId == null)
             const PulguinhaCard(
