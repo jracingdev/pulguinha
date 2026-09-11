@@ -31,7 +31,8 @@ FROM (VALUES
   ('Bruno Lima', 'bruno@email.com', '1234', '(11) 98765-0002', 'Trimestral', '2026-08-10', 'Ativo', 'BL', '1990-03-22', '{"objetivo_treino":"Emagrecer","nivel_experiencia":"Iniciante"}', 3, 30, '18:00'),
   ('Carla Dias', 'carla@email.com', '1234', '(11) 98765-0003', 'Mensal', '2026-06-05', 'Inadimplente', 'CD', '1988-11-08', '{}', 0, 0, '09:00'),
   ('Diego Souza', 'diego@email.com', '1234', '(11) 98765-0004', 'Anual', '2027-01-15', 'Ativo', 'DS', '1992-07-04', '{"restricoes_medicas":"Joelho direito","nivel_experiencia":"Avançado"}', 8, 80, '20:00'),
-  ('Elisa Rocha', 'elisa@email.com', '1234', '(11) 98765-0005', 'Mensal', '2026-06-28', 'Ativo', 'ER', '1998-06-18', '{"objetivo_treino":"Força","nivel_experiencia":"Intermediário"}', 2, 20, '06:00')
+  ('Elisa Rocha', 'elisa@email.com', '1234', '(11) 98765-0005', 'Mensal', '2026-06-28', 'Ativo', 'ER', '1998-06-18', '{"objetivo_treino":"Força","nivel_experiencia":"Intermediário"}', 2, 20, '06:00'),
+  ('Aluno Teste Play Store', 'aluno.teste@pulguinha.com', 'teste123', '(11) 99999-0000', 'Mensal', '2029-12-31', 'Ativo', 'AT', '1995-01-01', '{"objetivo_treino":"Condicionamento","nivel_experiencia":"Iniciante"}', 3, 50, '18:00')
 ) AS v(nome, email, senha, telefone, plano, vencimento, status, avatar, data_nascimento, anamnese, streak_presenca, pulguinha_points, hora_ref)
 LEFT JOIN horarios h ON h.hora = v.hora_ref
 ON CONFLICT (email) DO NOTHING;

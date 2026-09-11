@@ -98,6 +98,24 @@ class MockData {
       alunoDesde: '2026-05-01',
       horarioId: 1,
     ),
+    Aluno(
+      id: 6,
+      nome: 'Aluno Teste Play Store',
+      email: 'aluno.teste@pulguinha.com',
+      senha: 'teste123',
+      telefone: '(11) 99999-0000',
+      plano: 'Mensal',
+      vencimento: '2029-12-31',
+      status: 'Ativo',
+      avatar: 'AT',
+      dataNascimento: '1995-01-01',
+      anamnese: const Anamnese(objetivoTreino: 'Condicionamento', nivelExperiencia: 'Iniciante'),
+      streakPresenca: 3,
+      pulguinhaPoints: 50,
+      dataCadastro: '2026-01-01',
+      alunoDesde: '2026-01-01',
+      horarioId: 5,
+    ),
   ];
 
   static final List<Horario> horariosIniciais = [
