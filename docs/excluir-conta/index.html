@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Solicitação de Exclusão de Conta e Dados — Funcional do Pulguinha">
+  <title>Exclusão de Conta — Funcional do Pulguinha</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #1a1d24;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --accent: #c8f542;
+      --border: #2a2f3a;
+      --danger: #ff5252;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    header p { color: var(--muted); font-size: 0.9rem; }
+    main {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 24px 0 12px;
+    }
+    h2:first-child { margin-top: 0; }
+    p { margin-bottom: 12px; }
+    ul, ol { margin: 0 0 16px 20px; }
+    li { margin-bottom: 8px; }
+    a { color: var(--accent); }
+    .box {
+      background: rgba(200, 245, 66, 0.06);
+      border: 1px solid rgba(200, 245, 66, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+    .box-danger {
+      background: rgba(255, 82, 82, 0.08);
+      border: 1px solid rgba(255, 82, 82, 0.25);
+    }
+    footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Exclusão de Conta e Dados Pessoais</h1>
+      <p>Funcional do Pulguinha · Em conformidade com a LGPD e Google Play</p>
+    </header>
+
+    <main>
+      <p>No aplicativo <strong>Funcional do Pulguinha</strong>, você tem total controle sobre seus dados pessoais e pode solicitar ou realizar a exclusão definitiva da sua conta a qualquer momento.</p>
+
+      <h2>1. Como excluir sua conta diretamente no App (Instantâneo)</h2>
+      <ol>
+        <li>Abra o aplicativo <strong>Funcional do Pulguinha</strong> e faça login com sua conta de aluno.</li>
+        <li>Acesse a aba <strong>Perfil</strong> (ícone de usuário no menu inferior).</li>
+        <li>Role até a seção <strong>Segurança e Privacidade</strong>.</li>
+        <li>Toque na opção <strong>🗑️ Excluir minha conta</strong>.</li>
+        <li>Confirme a exclusão no diálogo de segurança. Sua conta e dados vinculados serão imediatamente excluídos e sua sessão será encerrada.</li>
+      </ol>
+
+      <h2>2. Como solicitar a exclusão pela Web ou Suporte</h2>
+      <p>Se você não tiver mais acesso ao aplicativo instalado em seu aparelho, poderá solicitar a exclusão enviando uma mensagem para nossa equipe:</p>
+      
+      <div class="box">
+        <p><strong>E-mail de Suporte / DPO:</strong> <a href="mailto:comercial@jracing.dev.br">comercial@jracing.dev.br</a> ou <a href="mailto:joelson@jracing.dev.br">joelson@jracing.dev.br</a></p>
+        <p><strong>Assunto:</strong> Solicitação de Exclusão de Conta — Funcional do Pulguinha</p>
+        <p><strong>Informações necessárias:</strong> Seu nome completo e o e-mail cadastrado no aplicativo.</p>
+        <p><strong>Prazo de atendimento:</strong> Até 48 horas úteis.</p>
+      </div>
+
+      <h2>3. Quais dados são excluídos?</h2>
+      <ul>
+        <li>Dados cadastrais: nome, e-mail, telefone, endereço, data de nascimento e foto de perfil.</li>
+        <li>Ficha de anamnese e observações de treino.</li>
+        <li>Histórico de agendamentos e presenças em aulas.</li>
+        <li>Tokens de autenticação e identificadores de notificações (FCM).</li>
+      </ul>
+
+      <div class="box box-danger">
+        <p><strong>Atenção:</strong> A exclusão de conta é permanente e irreversível. Caso deseje voltar a treinar no estúdio no futuro, será necessário criar um novo cadastro.</p>
+      </div>
+    </main>
+
+    <footer>
+      <p><a href="/privacidade/">Política de Privacidade</a> · <a href="/termos/">Termos de Uso</a> · <a href="/">Voltar ao app</a></p>
+      <p style="margin-top: 12px;">Desenvolvido por <a href="https://jracing.dev.br">jracing.dev.br</a></p>
+    </footer>
+  </div>
+</body>
+</html>

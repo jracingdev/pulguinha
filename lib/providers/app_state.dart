@@ -1073,6 +1073,11 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  void excluirMinhaContaAluno(int id) {
+    removerAluno(id);
+    logout();
+  }
+
   void renovarPlano(Aluno aluno) {
     alunos = alunos.map((a) {
       if (a.id != aluno.id) return a;

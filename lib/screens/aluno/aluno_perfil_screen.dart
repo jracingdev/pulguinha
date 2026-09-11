@@ -241,7 +241,7 @@ class AlunoPerfilScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionTitle(icon: '🔐', title: 'Segurança'),
+              const SectionTitle(icon: '🔐', title: 'Segurança e Privacidade'),
               _securityItem(context, '🔒', 'Alterar senha', 'Troque sua senha de acesso', () async {
                 final ok = await showChangePasswordDialog(
                   context,
@@ -253,6 +253,31 @@ class AlunoPerfilScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Senha alterada com sucesso!'), behavior: SnackBarBehavior.floating),
                   );
+                }
+              }),
+              const SizedBox(height: 8),
+              _securityItem(context, '🗑️', 'Excluir minha conta', 'Exclua seus dados e encerre seu acesso', () async {
+                final confirmado = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.card,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+                    title: const Text('Excluir minha conta?', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                    content: const Text(
+                      'Esta ação é permanente e irreversível. Seu cadastro, histórico de agendamentos e presenças serão removidos conforme a LGPD.',
+                      style: TextStyle(color: AppColors.gray, fontSize: 13, height: 1.5),
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar', style: TextStyle(color: AppColors.gray))),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Excluir conta', style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmado == true && context.mounted) {
+                  context.read<AppState>().excluirMinhaContaAluno(aluno.id);
                 }
               }),
             ],
