@@ -40,7 +40,10 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
   final emergTelCtrl = TextEditingController();
   final alunoDesdeCtrl = TextEditingController();
   final codigoIndicacaoCtrl = TextEditingController();
+  final wellhubCtrl = TextEditingController();
+  final totalpassCpfCtrl = TextEditingController();
 
+  String tipoVinculo = 'mensalidade';
   String? fotoBase64;
   var nivel = 'Iniciante';
   var aceitoTermos = false;
@@ -72,6 +75,8 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
     emergTelCtrl.dispose();
     alunoDesdeCtrl.dispose();
     codigoIndicacaoCtrl.dispose();
+    wellhubCtrl.dispose();
+    totalpassCpfCtrl.dispose();
     super.dispose();
   }
 
@@ -108,6 +113,25 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       });
       return;
     }
+
+    final whDigits = wellhubCtrl.text.replaceAll(RegExp(r'\D'), '');
+    if (tipoVinculo == 'wellhub' && whDigits.isEmpty) {
+      setState(() {
+        erro = 'Informe o ID Wellhub (13 dígitos).';
+        loading = false;
+      });
+      return;
+    }
+
+    final tpDigits = totalpassCpfCtrl.text.replaceAll(RegExp(r'\D'), '');
+    if (tipoVinculo == 'totalpass' && tpDigits.length != 11) {
+      setState(() {
+        erro = 'Informe o CPF (11 dígitos) cadastrado no TotalPass.';
+        loading = false;
+      });
+      return;
+    }
+
     if (!aceitoTermos) {
       setState(() {
         erro = 'Aceite os Termos e a Política de Privacidade.';
@@ -143,7 +167,11 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
       bairro: bairroCtrl.text.trim(),
       cidade: cidadeCtrl.text.trim(),
       uf: ufCtrl.text.trim(),
-      plano: 'Mensal',
+      plano: tipoVinculo == 'wellhub'
+          ? 'Wellhub'
+          : (tipoVinculo == 'totalpass'
+              ? 'TotalPass'
+              : (tipoVinculo == 'avulso' ? 'Avulso' : 'Mensal')),
       vencimento: MockData.vencimentoPendente,
       status: 'Pendente',
       avatar: avatar,
@@ -158,6 +186,9 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
         telefoneEmergencia: emergTelCtrl.text.trim(),
       ),
       foto: fotoBase64,
+      wellhubId: tipoVinculo == 'wellhub' ? (whDigits.length > 13 ? whDigits.substring(whDigits.length - 13) : whDigits.padLeft(13, '0')) : null,
+      totalpassCpf: tipoVinculo == 'totalpass' ? tpDigits : null,
+      beneficioOrigem: tipoVinculo == 'mensalidade' ? null : tipoVinculo,
     );
 
     final msg = await state.cadastrarAlunoPublico(aluno, codigoIndicacao: codigoInd);
@@ -270,6 +301,71 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
               ),
             ),
             FieldLabel(label: 'Telefone', child: TextField(controller: telCtrl, keyboardType: TextInputType.phone)),
+            const SizedBox(height: 10),
+            const SectionTitle(icon: '🎟️', title: 'Plano ou Benefício Corporativo'),
+            FieldLabel(
+              label: 'Modalidade de acesso',
+              child: DropdownButtonFormField<String>(
+                value: tipoVinculo,
+                dropdownColor: AppColors.card,
+                items: const [
+                  DropdownMenuItem(value: 'mensalidade', child: Text('Mensalidade normal (estúdio)')),
+                  DropdownMenuItem(value: 'wellhub', child: Text('Wellhub (GymPass)')),
+                  DropdownMenuItem(value: 'totalpass', child: Text('TotalPass')),
+                  DropdownMenuItem(value: 'avulso', child: Text('Aluno avulso (apenas agendamento)')),
+                ],
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() {
+                      tipoVinculo = v;
+                    });
+                  }
+                },
+              ),
+            ),
+            if (tipoVinculo == 'wellhub') ...[
+              FieldLabel(
+                label: 'ID Wellhub (13 dígitos) *',
+                child: TextField(
+                  controller: wellhubCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    hintText: 'Ex: 0000012345678',
+                    helperText: 'Consulte seu ID de 13 dígitos no perfil do aplicativo Wellhub.',
+                  ),
+                ),
+              ),
+            ],
+            if (tipoVinculo == 'totalpass') ...[
+              FieldLabel(
+                label: 'CPF cadastrado no TotalPass *',
+                child: TextField(
+                  controller: totalpassCpfCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    hintText: 'Somente os 11 números',
+                    helperText: 'Informe o CPF titular da conta TotalPass.',
+                  ),
+                ),
+              ),
+            ],
+            if (tipoVinculo == 'wellhub' || tipoVinculo == 'totalpass') ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.neon.withValues(alpha: 0.06),
+                  border: Border.all(color: AppColors.neon.withValues(alpha: 0.2)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  '💡 Alunos com benefício corporativo ativo realizam os agendamentos pelo Pulguinha e o check-in no aplicativo oficial no dia do treino para validação do repasse.',
+                  style: TextStyle(fontSize: 11, color: AppColors.neon, height: 1.4),
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
             const SectionTitle(icon: '📍', title: 'Endereço'),
             FieldLabel(

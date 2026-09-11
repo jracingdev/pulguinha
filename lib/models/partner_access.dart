@@ -39,7 +39,7 @@ class PartnerAccessResult {
 }
 
 extension PartnerProviderX on PartnerProvider {
-  String get label => this == PartnerProvider.wellhub ? 'GymPass' : 'TotalPass';
+  String get label => this == PartnerProvider.wellhub ? 'Wellhub' : 'TotalPass';
 
   /// Modo exigido pela documentação oficial no login do aluno:
   /// GymPass valida check-in feito no app; TotalPass consome o token (track_usages).

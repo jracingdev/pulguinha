@@ -32,6 +32,11 @@ function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+function maskIdentifier(id: string): string {
+  if (!id || id.length < 4) return "***";
+  return id.slice(0, 2) + "***" + id.slice(-2);
+}
+
 function parseErrorMessage(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") return fallback;
   const data = payload as Record<string, unknown>;
@@ -170,6 +175,7 @@ serve(async (req) => {
       }
 
       const result = await validateWellhub(gympassId, gymId, token, sandbox);
+      console.log(`[AUDIT] ${new Date().toISOString()} | Provider: wellhub | Mode: ${mode} | ID: ${maskIdentifier(gympassId)} | Success: ${result.ok}`);
       if (!result.ok) {
         return jsonResponse({ ok: false, message: result.message, status: result.status }, 422);
       }
@@ -210,6 +216,7 @@ serve(async (req) => {
         sandbox,
         mode,
       );
+      console.log(`[AUDIT] ${new Date().toISOString()} | Provider: totalpass (${idType}) | Mode: ${mode} | ID: ${maskIdentifier(normalized)} | Success: ${result.ok}`);
       if (!result.ok) {
         return jsonResponse({ ok: false, message: result.message, status: result.status }, 422);
       }

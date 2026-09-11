@@ -284,9 +284,9 @@ class Aluno {
     final o = beneficioOrigem?.toLowerCase().trim();
     if (o == 'avulso' || o == 'sem_mensalidade' || o == 'agendamento') return 'Avulso';
     if (o == 'totalpass') return 'TotalPass';
-    if (o == 'wellhub' || o == 'gympass') return 'GymPass';
+    if (o == 'wellhub' || o == 'gympass') return 'Wellhub';
     if (totalpassCpf != null && totalpassCpf!.trim().isNotEmpty) return 'TotalPass';
-    if (wellhubId != null && wellhubId!.trim().isNotEmpty) return 'GymPass';
+    if (wellhubId != null && wellhubId!.trim().isNotEmpty) return 'Wellhub';
     return '';
   }
 

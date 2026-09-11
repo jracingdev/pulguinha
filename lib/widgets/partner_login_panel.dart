@@ -11,9 +11,8 @@ class PartnerLoginPanel extends StatefulWidget {
     required this.onLogin,
   });
 
-  /// TEMPORÁRIO: oculta a UI de login GymPass/TotalPass na tela inicial/login.
-  /// Para reativar, altere para `true`.
-  static const bool kShowPartnerLoginUi = false;
+  /// UI de login GymPass/Wellhub e TotalPass habilitada na tela inicial/login.
+  static const bool kShowPartnerLoginUi = true;
 
   final bool loading;
   final Future<void> Function(PartnerProvider provider, String identifier, TotalpassIdentifierType type) onLogin;
@@ -35,13 +34,13 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
 
   String get _hint {
     if (_provider == PartnerProvider.wellhub) {
-      return 'ID GymPass (13 dígitos)';
+      return 'ID Wellhub (13 dígitos)';
     }
     switch (_tpType) {
       case TotalpassIdentifierType.cpf:
-        return 'CPF cadastrado no TotalPass';
+        return 'CPF cadastrado (somente números)';
       case TotalpassIdentifierType.code:
-        return 'Código do beneficiário';
+        return 'Código do beneficiário TotalPass';
       case TotalpassIdentifierType.token:
         return 'Token diário do app TotalPass';
     }
@@ -55,7 +54,6 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // TEMPORÁRIO: UI GymPass/TotalPass desativada na tela de login.
     if (!PartnerLoginPanel.kShowPartnerLoginUi) {
       return const SizedBox.shrink();
     }
@@ -69,7 +67,10 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
             Expanded(child: Divider(color: AppColors.border.withValues(alpha: 0.6))),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 10),
-              child: Text('ou entre com benefício (opcional)', style: TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600)),
+              child: Text(
+                'ou entre com benefício corporativo',
+                style: TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600),
+              ),
             ),
             Expanded(child: Divider(color: AppColors.border.withValues(alpha: 0.6))),
           ],
@@ -84,7 +85,7 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
           ),
           child: Row(
             children: [
-              _providerChip(PartnerProvider.wellhub, 'GymPass'),
+              _providerChip(PartnerProvider.wellhub, 'Wellhub (GymPass)'),
               _providerChip(PartnerProvider.totalpass, 'TotalPass'),
             ],
           ),
@@ -100,7 +101,7 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Integração ${_provider.label} pendente — configure em Admin → GymPass & TotalPass. Login por e-mail continua normal.',
+              'Integração ${_provider.label} em configuração — o login por e-mail/senha continua ativo normalmente.',
               style: const TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.35),
             ),
           )
@@ -114,8 +115,7 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              'Check-in no app ${_provider.label} é obrigatório para a academia receber o repasse. '
-              'O Pulguinha confirma esse check-in pela API oficial.',
+              'O check-in no aplicativo oficial (${_provider.label}) é obrigatório para registrar sua presença e o repasse à academia.',
               style: TextStyle(fontSize: 11, color: AppColors.neon.withValues(alpha: 0.9), height: 1.35),
             ),
           ),
@@ -128,10 +128,10 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
           ),
           child: Text(
             _provider == PartnerProvider.wellhub
-                ? '1. Faça check-in no app GymPass nesta academia (obrigatório para repasse)\n'
-                    '2. Informe seu ID GymPass — validamos o check-in na API oficial'
-                : '1. Faça check-in no app TotalPass nesta academia (obrigatório para repasse)\n'
-                    '2. Informe seu CPF cadastrado — confirmamos o check-in na API (track_usages)',
+                ? '1. Abra o app Wellhub e realize seu check-in no Funcional do Pulguinha.\n'
+                    '2. Digite seu ID Wellhub (13 dígitos) para validar e entrar.'
+                : '1. Abra o app TotalPass e realize seu check-in no Funcional do Pulguinha.\n'
+                    '2. Digite seu CPF cadastrado para confirmar o check-in e entrar.',
             style: const TextStyle(fontSize: 11, color: AppColors.gray, height: 1.45),
           ),
         ),
@@ -142,9 +142,9 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
             dropdownColor: AppColors.card,
             decoration: const InputDecoration(labelText: 'Tipo de identificação'),
             items: const [
-              DropdownMenuItem(value: TotalpassIdentifierType.cpf, child: Text('CPF (recomendado — vincula sua conta)')),
-              DropdownMenuItem(value: TotalpassIdentifierType.token, child: Text('Token diário (só teste/admin)')),
-              DropdownMenuItem(value: TotalpassIdentifierType.code, child: Text('Código beneficiário')),
+              DropdownMenuItem(value: TotalpassIdentifierType.cpf, child: Text('CPF cadastrado (recomendado)')),
+              DropdownMenuItem(value: TotalpassIdentifierType.token, child: Text('Token diário do app')),
+              DropdownMenuItem(value: TotalpassIdentifierType.code, child: Text('Código de beneficiário')),
             ],
             onChanged: widget.loading
                 ? null
@@ -155,7 +155,7 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
         ],
         const SizedBox(height: 10),
         FieldLabel(
-          label: _provider == PartnerProvider.wellhub ? 'ID GymPass' : 'Identificador TotalPass',
+          label: _provider == PartnerProvider.wellhub ? 'ID Wellhub (13 dígitos)' : 'Identificador TotalPass',
           child: TextField(
             controller: _identifierCtrl,
             enabled: !widget.loading,
@@ -170,7 +170,7 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
         const SizedBox(height: 10),
         GhostButton(
           label: widget.loading
-              ? '⏳ Confirmando check-in...'
+              ? '⏳ Confirmando check-in na API...'
               : 'Confirmar check-in ${_provider.label} e entrar',
           fullWidth: true,
           borderColor: AppColors.neon.withValues(alpha: 0.35),

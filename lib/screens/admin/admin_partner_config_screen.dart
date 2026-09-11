@@ -160,7 +160,7 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: const Text('GymPass & TotalPass', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Wellhub & TotalPass', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: SafeArea(
         child: _loading
@@ -182,31 +182,33 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle(icon: '🎫', title: 'Controle de acesso'),
+          const SectionTitle(icon: '🎫', title: 'Controle de Acesso & Agendamento'),
           Text(
             PartnerConfig.integrationLabel(),
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.white, decoration: TextDecoration.none),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Opcional: não altera login por e-mail/senha.\n\n'
-            'Fluxo oficial (repasse à academia):\n'
-            '• GymPass — aluno faz check-in no app; Pulguinha valida via API /access/v1/validate\n'
-            '• TotalPass — aluno faz check-in no app; Pulguinha confirma via track_usages (consome token)\n\n'
-            'No PC (PowerShell):\n'
-            '1. copy supabase\\secrets.local.env.example supabase\\secrets.local.env\n'
-            '2. Preencha os tokens\n'
-            '3. .\\scripts\\configurar-secrets-parceiros.ps1\n'
-            '4. .\\scripts\\deploy-partner-function.ps1\n\n'
-            'No app: salve Gym ID e códigos abaixo (tokens sensíveis podem ficar só no Supabase).',
+            'Integração oficial para validação de check-in e agendamento de aulas.\n\n'
+            '📌 Fluxo de Acesso e Repasse:\n'
+            '• Wellhub: aluno faz check-in no app oficial; Pulguinha valida via /access/v1/validate.\n'
+            '• TotalPass: aluno faz check-in no app oficial; Pulguinha confirma via /v1/track_usages.\n\n'
+            '⚖️ Diretrizes Contratuais e Compliance LGPD:\n'
+            '1. Gratuidade: É proibido cobrar taxas adicionais dos alunos pelo uso da integração.\n'
+            '2. Privacidade: Os dados (nome, email, telefone, ID/CPF) são estritamente para agendamento e acesso. Proibido contato para marketing próprio ou venda a terceiros.\n'
+            '3. SLAs e Titulares: Resposta de suporte em até 24h (12h para incidentes graves). Atendimento a solicitações de titulares (LGPD) em até 48h úteis.\n\n'
+            'Configuração segura no Supabase (recomendado):\n'
+            '1. Edite supabase/secrets.local.env com as chaves.\n'
+            '2. Execute scripts/configurar-secrets-parceiros.ps1 e scripts/deploy-partner-function.ps1.\n'
+            '3. No app, configure apenas o Gym ID e códigos da unidade.',
             style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.45, decoration: TextDecoration.none),
           ),
           if (_unlocked) ...[
             const SizedBox(height: 12),
-            _checklistRow('GymPass token local', _wellhubTokenCtrl.text.trim().isNotEmpty),
-            _checklistRow('GymPass Gym ID', _wellhubGymIdCtrl.text.trim().isNotEmpty),
-            _checklistRow('TotalPass API key local', _totalpassApiKeyCtrl.text.trim().isNotEmpty),
-            _checklistRow('TotalPass código academia', _totalpassServiceCodeCtrl.text.trim().isNotEmpty),
+            _checklistRow('Wellhub token configurado', _wellhubTokenCtrl.text.trim().isNotEmpty),
+            _checklistRow('Wellhub Gym ID configurado', _wellhubGymIdCtrl.text.trim().isNotEmpty),
+            _checklistRow('TotalPass API key configurada', _totalpassApiKeyCtrl.text.trim().isNotEmpty),
+            _checklistRow('TotalPass código academia configurado', _totalpassServiceCodeCtrl.text.trim().isNotEmpty),
           ],
         ],
       ),
@@ -262,11 +264,11 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionTitle(icon: '🟣', title: 'GymPass'),
+            const SectionTitle(icon: '🟣', title: 'Wellhub (GymPass)'),
             TextField(
               controller: _wellhubTokenCtrl,
               obscureText: _obscureWellhub,
-              decoration: _fieldDecoration('Bearer token (Access Control API)').copyWith(
+              decoration: _fieldDecoration('Bearer token (Access Control / Booking API)').copyWith(
                 suffixIcon: IconButton(
                   icon: Icon(_obscureWellhub ? Icons.visibility : Icons.visibility_off, color: AppColors.gray),
                   onPressed: () => setState(() => _obscureWellhub = !_obscureWellhub),
@@ -277,23 +279,23 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
             const SizedBox(height: 10),
             TextField(
               controller: _wellhubGymIdCtrl,
-              decoration: _fieldDecoration('X-Gym-Id (ID da academia no GymPass)'),
+              decoration: _fieldDecoration('X-Gym-Id (ID da academia no Wellhub)'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Sandbox GymPass', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
+              title: const Text('Sandbox Wellhub (apitesting)', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
               value: _wellhubSandbox,
               activeColor: AppColors.neon,
               onChanged: (v) => setState(() => _wellhubSandbox = v),
             ),
             TextField(
               controller: _testWellhubIdCtrl,
-              decoration: _fieldDecoration('Testar ID GymPass (13 dígitos)'),
+              decoration: _fieldDecoration('Testar ID Wellhub (13 dígitos)'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
             const SizedBox(height: 8),
-            GhostButton(label: _testing ? 'Testando...' : 'Testar GymPass', fullWidth: true, onPressed: _testing ? null : _testWellhub),
+            GhostButton(label: _testing ? 'Testando...' : 'Testar Wellhub', fullWidth: true, onPressed: _testing ? null : _testWellhub),
           ],
         ),
       ),
@@ -323,19 +325,19 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
             const SizedBox(height: 10),
             TextField(
               controller: _totalpassPlanCodeCtrl,
-              decoration: _fieldDecoration('Código do plano (opcional se só 1 plano)'),
+              decoration: _fieldDecoration('Código do plano (service_provider_plan_code opcional)'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Sandbox TotalPass', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
+              title: const Text('Sandbox TotalPass (staging)', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
               value: _totalpassSandbox,
               activeColor: AppColors.neon,
               onChanged: (v) => setState(() => _totalpassSandbox = v),
             ),
             TextField(
               controller: _testTotalpassCtrl,
-              decoration: _fieldDecoration('Testar token TotalPass'),
+              decoration: _fieldDecoration('Testar token ou CPF TotalPass'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
             const SizedBox(height: 8),

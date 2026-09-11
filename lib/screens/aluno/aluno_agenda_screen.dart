@@ -63,6 +63,30 @@ class _AlunoAgendaScreenState extends State<AlunoAgendaScreen> {
           ],
         ),
         const SizedBox(height: 12),
+        if (aluno.ehAlunoParceiro) ...[
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.blue.withValues(alpha: 0.08),
+              border: Border.all(color: AppColors.blue.withValues(alpha: 0.25)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.verified_user_outlined, color: AppColors.blue, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Aluno ${aluno.labelBeneficio}: agende suas aulas normalmente pelo app e realize o check-in no app oficial (${aluno.labelBeneficio}) no dia do treino.',
+                    style: const TextStyle(fontSize: 11, color: AppColors.white, height: 1.35),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
