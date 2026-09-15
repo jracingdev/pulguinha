@@ -6,6 +6,7 @@ import {
   envGymId,
   envProductId,
   envSandbox,
+  setSandboxOverride,
   listCategories,
   listClasses,
   listProducts,
@@ -44,6 +45,11 @@ serve(async (req) => {
     const body = req.method === "GET" ? { action: "meta" } : ((await req.json().catch(() => ({}))) as Record<string, unknown>);
     const action = String(body.action ?? "sync_schedule");
     const gymId = String(body.wellhub_gym_id || body.gym_id || envGymId() || "824346").trim();
+    if (typeof body.wellhub_sandbox === "boolean") {
+      setSandboxOverride(body.wellhub_sandbox);
+    } else if (gymId === "683") {
+      setSandboxOverride(true);
+    }
 
     if (action === "meta") {
       return jsonResponse(await meta(gymId));
@@ -57,7 +63,7 @@ serve(async (req) => {
       const result = await syncOccupancyFor(serviceClient(), horarioId, data, gymId);
       return jsonResponse({ ok: result.ok, ...result });
     }
-    if (action === "sync_schedule") {
+    if (action === "sync_schedule" || action === "full_sync") {
       const result = await syncSchedule(gymId);
       return jsonResponse(result);
     }
@@ -99,9 +105,9 @@ function asArray(payload: unknown, keys: string[]): Record<string, unknown>[] {
 }
 
 function pickProductId(productsPayload: unknown): number | null {
-  const envId = envProductId();
-  if (envId) return envId;
   const products = asArray(productsPayload, ["products"]);
+  const envId = envProductId();
+  if (envId && products.some((p) => Number(p.product_id ?? p.id) === envId)) return envId;
   const inPerson = products.find((p) => p.virtual !== true && p.virtual !== "true");
   const chosen = inPerson ?? products[0];
   if (!chosen) return null;

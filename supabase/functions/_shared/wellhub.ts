@@ -45,7 +45,15 @@ export function wellhubBase(sandbox: boolean) {
     : "https://api.partners.gympass.com";
 }
 
+let sandboxOverride: boolean | undefined;
+
+/** Override por request (ex.: gym sandbox 683 sem mudar secrets de produção). */
+export function setSandboxOverride(value: boolean | undefined) {
+  sandboxOverride = value;
+}
+
 export function envSandbox() {
+  if (sandboxOverride !== undefined) return sandboxOverride;
   return (Deno.env.get("WELLHUB_SANDBOX") ?? "false").toLowerCase() === "true";
 }
 
@@ -216,11 +224,13 @@ export async function verifySignature(rawBody: string, header: string | null) {
 
 export async function wellhubFetch(
   path: string,
-  init: RequestInit & { gymId?: string } = {},
+  init: RequestInit & { gymId?: string; sandbox?: boolean } = {},
 ) {
   const token = envToken();
-  const sandbox = envSandbox();
   const gymId = init.gymId ?? envGymId();
+  const sandbox =
+    init.sandbox ??
+    (gymId === "683" || /(^|\/)gyms\/683(\/|$)/.test(path) ? true : envSandbox());
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
   headers.set("Accept", "application/json");
