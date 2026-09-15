@@ -440,7 +440,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
         if (role == UserType.aluno) ...[
-          // TEMPORÁRIO: painel GymPass/TotalPass oculto (ver PartnerLoginPanel.kShowPartnerLoginUi).
+          // Painel Wellhub (TotalPass público: PartnerLoginPanel.kShowTotalpassUi).
           if (PartnerLoginPanel.kShowPartnerLoginUi) ...[
             const SizedBox(height: 16),
             PartnerLoginPanel(

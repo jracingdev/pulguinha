@@ -14,6 +14,9 @@ class PartnerLoginPanel extends StatefulWidget {
   /// UI de login GymPass/Wellhub e TotalPass habilitada na tela inicial/login.
   static const bool kShowPartnerLoginUi = true;
 
+  /// Chip/cadastro público TotalPass. `false` = Wellhub ativo, TotalPass em breve (código permanece).
+  static const bool kShowTotalpassUi = false;
+
   final bool loading;
   final Future<void> Function(PartnerProvider provider, String identifier, TotalpassIdentifierType type) onLogin;
 
@@ -49,7 +52,8 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
   bool get _providerConfigured => PartnerConfig.canAttemptBeneficioLogin(_provider);
 
   Future<void> _submit() async {
-    await widget.onLogin(_provider, _identifierCtrl.text.trim(), _tpType);
+    final provider = !PartnerLoginPanel.kShowTotalpassUi ? PartnerProvider.wellhub : _provider;
+    await widget.onLogin(provider, _identifierCtrl.text.trim(), _tpType);
   }
 
   @override
@@ -76,21 +80,23 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
           ],
         ),
         const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(14),
+        if (PartnerLoginPanel.kShowTotalpassUi) ...[
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                _providerChip(PartnerProvider.wellhub, 'Wellhub (GymPass)'),
+                _providerChip(PartnerProvider.totalpass, 'TotalPass'),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              _providerChip(PartnerProvider.wellhub, 'Wellhub (GymPass)'),
-              _providerChip(PartnerProvider.totalpass, 'TotalPass'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
         if (!_providerConfigured)
           Container(
             margin: const EdgeInsets.only(bottom: 10),
@@ -177,6 +183,14 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
           textColor: AppColors.neon,
           onPressed: widget.loading ? null : _submit,
         ),
+        if (!PartnerLoginPanel.kShowTotalpassUi) ...[
+          const SizedBox(height: 10),
+          const Text(
+            'TotalPass em breve — ainda não disponível neste login.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: AppColors.gray, fontWeight: FontWeight.w600),
+          ),
+        ],
       ],
     );
   }

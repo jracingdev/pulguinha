@@ -40,7 +40,7 @@ O Funcional do Pulguinha é o aplicativo oficial do estúdio de treino funcional
 Alunos do Funcional do Pulguinha que querem praticidade no dia a dia do treino, e o professor ou equipe que precisa gerenciar turma, presença e planos sem planilhas ou grupos de mensagem.
 
 **Integrações e pagamentos**
-Compras de planos e produtos podem ser feitas com integração a Mercado Pago e PagBank, conforme configuração do estúdio. Login via GymPass e TotalPass também está disponível quando habilitado.
+Compras de planos e produtos podem ser feitas com integração a Mercado Pago e PagBank, conforme configuração do estúdio. Login via Wellhub (GymPass) está disponível. TotalPass em breve.
 
 **Transparência**
 Política de privacidade e termos de uso disponíveis no app e online. Seus dados são tratados com responsabilidade, em conformidade com a LGPD.

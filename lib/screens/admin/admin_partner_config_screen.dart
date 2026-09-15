@@ -206,7 +206,7 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
-        title: const Text('Wellhub & TotalPass', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Wellhub', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: SafeArea(
         child: _loading
@@ -241,7 +241,7 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
             '• Automated Trigger: webhook de check-in + validate (uma vez por dia).\n'
             '• Attendance: login no app com ID Wellhub (não revalida o mesmo check-in no dia).\n'
             '• Booking: grade sincronizada (classes/slots); PATCH de reserva em até 15 min.\n'
-            '• TotalPass: aluno faz check-in no app oficial; Pulguinha confirma via /v1/track_usages.\n\n'
+            '• TotalPass: INATIVO na UI pública (em breve). Código da integração permanece.\n\n'
             '⚖️ Diretrizes Contratuais e Compliance LGPD:\n'
             '1. Gratuidade: É proibido cobrar taxas adicionais dos alunos pelo uso da integração.\n'
             '2. Privacidade: Os dados (nome, email, telefone, ID/CPF) são estritamente para agendamento e acesso. Proibido contato para marketing próprio ou venda a terceiros.\n'
@@ -259,8 +259,7 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
             const SizedBox(height: 12),
             _checklistRow('Wellhub token configurado', _wellhubTokenCtrl.text.trim().isNotEmpty),
             _checklistRow('Wellhub Gym ID configurado', _wellhubGymIdCtrl.text.trim().isNotEmpty),
-            _checklistRow('TotalPass API key configurada', _totalpassApiKeyCtrl.text.trim().isNotEmpty),
-            _checklistRow('TotalPass código academia configurado', _totalpassServiceCodeCtrl.text.trim().isNotEmpty),
+            _checklistRow('TotalPass inativo na UI pública (em breve)', false),
           ],
         ],
       ),
@@ -403,7 +402,20 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionTitle(icon: '🟢', title: 'TotalPass'),
+            const SectionTitle(icon: '🟢', title: 'TotalPass (inativo / em breve)'),
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.yellow.withValues(alpha: 0.08),
+                border: Border.all(color: AppColors.yellow.withValues(alpha: 0.25)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'Login e cadastro públicos não oferecem TotalPass. A configuração abaixo fica salva para religar depois (kShowTotalpassUi).',
+                style: TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.35, decoration: TextDecoration.none),
+              ),
+            ),
             TextField(
               controller: _totalpassApiKeyCtrl,
               obscureText: _obscureTotalpass,

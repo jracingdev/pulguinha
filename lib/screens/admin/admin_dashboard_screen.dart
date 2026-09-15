@@ -286,7 +286,7 @@ class AdminDashboardScreen extends StatelessWidget {
         _configTile(
           context,
           icon: '🎫',
-          title: 'GymPass & TotalPass',
+          title: 'Wellhub',
           subtitle: PartnerConfig.integrationLabel(),
           color: AppColors.neon,
           onTap: () => Navigator.of(context).push(

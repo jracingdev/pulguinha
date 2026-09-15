@@ -75,13 +75,12 @@ class PartnerConfig {
 
   static String integrationLabel() {
     final parts = <String>[];
-    if (wellhubConfigured) {
-      parts.add(_stored.wellhubUseSandbox ? 'GymPass (sandbox)' : 'GymPass');
+    if (wellhubConfigured || wellhubHasPublicConfig) {
+      parts.add(_stored.wellhubUseSandbox ? 'Wellhub (sandbox)' : 'Wellhub ativo');
+    } else {
+      parts.add('Wellhub ativo');
     }
-    if (totalpassConfigured) {
-      parts.add(_stored.totalpassUseSandbox ? 'TotalPass (sandbox)' : 'TotalPass');
-    }
-    if (parts.isEmpty) return 'Configure GymPass e/ou TotalPass no painel admin';
+    parts.add('TotalPass inativo (em breve)');
     return parts.join(' · ');
   }
 

@@ -11,6 +11,7 @@ import 'package:pulguinha/services/viacep_service.dart';
 import 'package:pulguinha/utils/photo_picker_helper.dart';
 import 'package:pulguinha/widgets/date_field.dart';
 import 'package:pulguinha/widgets/mock_mode_banner.dart';
+import 'package:pulguinha/widgets/partner_login_panel.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
 class CadastroAlunoScreen extends StatefulWidget {
@@ -118,6 +119,14 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
     if (tipoVinculo == 'wellhub' && whDigits.isEmpty) {
       setState(() {
         erro = 'Informe o ID Wellhub (13 dígitos).';
+        loading = false;
+      });
+      return;
+    }
+
+    if (tipoVinculo == 'totalpass' && !PartnerLoginPanel.kShowTotalpassUi) {
+      setState(() {
+        erro = 'Cadastro via TotalPass ainda não está disponível. Use Wellhub ou fale com o estúdio.';
         loading = false;
       });
       return;
@@ -306,13 +315,16 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
             FieldLabel(
               label: 'Modalidade de acesso',
               child: DropdownButtonFormField<String>(
-                value: tipoVinculo,
+                value: tipoVinculo == 'totalpass' && !PartnerLoginPanel.kShowTotalpassUi
+                    ? 'mensalidade'
+                    : tipoVinculo,
                 dropdownColor: AppColors.card,
-                items: const [
-                  DropdownMenuItem(value: 'mensalidade', child: Text('Mensalidade normal (estúdio)')),
-                  DropdownMenuItem(value: 'wellhub', child: Text('Wellhub (GymPass)')),
-                  DropdownMenuItem(value: 'totalpass', child: Text('TotalPass')),
-                  DropdownMenuItem(value: 'avulso', child: Text('Aluno avulso (apenas agendamento)')),
+                items: [
+                  const DropdownMenuItem(value: 'mensalidade', child: Text('Mensalidade normal (estúdio)')),
+                  const DropdownMenuItem(value: 'wellhub', child: Text('Wellhub (GymPass)')),
+                  if (PartnerLoginPanel.kShowTotalpassUi)
+                    const DropdownMenuItem(value: 'totalpass', child: Text('TotalPass')),
+                  const DropdownMenuItem(value: 'avulso', child: Text('Aluno avulso (apenas agendamento)')),
                 ],
                 onChanged: (v) {
                   if (v != null) {
@@ -323,6 +335,14 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
                 },
               ),
             ),
+            if (!PartnerLoginPanel.kShowTotalpassUi)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: Text(
+                  'Wellhub ativo. TotalPass em breve — ainda não disponível no cadastro.',
+                  style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35),
+                ),
+              ),
             if (tipoVinculo == 'wellhub') ...[
               FieldLabel(
                 label: 'ID Wellhub (13 dígitos) *',
@@ -337,7 +357,7 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
                 ),
               ),
             ],
-            if (tipoVinculo == 'totalpass') ...[
+            if (tipoVinculo == 'totalpass' && PartnerLoginPanel.kShowTotalpassUi) ...[
               FieldLabel(
                 label: 'CPF cadastrado no TotalPass *',
                 child: TextField(
@@ -351,7 +371,8 @@ class _CadastroAlunoScreenState extends State<CadastroAlunoScreen> {
                 ),
               ),
             ],
-            if (tipoVinculo == 'wellhub' || tipoVinculo == 'totalpass') ...[
+            if (tipoVinculo == 'wellhub' ||
+                (tipoVinculo == 'totalpass' && PartnerLoginPanel.kShowTotalpassUi)) ...[
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),

@@ -3,6 +3,12 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 Versão segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.5.0+10] - 2026-09-15
+
+### Alterado
+- TotalPass **inativo** na UI pública (login, cadastro e site): Wellhub permanece ativo; integração TotalPass no código para religar depois (`kShowTotalpassUi`)
+- Copy da Play Store e do painel admin: Wellhub ativo, TotalPass em breve
+
 ## [1.5.0] - 2026-08-20
 
 ### Adicionado
