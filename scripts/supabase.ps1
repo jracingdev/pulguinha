@@ -19,6 +19,21 @@ if (Test-Path $npxCmd) {
     exit $LASTEXITCODE
 }
 
+$npxFromPath = Get-Command npx.cmd -ErrorAction SilentlyContinue
+if (-not $npxFromPath) {
+    $npxFromPath = Get-Command npx -ErrorAction SilentlyContinue
+}
+if ($npxFromPath) {
+    & $npxFromPath.Source --yes supabase @args
+    exit $LASTEXITCODE
+}
+
+$npxNode = Join-Path $env:ProgramFiles "nodejs\npx.cmd"
+if (Test-Path $npxNode) {
+    & $npxNode --yes supabase @args
+    exit $LASTEXITCODE
+}
+
 Write-Host "Supabase CLI nao encontrado. Instale com: npm i -g supabase" -ForegroundColor Red
 Write-Host "Depois faca login: npx supabase login"
 exit 1
