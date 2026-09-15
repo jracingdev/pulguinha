@@ -6,6 +6,17 @@ class PartnerConfig {
   PartnerConfig._();
 
   static const edgeFunctionName = 'validate-partner-access';
+  static const syncFunctionName = 'wellhub-sync';
+  static const webhookFunctionName = 'wellhub-webhook';
+
+  /// Unidade de produção no Wellhub.
+  static const productionUnitName = 'Funcional do Pulguinha';
+  static const productionGymId = '824346';
+  static const sandboxGymId = '683';
+
+  static String get webhookUrl => '${SupabaseConfig.url}/functions/v1/$webhookFunctionName';
+
+  static const testGympassIds = ['1000000000001', '1000000000003'];
 
   static PartnerStoredConfig _stored = const PartnerStoredConfig();
 
@@ -75,7 +86,9 @@ class PartnerConfig {
   }
 
   static Map<String, dynamic> publicPayload() => {
-        'wellhub_gym_id': _stored.wellhubGymId.trim(),
+        'wellhub_gym_id': _stored.wellhubGymId.trim().isNotEmpty
+            ? _stored.wellhubGymId.trim()
+            : (_stored.wellhubUseSandbox ? sandboxGymId : productionGymId),
         'wellhub_sandbox': _stored.wellhubUseSandbox,
         'totalpass_service_provider_code': _stored.totalpassServiceProviderCode.trim(),
         'totalpass_plan_code': _stored.totalpassPlanCode.trim(),

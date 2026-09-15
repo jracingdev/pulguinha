@@ -557,6 +557,10 @@ class Agendamento {
     required this.data,
     required this.horario,
     required this.status,
+    this.wellhubBookingNumber,
+    this.wellhubSlotId,
+    this.wellhubClassId,
+    this.origem,
   });
 
   final int id;
@@ -566,6 +570,10 @@ class Agendamento {
   final String data;
   final String horario;
   final String status;
+  final String? wellhubBookingNumber;
+  final int? wellhubSlotId;
+  final int? wellhubClassId;
+  final String? origem;
 
   factory Agendamento.fromJson(Map<String, dynamic> json) => Agendamento(
         id: _jsonInt(json['id']),
@@ -575,6 +583,10 @@ class Agendamento {
         data: _formatDate(json['data']),
         horario: json['horario'] as String? ?? '',
         status: json['status'] as String? ?? 'Confirmado',
+        wellhubBookingNumber: json['wellhub_booking_number'] as String?,
+        wellhubSlotId: _jsonIntOrNull(json['wellhub_slot_id']),
+        wellhubClassId: _jsonIntOrNull(json['wellhub_class_id']),
+        origem: json['origem'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -584,6 +596,11 @@ class Agendamento {
         'data': data,
         'horario': horario,
         'status': status,
+        if (wellhubBookingNumber != null && wellhubBookingNumber!.isNotEmpty)
+          'wellhub_booking_number': wellhubBookingNumber,
+        if (wellhubSlotId != null) 'wellhub_slot_id': wellhubSlotId,
+        if (wellhubClassId != null) 'wellhub_class_id': wellhubClassId,
+        if (origem != null && origem!.isNotEmpty) 'origem': origem,
       };
 }
 

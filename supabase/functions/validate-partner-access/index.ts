@@ -1,4 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  alreadyCheckedInToday,
+  markCheckedInToday,
+  serviceClient,
+} from "../_shared/wellhub.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,11 +179,18 @@ serve(async (req) => {
         return jsonResponse({ ok: false, message: "ID Wellhub deve ter 13 dígitos." }, 422);
       }
 
+      const db = serviceClient();
+      if (await alreadyCheckedInToday(db, gympassId)) {
+        console.log(`[AUDIT] ${new Date().toISOString()} | Provider: wellhub | Mode: ${mode} | ID: ${maskIdentifier(gympassId)} | Success: true | already_consumed`);
+        return jsonResponse({ ok: true, provider, identifier: gympassId, mode, already_consumed: true });
+      }
+
       const result = await validateWellhub(gympassId, gymId, token, sandbox);
       console.log(`[AUDIT] ${new Date().toISOString()} | Provider: wellhub | Mode: ${mode} | ID: ${maskIdentifier(gympassId)} | Success: ${result.ok}`);
       if (!result.ok) {
         return jsonResponse({ ok: false, message: result.message, status: result.status }, 422);
       }
+      await markCheckedInToday(db, gympassId, mode === "use" ? "attendance" : "validate");
       return jsonResponse({ ok: true, provider, identifier: gympassId, mode });
     }
 

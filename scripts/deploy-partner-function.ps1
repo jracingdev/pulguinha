@@ -8,4 +8,6 @@ Write-Host "Deploy validate-partner-access ..."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "OK. Teste (substitua ANON_KEY):" -ForegroundColor Green
-Write-Host 'curl -X POST "https://tvztfgjmhxmwjzsnugic.supabase.co/functions/v1/validate-partner-access" -H "Authorization: Bearer ANON_KEY" -H "Content-Type: application/json" -d "{\"provider\":\"wellhub\",\"identifier\":\"1000000000001\"}"'
+Write-Host 'curl -X POST "https://tvztfgjmhxmwjzsnugic.supabase.co/functions/v1/validate-partner-access" -H "Authorization: Bearer ANON_KEY" -H "Content-Type: application/json" -d "{\"provider\":\"wellhub\",\"identifier\":\"1000000000001\",\"wellhub_gym_id\":\"824346\"}"'
+Write-Host "Webhook: https://tvztfgjmhxmwjzsnugic.supabase.co/functions/v1/wellhub-webhook"
+Write-Host "Deploy completo: .\scripts\deploy-wellhub.ps1"

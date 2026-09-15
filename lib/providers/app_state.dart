@@ -9,6 +9,7 @@ import 'package:pulguinha/models/billing_rules.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/models/partner_access.dart';
 import 'package:pulguinha/services/partner_access_service.dart';
+import 'package:pulguinha/services/wellhub_sync_service.dart';
 import 'package:pulguinha/services/password_recovery_notifier.dart';
 import 'package:pulguinha/services/supabase_bootstrap.dart';
 import 'package:pulguinha/services/supabase_service.dart';
@@ -1362,6 +1363,7 @@ class AppState extends ChangeNotifier {
       ];
       notifyListeners();
       _agendarNotificacoesUsuario();
+      WellhubSyncService.instance.syncOccupancy(horarioId: saved.horarioId, data: saved.data);
       return const CriarAgendamentoResult(ok: true, mensagem: 'Agendamento confirmado!');
     } catch (e) {
       debugPrint('Erro ao criar agendamento: $e');
@@ -1398,6 +1400,7 @@ class AppState extends ChangeNotifier {
       agendamentos = agendamentos.where((a) => a.id != id).toList();
       notifyListeners();
       _agendarNotificacoesUsuario();
+      WellhubSyncService.instance.syncOccupancy(horarioId: existente.horarioId, data: existente.data);
       return const CriarAgendamentoResult(ok: true, mensagem: 'Agendamento cancelado.');
     } catch (e) {
       debugPrint('Erro ao cancelar agendamento: $e');

@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.create-mp-preference]
 verify_jwt = true
+
+[functions.wellhub-webhook]
+verify_jwt = false
+
+[functions.wellhub-sync]
+verify_jwt = true

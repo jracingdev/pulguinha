@@ -37,6 +37,6 @@ Get-Content $envFile | ForEach-Object {
     }
 }
 
-Write-Host "Secrets enviados. Deploy da funcao:" -ForegroundColor Green
+Write-Host "Secrets enviados. Deploy das funcoes Wellhub:" -ForegroundColor Green
 Write-Host "  cd $root"
-Write-Host "  .\scripts\supabase.ps1 functions deploy validate-partner-access"
+Write-Host "  .\scripts\deploy-wellhub.ps1"
