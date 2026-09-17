@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pulguinha/services/notifications/local_notification_service.dart';
 import 'package:pulguinha/services/notifications/notification_payload.dart';
 import 'package:pulguinha/services/notifications/notification_service.dart';
+import 'package:pulguinha/services/notifications/notification_tap_handler.dart';
 
 /// Handler de mensagens em background (precisa ser top-level).
 @pragma('vm:entry-point')
@@ -47,12 +48,20 @@ class FcmNotificationService implements NotificationService {
           id: msg.hashCode & 0x7fffffff,
           title: n.title ?? 'Pulguinha',
           body: n.body ?? '',
+          payload: NotificationPayload.fromFcmData(Map<String, dynamic>.from(msg.data)),
           playSound: true,
         );
       });
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleFcmTap);
+      final initial = await messaging.getInitialMessage();
+      if (initial != null) _handleFcmTap(initial);
     } catch (e) {
       debugPrint('FCM initialize parcial: $e');
     }
+  }
+
+  void _handleFcmTap(RemoteMessage msg) {
+    NotificationTapHandler.instance.handle(NotificationPayload.fromFcmData(Map<String, dynamic>.from(msg.data)));
   }
 
   @override

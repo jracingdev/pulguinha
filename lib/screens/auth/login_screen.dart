@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (rl == UserType.aluno) {
       final candidato = appState.buscarAlunoPorEmail(em);
-      if (candidato != null && candidato.senha == sn && candidato.status == 'Pendente') {
+      if (candidato != null && candidato.senha == sn && candidato.estaPendente) {
         setState(() {
           loading = false;
           erro = 'Cadastro aguardando aprovação do professor.';
@@ -148,7 +148,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user == null) {
       setState(() {
         loading = false;
-        if (rl == UserType.admin && appState.useMock && !SupabaseConfig.isConfigured) {
+        if (appState.lastLoginErro != null) {
+          erro = appState.lastLoginErro!;
+        } else if (rl == UserType.admin && appState.useMock && !SupabaseConfig.isConfigured) {
           erro = 'Modo local: use admin@pulguinha.com e senha admin123, ou reinstale o APK oficial.';
         } else if (rl == UserType.aluno && appState.useMock && !appState.emailJaCadastrado(em)) {
           erro = SupabaseConfig.isConfigured

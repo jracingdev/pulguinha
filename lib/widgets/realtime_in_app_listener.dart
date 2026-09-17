@@ -48,7 +48,7 @@ class _RealtimeInAppListenerState extends State<RealtimeInAppListener> {
     _eventosCount = state.eventos.length;
     _postsCount = state.postsTurma.length;
     _agendamentosCount = state.agendamentos.length;
-    _alunosPendentes = state.alunos.where((a) => a.status == 'Pendente').length;
+    _alunosPendentes = state.alunosPendentes;
   }
 
   void _onStateChanged() {
@@ -91,13 +91,14 @@ class _RealtimeInAppListenerState extends State<RealtimeInAppListener> {
         color: AppColors.yellow,
       );
     }
-    final pendentes = state.alunos.where((a) => a.status == 'Pendente').length;
+    final pendentes = state.alunosPendentes;
     if (state.usuario?.isAdmin == true && pendentes > _alunosPendentes) {
       InAppNotifier.show(
         context,
         title: 'Cadastro pendente',
         message: '$pendentes aluno(s) aguardando aprovação',
         color: AppColors.yellow,
+        onTap: state.abrirAlunosPendentes,
       );
     }
 

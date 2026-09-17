@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pulguinha/data/mock_data.dart';
+import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/utils/date_helper.dart';
@@ -29,12 +30,12 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final ativos = state.alunos.where((a) => a.status == 'Ativo').length;
-    final inadimp = state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').length;
+    final ativos = state.alunos.where((a) => a.estaAtivo).length;
+    final inadimp = state.alunos.where((a) => a.pagaMensalidade && a.estaInadimplente).length;
     final agHoje = state.agendamentos.where((ag) => ag.data == MockData.today).length;
     final presHoje = state.presencasHoje().length;
     final venc7 = state.alunos.where((a) {
-      if (!a.pagaMensalidade || a.status != 'Ativo') return false;
+      if (!a.pagaMensalidade || !a.estaAtivo) return false;
       final d = DateHelper.diasAteVencimento(a.vencimento);
       return d >= 0 && d <= 7;
     }).length;
@@ -47,13 +48,13 @@ class AdminDashboardScreen extends StatelessWidget {
     final hora = DateTime.now().hour;
     final saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
     final alertas = <Widget>[
-      ...state.alunos.where((a) => a.status == 'Pendente').map(_alertaPendente),
-      ...state.alunos.where((a) => a.pagaMensalidade && a.status == 'Inadimplente').map(_alertaInadimplente),
+      ...state.alunos.where((a) => a.estaPendente).map((a) => _alertaPendente(a, onTap: state.abrirAlunosPendentes)),
+      ...state.alunos.where((a) => a.pagaMensalidade && a.estaInadimplente).map((a) => _alertaInadimplente(a, onTap: () => state.setAdminTab('financeiro'))),
       ...state.alunos.where((a) {
         if (!a.pagaMensalidade) return false;
         final d = DateHelper.diasAteVencimento(a.vencimento);
-        return d >= 0 && d <= 7 && a.status == 'Ativo';
-      }).map(_alertaVencendo),
+        return d >= 0 && d <= 7 && a.estaAtivo;
+      }).map((a) => _alertaVencendo(a, onTap: () => state.setAdminTab('financeiro'))),
     ];
     final avisos = state.avisosAtivos();
 
@@ -150,7 +151,13 @@ class AdminDashboardScreen extends StatelessWidget {
           ...alertas.take(4),
           if (alertas.length > 4)
             TextButton(
-              onPressed: () => state.setAdminTab('financeiro'),
+              onPressed: () {
+                if (state.alunosPendentes > 0) {
+                  state.abrirAlunosPendentes();
+                } else {
+                  state.setAdminTab('financeiro');
+                }
+              },
               child: Text('Ver todos os ${alertas.length} alertas', style: const TextStyle(color: AppColors.neon, fontWeight: FontWeight.w700)),
             ),
         ],
@@ -444,86 +451,90 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _alertaPendente(dynamic a) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.neon.withValues(alpha: 0.08),
-          border: Border.all(color: AppColors.neon.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm, fotoBase64: a.foto),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
-                  const Text('Cadastro aguardando aprovação', style: TextStyle(fontSize: 11, color: AppColors.neon)),
-                ],
-              ),
-            ),
-            const Text('⏳', style: TextStyle(fontSize: 18)),
-          ],
-        ),
-      ),
+  Widget _alertaPendente(Aluno a, {VoidCallback? onTap}) {
+    return _alertaCard(
+      onTap: onTap,
+      background: AppColors.neon.withValues(alpha: 0.08),
+      border: AppColors.neon.withValues(alpha: 0.2),
+      avatar: a.avatar,
+      foto: a.foto,
+      nome: a.nome,
+      detalhe: 'Cadastro aguardando aprovação — toque para revisar',
+      detalheColor: AppColors.neon,
+      trailing: '⏳',
     );
   }
 
-  Widget _alertaInadimplente(dynamic a) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.red.withValues(alpha: 0.08),
-          border: Border.all(color: AppColors.red.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm, fotoBase64: a.foto),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
-                const Text('Mensalidade em atraso', style: TextStyle(fontSize: 11, color: AppColors.red)),
-              ],
-            ),
-          ],
-        ),
-      ),
+  Widget _alertaInadimplente(Aluno a, {VoidCallback? onTap}) {
+    return _alertaCard(
+      onTap: onTap,
+      background: AppColors.red.withValues(alpha: 0.08),
+      border: AppColors.red.withValues(alpha: 0.2),
+      avatar: a.avatar,
+      foto: a.foto,
+      nome: a.nome,
+      detalhe: 'Mensalidade em atraso',
+      detalheColor: AppColors.red,
     );
   }
 
-  Widget _alertaVencendo(dynamic a) {
+  Widget _alertaVencendo(Aluno a, {VoidCallback? onTap}) {
     final d = DateHelper.diasAteVencimento(a.vencimento);
+    return _alertaCard(
+      onTap: onTap,
+      background: AppColors.yellow.withValues(alpha: 0.08),
+      border: AppColors.yellow.withValues(alpha: 0.2),
+      avatar: a.avatar,
+      foto: a.foto,
+      nome: a.nome,
+      detalhe: 'Vence em $d dias',
+      detalheColor: AppColors.yellow,
+    );
+  }
+
+  Widget _alertaCard({
+    required String avatar,
+    required String? foto,
+    required String nome,
+    required String detalhe,
+    required Color detalheColor,
+    required Color background,
+    required Color border,
+    String? trailing,
+    VoidCallback? onTap,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.yellow.withValues(alpha: 0.08),
-          border: Border.all(color: AppColors.yellow.withValues(alpha: 0.2)),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            PulguinhaAvatar(initials: a.avatar, size: AvatarSize.sm, fotoBase64: a.foto),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: background,
+              border: Border.all(color: border),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
               children: [
-                Text(a.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
-                Text('Vence em $d dias', style: const TextStyle(fontSize: 11, color: AppColors.yellow)),
+                PulguinhaAvatar(initials: avatar, size: AvatarSize.sm, fotoBase64: foto),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.white)),
+                      Text(detalhe, style: TextStyle(fontSize: 11, color: detalheColor)),
+                    ],
+                  ),
+                ),
+                if (trailing != null) Text(trailing, style: const TextStyle(fontSize: 18)),
+                if (onTap != null) const Icon(Icons.chevron_right, color: AppColors.grayDim, size: 18),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

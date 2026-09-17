@@ -19,6 +19,7 @@ import 'package:pulguinha/services/notifications/notification_payload.dart';
 import 'package:pulguinha/services/notifications/notification_scheduler.dart';
 import 'package:pulguinha/services/notifications/notification_service.dart';
 import 'package:pulguinha/services/notifications/notification_settings_storage.dart';
+import 'package:pulguinha/services/notifications/notification_tap_handler.dart';
 import 'package:pulguinha/utils/agendamento_rules.dart';
 import 'package:pulguinha/utils/date_helper.dart';
 import 'package:pulguinha/utils/horario_helper.dart';
@@ -72,6 +73,7 @@ class AppState extends ChangeNotifier {
   bool adminParticipaMural = false;
   String adminTab = 'dashboard';
   String alunoTab = 'home';
+  String alunosFiltro = 'Todos';
   ThemeMode themeMode = ThemeMode.dark;
   int diaVencimentoPadrao = FinanceSettingsStorage.defaultDiaVencimento;
   int diasParaInadimplencia = FinanceSettingsStorage.defaultDiasInadimplencia;
@@ -80,10 +82,13 @@ class AppState extends ChangeNotifier {
   bool loading = true;
   bool useMock = true;
   String? initError;
+  String? lastLoginErro;
+  bool _abrirAlunosPendentesAoLogar = false;
 
   RealtimeChannel? _realtimeChannel;
 
   AppState() {
+    NotificationTapHandler.instance.bind(_onNotificationTap);
     init();
   }
 
@@ -520,6 +525,13 @@ class AppState extends ChangeNotifier {
     screen = user.isAdmin ? AppScreen.admin : AppScreen.aluno;
     adminTab = 'dashboard';
     alunoTab = 'home';
+    if (user.isAdmin && _abrirAlunosPendentesAoLogar) {
+      _abrirAlunosPendentesAoLogar = false;
+      alunosFiltro = 'Pendente';
+      adminTab = 'alunos';
+    } else {
+      _abrirAlunosPendentesAoLogar = false;
+    }
     notifyListeners();
     if (user.isAdmin && SupabaseConfig.isConfigured) {
       if (useMock) {
@@ -556,6 +568,8 @@ class AppState extends ChangeNotifier {
   void logout() {
     usuario = null;
     screen = AppScreen.public;
+    adminTab = 'dashboard';
+    alunosFiltro = 'Todos';
     notifyListeners();
     SupabaseService.instance.encerrarSessaoAuth();
   }
@@ -566,6 +580,27 @@ class AppState extends ChangeNotifier {
     if (!useMock && (tab == 'alunos' || tab == 'dashboard' || tab == 'agenda')) {
       recarregarDados(includeFotosAlunos: tab == 'alunos');
     }
+  }
+
+  void setAlunosFiltro(String filtro) {
+    if (alunosFiltro == filtro) return;
+    alunosFiltro = filtro;
+    notifyListeners();
+  }
+
+  void abrirAlunosPendentes() {
+    alunosFiltro = 'Pendente';
+    if (usuario?.isAdmin == true) {
+      setAdminTab('alunos');
+    } else {
+      _abrirAlunosPendentesAoLogar = true;
+      notifyListeners();
+    }
+  }
+
+  void _onNotificationTap(NotificationPayload payload) {
+    if (payload.type != NotificationPayloadType.cadastro) return;
+    abrirAlunosPendentes();
   }
 
   void setAlunoTab(String tab) {
@@ -604,6 +639,7 @@ class AppState extends ChangeNotifier {
   Future<Usuario?> autenticar(String email, String senha, UserType tipo) async {
     final em = email.trim().toLowerCase();
     final sn = senha;
+    lastLoginErro = null;
 
     if (tipo == UserType.admin) {
       if (!useMock) {
@@ -618,7 +654,8 @@ class AppState extends ChangeNotifier {
     if (!useMock) {
       final aluno = await SupabaseService.instance.autenticarAluno(em, sn);
       if (aluno == null) return null;
-      if (aluno.status == 'Pendente') {
+      if (aluno.estaPendente) {
+        lastLoginErro = 'Cadastro aguardando aprovação do professor.';
         await SupabaseService.instance.encerrarSessaoAuth();
         return null;
       }
@@ -629,7 +666,10 @@ class AppState extends ChangeNotifier {
         .where((a) => a.email.toLowerCase() == em && a.senha == sn)
         .firstOrNull;
     if (aluno == null) return null;
-    if (aluno.status == 'Pendente') return null;
+    if (aluno.estaPendente) {
+      lastLoginErro = 'Cadastro aguardando aprovação do professor.';
+      return null;
+    }
     return aluno.toUsuario();
   }
 
@@ -687,7 +727,7 @@ class AppState extends ChangeNotifier {
             'Peça ao professor para cadastrar seu ${provider == PartnerProvider.wellhub ? 'ID GymPass' : 'CPF TotalPass'}.',
       );
     }
-    if (aluno.status == 'Pendente') {
+    if (aluno.estaPendente) {
       return (null, 'Cadastro aguardando aprovação do professor.');
     }
     if (aluno.status != 'Ativo' && aluno.status != 'Inadimplente') {
@@ -743,9 +783,10 @@ class AppState extends ChangeNotifier {
     if (await emailJaCadastradoRemoto(dados.email)) {
       return 'Este e-mail já está cadastrado.';
     }
+    final plano = dados.plano.trim().isEmpty ? 'Mensal' : dados.plano;
     final novo = dados.copyWith(
       status: 'Pendente',
-      plano: 'Mensal',
+      plano: plano,
       vencimento: MockData.vencimentoPendente,
       dataCadastro: MockData.today,
       alunoDesde: dados.alunoDesde ?? MockData.today,
@@ -1017,7 +1058,7 @@ class AppState extends ChangeNotifier {
     return produtos.where((p) => p.tipo == 'plano' && p.nome.replaceFirst('Plano ', '') == plano).firstOrNull;
   }
 
-  int get alunosPendentes => alunos.where((a) => a.status == 'Pendente').length;
+  int get alunosPendentes => alunos.where((a) => a.estaPendente).length;
 
   void salvarAluno({Aluno? editando, required Aluno dados}) {
     if (editando != null) {

@@ -3,6 +3,14 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 Versão segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.5.1+11] - 2026-09-17
+
+### Corrigido
+- Filtro **Pendente** na aba Alunos agora mostra GymPass/Wellhub, TotalPass e avulsos (não só mensalistas)
+- Banner de cadastros pendentes, alerta do dashboard e notificação in-app/local/FCM levam à lista filtrada
+- Cadastro público de parceiro/avulso deixa de gravar plano como Mensal
+- Empty state quando o filtro da lista de alunos não encontra ninguém
+
 ## [1.5.0+10] - 2026-09-15
 
 ### Alterado

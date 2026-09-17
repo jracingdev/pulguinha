@@ -280,6 +280,26 @@ class Aluno {
 
   bool get pagaMensalidade => !ehSemMensalidade;
 
+  bool temStatus(String esperado) =>
+      status.trim().toLowerCase() == esperado.trim().toLowerCase();
+
+  bool get estaPendente => temStatus('Pendente');
+
+  bool get estaAtivo => temStatus('Ativo');
+
+  bool get estaInadimplente => temStatus('Inadimplente');
+
+  /// Filtros da aba Admin → Alunos. Pendente inclui parceiros/avulsos.
+  bool passaFiltroAdmin(String filtro) {
+    return switch (filtro) {
+      'Todos' => true,
+      'Parceiros' => ehSemMensalidade,
+      'Mensalistas' => pagaMensalidade,
+      'Pendente' => estaPendente,
+      _ => temStatus(filtro) && pagaMensalidade,
+    };
+  }
+
   String get labelBeneficio {
     final o = beneficioOrigem?.toLowerCase().trim();
     if (o == 'avulso' || o == 'sem_mensalidade' || o == 'agendamento') return 'Avulso';
@@ -362,7 +382,7 @@ class Aluno {
         telefone: json['telefone'] as String? ?? '',
         plano: json['plano'] as String? ?? 'Mensal',
         vencimento: _formatDate(json['vencimento']),
-        status: json['status'] as String? ?? 'Ativo',
+        status: (json['status'] as String? ?? 'Ativo').trim(),
         avatar: json['avatar'] as String? ?? '',
         dataNascimento: json['data_nascimento'] != null ? _formatDate(json['data_nascimento']) : null,
         anamnese: Anamnese.fromJson(json['anamnese']),

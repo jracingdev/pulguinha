@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pulguinha/services/notifications/notification_payload.dart';
 import 'package:pulguinha/services/notifications/notification_service.dart';
+import 'package:pulguinha/services/notifications/notification_tap_handler.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -23,7 +24,15 @@ class LocalNotificationService implements NotificationService {
     const ios = DarwinInitializationSettings();
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: ios),
+      onDidReceiveNotificationResponse: (response) {
+        NotificationTapHandler.instance.handleRaw(response.payload);
+      },
     );
+
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    if (launch?.didNotificationLaunchApp == true) {
+      NotificationTapHandler.instance.handleRaw(launch!.notificationResponse?.payload);
+    }
 
     const channel = AndroidNotificationChannel(
       'pulguinha_main',

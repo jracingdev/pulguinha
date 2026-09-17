@@ -114,7 +114,7 @@ class NotificationScheduler {
 
     if (isAdmin) {
 
-      final pendentes = alunos.where((a) => a.status == 'Pendente').length;
+      final pendentes = alunos.where((a) => a.estaPendente).length;
 
       if (pendentes > 0) {
 

@@ -104,7 +104,7 @@ class AlunoHomeScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: AppColors.card2,
-                    border: Border.all(color: VencimentoHelper.corDestaque(aluno).withValues(alpha: aluno.status == 'Pendente' ? 0.4 : d < 0 ? 1 : d <= 7 ? 0.4 : 0.2)),
+                    border: Border.all(color: VencimentoHelper.corDestaque(aluno).withValues(alpha: aluno.estaPendente ? 0.4 : d < 0 ? 1 : d <= 7 ? 0.4 : 0.2)),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -114,7 +114,7 @@ class AlunoHomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              aluno.status == 'Pendente' ? 'CADASTRO' : 'PLANO ${aluno.plano.toUpperCase()}',
+                              aluno.estaPendente ? 'CADASTRO' : 'PLANO ${aluno.plano.toUpperCase()}',
                               style: const TextStyle(fontSize: 10, color: AppColors.gray, fontWeight: FontWeight.w700),
                             ),
                             Text(
@@ -126,9 +126,9 @@ class AlunoHomeScreen extends StatelessWidget {
                       ),
                       PulguinhaBadge(
                         label: aluno.status,
-                        variant: aluno.status == 'Ativo'
+                        variant: aluno.estaAtivo
                             ? BadgeVariant.neon
-                            : aluno.status == 'Pendente'
+                            : aluno.estaPendente
                                 ? BadgeVariant.yellow
                                 : BadgeVariant.red,
                       ),

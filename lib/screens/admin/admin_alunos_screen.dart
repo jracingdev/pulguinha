@@ -22,20 +22,14 @@ class AdminAlunosScreen extends StatefulWidget {
 
 class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
   String busca = '';
-  String filtro = 'Todos';
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final filtro = state.alunosFiltro;
     final lista = state.alunos.where((a) {
       final mb = a.nome.toLowerCase().contains(busca.toLowerCase()) || a.email.toLowerCase().contains(busca.toLowerCase());
-      final mf = switch (filtro) {
-        'Todos' => true,
-        'Parceiros' => a.ehSemMensalidade,
-        'Mensalistas' => a.pagaMensalidade,
-        _ => a.status == filtro && a.pagaMensalidade,
-      };
-      return mb && mf;
+      return mb && a.passaFiltroAdmin(filtro);
     }).toList();
 
     return Column(
@@ -62,7 +56,9 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
             return ChoiceChip(
               label: Text(label),
               selected: selected,
-              onSelected: (_) => setState(() => filtro = f),
+              onSelected: (sel) {
+                if (sel) state.setAlunosFiltro(f);
+              },
               selectedColor: AppColors.neon,
               labelStyle: TextStyle(color: selected ? const Color(0xFF111111) : AppColors.gray, fontWeight: FontWeight.w700, fontSize: 12),
               backgroundColor: AppColors.card2,
@@ -72,25 +68,45 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
         ),
         const SizedBox(height: 16),
         if (state.alunosPendentes > 0) ...[
-          PulguinhaCard(
-            borderColor: AppColors.neon.withValues(alpha: 0.35),
-            backgroundColor: AppColors.neon.withValues(alpha: 0.06),
-            child: Row(
-              children: [
-                const Text('⏳', style: TextStyle(fontSize: 22)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '${state.alunosPendentes} cadastro(s) aguardando aprovação — filtre por "Pendente" ou puxe a tela para atualizar.',
-                    style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w600, decoration: TextDecoration.none),
+          InkWell(
+            onTap: state.abrirAlunosPendentes,
+            borderRadius: BorderRadius.circular(16),
+            child: PulguinhaCard(
+              borderColor: AppColors.neon.withValues(alpha: 0.35),
+              backgroundColor: AppColors.neon.withValues(alpha: 0.06),
+              child: Row(
+                children: [
+                  const Text('⏳', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      filtro == 'Pendente'
+                          ? '${state.alunosPendentes} cadastro(s) aguardando aprovação.'
+                          : '${state.alunosPendentes} cadastro(s) aguardando aprovação — toque para ver.',
+                      style: const TextStyle(fontSize: 12, color: AppColors.neon, fontWeight: FontWeight.w600, decoration: TextDecoration.none),
+                    ),
                   ),
-                ),
-              ],
+                  if (filtro != 'Pendente')
+                    const Icon(Icons.chevron_right, color: AppColors.neon, size: 20),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
         ],
-        ...lista.map((a) => _alunoCard(context, state, a)),
+        if (lista.isEmpty)
+          PulguinhaCard(
+            child: Text(
+              busca.trim().isNotEmpty
+                  ? 'Nenhum aluno encontrado para esta busca.'
+                  : filtro == 'Pendente'
+                      ? 'Nenhum cadastro pendente de aprovação.'
+                      : 'Nenhum aluno neste filtro.',
+              style: const TextStyle(fontSize: 13, color: AppColors.gray, height: 1.4),
+            ),
+          )
+        else
+          ...lista.map((a) => _alunoCard(context, state, a)),
       ],
     );
   }
@@ -144,7 +160,7 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
               icon: const Text('✏️'),
               style: IconButton.styleFrom(backgroundColor: AppColors.neon.withValues(alpha: 0.1)),
             ),
-            if (a.status == 'Pendente')
+            if (a.estaPendente)
               IconButton(
                 onPressed: () => _validar(context, state, a),
                 icon: const Text('✅'),
@@ -640,10 +656,10 @@ class _AdminAlunosScreenState extends State<AdminAlunosScreen> {
   }
 
   BadgeVariant _badgeVariant(String status) {
-    return switch (status) {
-      'Ativo' => BadgeVariant.neon,
-      'Pendente' => BadgeVariant.yellow,
-      'Inadimplente' => BadgeVariant.red,
+    return switch (status.trim().toLowerCase()) {
+      'ativo' => BadgeVariant.neon,
+      'pendente' => BadgeVariant.yellow,
+      'inadimplente' => BadgeVariant.red,
       _ => BadgeVariant.gray,
     };
   }

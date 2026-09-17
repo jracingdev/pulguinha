@@ -70,7 +70,7 @@ class _AdminSupabaseConfigScreenState extends State<AdminSupabaseConfigScreen> {
     setState(() => _saving = false);
 
     if (conectou && state.alunosPendentes > 0) {
-      state.setAdminTab('alunos');
+      state.abrirAlunosPendentes();
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
