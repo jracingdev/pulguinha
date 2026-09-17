@@ -61,6 +61,17 @@ export function envGymId() {
   return (Deno.env.get("WELLHUB_GYM_ID") ?? "").trim();
 }
 
+/** gym_id do payload do webhook, se for um id real; senão o da unidade no secret. */
+export function resolveGymId(...candidates: unknown[]) {
+  for (const raw of candidates) {
+    if (raw == null || raw === "") continue;
+    const s = String(raw).trim();
+    if (!s || s === "0" || s === "undefined" || s === "null") continue;
+    return s;
+  }
+  return envGymId();
+}
+
 export function envToken() {
   return (Deno.env.get("WELLHUB_BEARER_TOKEN") ?? "").trim();
 }
@@ -238,6 +249,7 @@ export async function wellhubFetch(
     headers.set("Content-Type", "application/json");
   }
   const url = `${wellhubBase(sandbox)}${path.startsWith("/") ? path : `/${path}`}`;
+  const method = (init.method ?? "GET").toUpperCase();
   const res = await fetch(url, { ...init, headers });
   const text = await res.text();
   let json: unknown = null;
@@ -246,7 +258,10 @@ export async function wellhubFetch(
   } catch {
     json = text;
   }
-  return { ok: res.ok, status: res.status, json, text, gymId };
+  if (method !== "GET") {
+    console.log(`[wellhub] ${method} ${path} gym=${gymId} sandbox=${sandbox} → HTTP ${res.status}`);
+  }
+  return { ok: res.ok, status: res.status, json, text, gymId, sandbox, path };
 }
 
 export async function validateAccess(gympassId: string) {
@@ -268,6 +283,7 @@ export async function patchBookingV1(
   if (reason) body.reason = reason;
   return wellhubFetch(`/booking/v1/gyms/${gymId}/bookings/${encodeURIComponent(bookingNumber)}`, {
     method: "PATCH",
+    gymId,
     body: JSON.stringify(body),
   });
 }
@@ -284,6 +300,7 @@ export async function patchBookingV2(
   if (reasonCategory) body.reason_category = reasonCategory;
   return wellhubFetch(`/booking/v2/gyms/${gymId}/bookings/${encodeURIComponent(bookingNumber)}`, {
     method: "PATCH",
+    gymId,
     body: JSON.stringify(body),
   });
 }
@@ -304,9 +321,13 @@ export async function patchBookingAlways(opts: {
     ? BOOKING_STATUS_V1.RESERVED
     : BOOKING_STATUS_V1.REJECTED;
   const v1 = await patchBookingV1(opts.gymId, opts.bookingNumber, opts.classId, v1Status, opts.reason);
+  console.log(
+    `[wellhub] PATCH booking/v1 gym=${opts.gymId} booking=${opts.bookingNumber} class_id=${opts.classId} status=${v1Status} → HTTP ${v1.status}`,
+  );
   if (v1.ok || v1.status === 204) {
     return { ...v1, version: "v1" as const };
   }
+  console.warn(`[wellhub] PATCH booking/v1 falhou: ${String(v1.text).slice(0, 300)}`);
   const v2Status = opts.cancelledByGym
     ? BOOKING_STATUS_V2.CANCELLED_BY_GYM
     : opts.accept
@@ -319,6 +340,12 @@ export async function patchBookingAlways(opts: {
     opts.reason,
     opts.accept ? undefined : (opts.reasonCategory ?? "GENERAL_ERROR"),
   );
+  console.log(
+    `[wellhub] PATCH booking/v2 gym=${opts.gymId} booking=${opts.bookingNumber} status=${v2Status} → HTTP ${v2.status}`,
+  );
+  if (!(v2.ok || v2.status === 204)) {
+    console.warn(`[wellhub] PATCH booking/v2 falhou: ${String(v2.text).slice(0, 300)}`);
+  }
   return { ...v2, version: "v2" as const, v1 };
 }
 
@@ -329,16 +356,24 @@ export async function patchSlotOccupancy(
   totalBooked: number,
   totalCapacity: number,
 ) {
-  return wellhubFetch(
+  const booked = Math.max(0, Math.min(32000, Math.floor(totalBooked)));
+  const capacity = Math.max(booked, Math.min(32000, Math.floor(totalCapacity)));
+  const res = await wellhubFetch(
     `/booking/v1/gyms/${gymId}/classes/${classId}/slots/${slotId}`,
     {
       method: "PATCH",
+      gymId,
       body: JSON.stringify({
-        total_booked: totalBooked,
-        total_capacity: totalCapacity,
+        total_booked: booked,
+        total_capacity: capacity,
       }),
     },
   );
+  const ok = res.ok || res.status === 204;
+  console.log(
+    `[wellhub] PATCH occupancy gym=${gymId} class=${classId} slot=${slotId} total_booked=${booked} total_capacity=${capacity} → HTTP ${res.status}${ok ? "" : ` ${String(res.text).slice(0, 300)}`}`,
+  );
+  return { ...res, ok, booked, capacity };
 }
 
 export async function listProducts(gymId: string) {
@@ -392,7 +427,7 @@ export async function listSlots(gymId: string, classId: number, fromIso: string,
 }
 
 export async function getSlot(gymId: string, classId: number, slotId: number) {
-  return wellhubFetch(`/booking/v1/gyms/${gymId}/classes/${classId}/slots/${slotId}`);
+  return wellhubFetch(`/booking/v1/gyms/${gymId}/classes/${classId}/slots/${slotId}`, { gymId });
 }
 
 export async function alreadyCheckedInToday(db: SupabaseClient, gympassId: string) {
@@ -433,7 +468,7 @@ export async function countBooked(db: SupabaseClient, horarioId: number, data: s
     .select("id", { count: "exact", head: true })
     .eq("horario_id", horarioId)
     .eq("data", data)
-    .not("status", "ilike", "%cancel%");
+    .ilike("status", "confirmado");
   if (error) {
     console.error("[wellhub] countBooked", error.message);
     return 0;
@@ -441,34 +476,135 @@ export async function countBooked(db: SupabaseClient, horarioId: number, data: s
   return count ?? 0;
 }
 
+export type OccupancySyncOpts = {
+  gymId?: string;
+  horarioId?: number;
+  data?: string;
+  classId?: number;
+  slotId?: number;
+  /** Sem mapa local: aplica sobre total_booked remoto (+1 requested, -1 canceled). */
+  delta?: number;
+};
+
+export type OccupancySyncResult = {
+  ok: boolean;
+  status?: number;
+  booked?: number;
+  capacity?: number;
+  classId?: number;
+  slotId?: number;
+  gymId?: string;
+  message?: string;
+  skipped?: boolean;
+};
+
+function asSlotRecord(json: unknown): Record<string, unknown> | null {
+  if (!json || typeof json !== "object") return null;
+  const obj = json as Record<string, unknown>;
+  if (obj.total_booked != null || obj.total_capacity != null || obj.id != null) return obj;
+  const nested = obj.slot;
+  if (nested && typeof nested === "object") return nested as Record<string, unknown>;
+  return obj;
+}
+
 export async function syncOccupancyFor(
   db: SupabaseClient,
-  horarioId: number,
-  data: string,
-  gymId = envGymId(),
-) {
-  const { data: slot } = await db
-    .from("wellhub_slots")
-    .select("wellhub_slot_id, wellhub_class_id, total_capacity")
-    .eq("horario_id", horarioId)
-    .eq("data", data)
-    .maybeSingle();
-  if (!slot) return { ok: false, message: "slot não mapeado" };
+  horarioIdOrOpts: number | OccupancySyncOpts,
+  data?: string,
+  gymIdArg?: string,
+): Promise<OccupancySyncResult> {
+  const opts: OccupancySyncOpts = typeof horarioIdOrOpts === "object"
+    ? horarioIdOrOpts
+    : { horarioId: horarioIdOrOpts, data, gymId: gymIdArg };
 
-  const booked = await countBooked(db, horarioId, data);
-  const capacity = slot.total_capacity ?? 12;
-  const res = await patchSlotOccupancy(
-    gymId,
-    Number(slot.wellhub_class_id),
-    Number(slot.wellhub_slot_id),
-    booked,
-    capacity,
-  );
+  const gymId = resolveGymId(opts.gymId, gymIdArg);
+  let classId = Number(opts.classId ?? 0) || 0;
+  let slotId = Number(opts.slotId ?? 0) || 0;
+  let horarioId = Number(opts.horarioId ?? 0) || 0;
+  let day = String(opts.data ?? "").slice(0, 10);
+  let capacity = 12;
+
+  if (horarioId && day) {
+    const { data: mapped } = await db
+      .from("wellhub_slots")
+      .select("wellhub_slot_id, wellhub_class_id, total_capacity, horario_id, data")
+      .eq("horario_id", horarioId)
+      .eq("data", day)
+      .maybeSingle();
+    if (mapped) {
+      classId = classId || Number(mapped.wellhub_class_id);
+      slotId = slotId || Number(mapped.wellhub_slot_id);
+      capacity = Number(mapped.total_capacity ?? capacity) || capacity;
+    }
+  }
+
+  if ((!classId || !slotId) && slotId) {
+    const { data: bySlot } = await db
+      .from("wellhub_slots")
+      .select("wellhub_slot_id, wellhub_class_id, total_capacity, horario_id, data")
+      .eq("wellhub_slot_id", slotId)
+      .maybeSingle();
+    if (bySlot) {
+      classId = classId || Number(bySlot.wellhub_class_id);
+      horarioId = horarioId || Number(bySlot.horario_id);
+      day = day || String(bySlot.data ?? "").slice(0, 10);
+      capacity = Number(bySlot.total_capacity ?? capacity) || capacity;
+    }
+  }
+
+  if ((!classId || !slotId) && classId && day) {
+    const { data: byClass } = await db
+      .from("wellhub_slots")
+      .select("wellhub_slot_id, wellhub_class_id, total_capacity, horario_id, data")
+      .eq("wellhub_class_id", classId)
+      .eq("data", day)
+      .maybeSingle();
+    if (byClass) {
+      slotId = slotId || Number(byClass.wellhub_slot_id);
+      horarioId = horarioId || Number(byClass.horario_id);
+      capacity = Number(byClass.total_capacity ?? capacity) || capacity;
+    }
+  }
+
+  if (!classId || !slotId) {
+    console.warn(
+      `[wellhub] occupancy SKIP sem class_id/slot_id gym=${gymId} class=${classId} slot=${slotId} horario=${horarioId} data=${day}`,
+    );
+    return { ok: false, skipped: true, message: "slot não mapeado", gymId, classId, slotId };
+  }
+
+  const remote = await getSlot(gymId, classId, slotId);
+  const remoteSlot = asSlotRecord(remote.json);
+  const remoteBooked = Number(remoteSlot?.total_booked ?? 0);
+  const remoteCap = Number(remoteSlot?.total_capacity ?? 0);
+  if (remoteCap > 0) capacity = remoteCap;
+
+  let booked: number;
+  if (horarioId && day) {
+    booked = await countBooked(db, horarioId, day);
+  } else {
+    const delta = Number(opts.delta ?? 0);
+    booked = Math.max(0, remoteBooked + delta);
+  }
+  booked = Math.max(0, Math.min(capacity, booked));
+
+  const res = await patchSlotOccupancy(gymId, classId, slotId, booked, capacity);
+
   await db
     .from("wellhub_slots")
     .update({ total_booked: booked, synced_at: new Date().toISOString() })
-    .eq("wellhub_slot_id", slot.wellhub_slot_id);
-  return { ok: res.ok || res.status === 204, status: res.status, booked, capacity };
+    .eq("wellhub_slot_id", slotId);
+
+  return {
+    ok: res.ok || res.status === 204,
+    status: res.status,
+    booked,
+    capacity,
+    classId,
+    slotId,
+    gymId,
+    message: res.ok || res.status === 204 ? undefined : String(res.text).slice(0, 300),
+  };
 }
 
 export async function upsertAlunoFromWellhub(
@@ -541,7 +677,8 @@ export async function upsertAlunoFromWellhub(
 }
 
 export function extractEvent(payload: Record<string, unknown>) {
-  const eventType = String(payload.event_type ?? payload.event ?? "").trim();
+  const raw = String(payload.event_type ?? payload.event ?? "").trim();
+  const eventType = raw.replace(/\./g, "-");
   const eventData = (payload.event_data ?? payload) as Record<string, unknown>;
   const eventId = String(eventData.event_id ?? payload.event_id ?? "").trim();
   return { eventType, eventData, eventId };
@@ -549,11 +686,15 @@ export function extractEvent(payload: Record<string, unknown>) {
 
 export function slotFromEvent(eventData: Record<string, unknown>) {
   const slot = (eventData.slot ?? {}) as Record<string, unknown>;
+  const gym = (eventData.gym ?? {}) as Record<string, unknown>;
+  const booking = (eventData.booking ?? {}) as Record<string, unknown>;
   return {
-    id: Number(slot.id ?? 0),
-    gym_id: String(slot.gym_id ?? envGymId()),
-    class_id: Number(slot.class_id ?? 0),
-    booking_number: String(slot.booking_number ?? ""),
+    id: Number(slot.id ?? eventData.slot_id ?? 0) || 0,
+    gym_id: resolveGymId(slot.gym_id, gym.id, eventData.gym_id),
+    class_id: Number(slot.class_id ?? eventData.class_id ?? 0) || 0,
+    booking_number: String(
+      slot.booking_number ?? booking.booking_number ?? eventData.booking_number ?? "",
+    ).trim(),
   };
 }
 

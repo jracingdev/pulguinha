@@ -89,6 +89,7 @@ async function processEvent(
   const db = serviceClient();
   try {
     const type = eventType.toLowerCase();
+    console.log(`[wellhub-webhook] process type=${type} event=${eventId}`);
     if (type === "checkin") {
       await handleCheckin(eventData, "checkin");
     } else if (type === "checkin-booking-occurred") {
@@ -153,24 +154,63 @@ async function handleCheckin(eventData: Record<string, unknown>, source: string)
   }
 }
 
+async function occupancyPatch(
+  db: ReturnType<typeof serviceClient>,
+  gymId: string,
+  classId: number,
+  slotId: number,
+  horarioId?: number,
+  data?: string,
+  delta?: number,
+) {
+  const result = await syncOccupancyFor(db, {
+    gymId,
+    classId,
+    slotId,
+    horarioId,
+    data,
+    delta,
+  });
+  console.log(
+    `[wellhub-webhook] occupancy gym=${result.gymId ?? gymId} class=${result.classId ?? classId} slot=${result.slotId ?? slotId} booked=${result.booked} cap=${result.capacity} → HTTP ${result.status ?? "skip"} ${result.ok ? "ok" : result.message ?? ""}`,
+  );
+  return result;
+}
+
 async function handleBookingRequested(eventData: Record<string, unknown>) {
   const db = serviceClient();
   const slot = slotFromEvent(eventData);
   const user = userFromEvent(eventData);
   const gymId = slot.gym_id || envGymId();
   const bookingNumber = slot.booking_number;
+  const slotId = slot.id;
+  const classIdFromEvent = slot.class_id;
 
   if (!bookingNumber) {
     console.warn("[wellhub-webhook] booking-requested sem booking_number");
     return;
   }
 
-  const mapped = await resolveSlot(db, gymId, slot.id, slot.class_id);
-  if (!mapped) {
+  let remoteOk = false;
+  let remoteCap = 0;
+  if (classIdFromEvent && slotId) {
+    const remote = await getSlot(gymId, classIdFromEvent, slotId);
+    remoteOk = remote.ok || remote.status === 200;
+    const body = (remote.json && typeof remote.json === "object")
+      ? remote.json as Record<string, unknown>
+      : {};
+    remoteCap = Number(body.total_capacity ?? 0);
+    console.log(
+      `[wellhub-webhook] GET slot gym=${gymId} class=${classIdFromEvent} slot=${slotId} → HTTP ${remote.status} exists=${remoteOk}`,
+    );
+  }
+
+  const mapped = await resolveSlot(db, gymId, slotId, classIdFromEvent);
+  if (!mapped && !remoteOk) {
     await patchBookingAlways({
       gymId,
       bookingNumber,
-      classId: slot.class_id || 0,
+      classId: classIdFromEvent || 0,
       accept: false,
       reason: "Aula não encontrada na grade do Pulguinha",
       reasonCategory: "CLASS_NOT_FOUND",
@@ -178,125 +218,164 @@ async function handleBookingRequested(eventData: Record<string, unknown>) {
     return;
   }
 
-  const horarioId = mapped.horario_id as number;
-  const data = mapped.data as string;
-  const classId = Number(mapped.wellhub_class_id);
-  const capacity = Number(mapped.total_capacity ?? 12);
+  const horarioId = mapped ? Number(mapped.horario_id) : 0;
+  const data = mapped ? String(mapped.data) : "";
+  const classId = Number(classIdFromEvent || mapped?.wellhub_class_id);
+  const slotIdResolved = Number(slotId || mapped?.wellhub_slot_id);
+  const capacity = Number(mapped?.total_capacity ?? remoteCap ?? 12);
 
-  const { data: horario } = await db.from("horarios").select("id, capacidade, hora").eq("id", horarioId).maybeSingle();
-  const cap = Number(horario?.capacidade ?? capacity);
+  if (mapped && horarioId) {
+    const { data: horario } = await db.from("horarios").select("id, capacidade, hora").eq("id", horarioId).maybeSingle();
+    const cap = Number(horario?.capacidade ?? capacity);
 
-  const aluno = await upsertAlunoFromWellhub(db, user);
-  if (!aluno) {
-    await patchBookingAlways({
-      gymId,
-      bookingNumber,
-      classId,
-      accept: false,
-      reason: "Cadastro do aluno não pôde ser criado",
-      reasonCategory: "USER_DOES_NOT_EXIST",
+    const aluno = await upsertAlunoFromWellhub(db, user);
+    if (!aluno) {
+      await patchBookingAlways({
+        gymId,
+        bookingNumber,
+        classId,
+        accept: false,
+        reason: "Cadastro do aluno não pôde ser criado",
+        reasonCategory: "USER_DOES_NOT_EXIST",
+      });
+      return;
+    }
+
+    const { data: existingBooking } = await db
+      .from("agendamentos")
+      .select("id")
+      .eq("wellhub_booking_number", bookingNumber)
+      .maybeSingle();
+    if (existingBooking) {
+      await patchBookingAlways({ gymId, bookingNumber, classId, accept: true });
+      await occupancyPatch(db, gymId, classId, slotIdResolved, horarioId, data, 1);
+      return;
+    }
+
+    const { data: sameClass } = await db
+      .from("agendamentos")
+      .select("id")
+      .eq("aluno_id", aluno.id)
+      .eq("horario_id", horarioId)
+      .eq("data", data)
+      .maybeSingle();
+    if (sameClass) {
+      await patchBookingAlways({
+        gymId,
+        bookingNumber,
+        classId,
+        accept: false,
+        reason: "Aluno já está agendado nesta aula",
+        reasonCategory: "USER_IS_ALREADY_BOOKED",
+      });
+      return;
+    }
+
+    const booked = await countBooked(db, horarioId, data);
+    if (booked >= cap) {
+      await patchBookingAlways({
+        gymId,
+        bookingNumber,
+        classId,
+        accept: false,
+        reason: "Aula lotada",
+        reasonCategory: "CLASS_IS_FULL",
+      });
+      await occupancyPatch(db, gymId, classId, slotIdResolved, horarioId, data, 0);
+      return;
+    }
+
+    const nome =
+      (user.name ?? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()) || "Aluno Wellhub";
+    const { error: insertErr } = await db.from("agendamentos").insert({
+      aluno_id: aluno.id,
+      nome_aluno: nome,
+      horario_id: horarioId,
+      data,
+      horario: horario?.hora ?? "",
+      status: "Confirmado",
+      wellhub_booking_number: bookingNumber,
+      wellhub_slot_id: slotIdResolved,
+      wellhub_class_id: classId,
+      origem: "wellhub",
     });
-    return;
-  }
 
-  const { data: existingBooking } = await db
-    .from("agendamentos")
-    .select("id")
-    .eq("wellhub_booking_number", bookingNumber)
-    .maybeSingle();
-  if (existingBooking) {
-    await patchBookingAlways({ gymId, bookingNumber, classId, accept: true });
-    await syncOccupancyFor(db, horarioId, data);
-    return;
-  }
-
-  const { data: sameClass } = await db
-    .from("agendamentos")
-    .select("id")
-    .eq("aluno_id", aluno.id)
-    .eq("horario_id", horarioId)
-    .eq("data", data)
-    .maybeSingle();
-  if (sameClass) {
-    await patchBookingAlways({
-      gymId,
-      bookingNumber,
-      classId,
-      accept: false,
-      reason: "Aluno já está agendado nesta aula",
-      reasonCategory: "USER_IS_ALREADY_BOOKED",
-    });
-    return;
-  }
-
-  const booked = await countBooked(db, horarioId, data);
-  if (booked >= cap) {
-    await patchBookingAlways({
-      gymId,
-      bookingNumber,
-      classId,
-      accept: false,
-      reason: "Aula lotada",
-      reasonCategory: "CLASS_IS_FULL",
-    });
-    return;
-  }
-
-  const nome =
-    (user.name ?? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()) || "Aluno Wellhub";
-  const { error: insertErr } = await db.from("agendamentos").insert({
-    aluno_id: aluno.id,
-    nome_aluno: nome,
-    horario_id: horarioId,
-    data,
-    horario: horario?.hora ?? "",
-    status: "Confirmado",
-    wellhub_booking_number: bookingNumber,
-    wellhub_slot_id: slot.id || mapped.wellhub_slot_id,
-    wellhub_class_id: classId,
-    origem: "wellhub",
-  });
-
-  if (insertErr) {
-    const dup = String(insertErr.message).toLowerCase().includes("unique") ||
-      String(insertErr.message).toLowerCase().includes("duplicate");
-    await patchBookingAlways({
-      gymId,
-      bookingNumber,
-      classId,
-      accept: false,
-      reason: dup ? "Aluno já está agendado nesta aula" : "Falha ao criar agendamento",
-      reasonCategory: dup ? "USER_IS_ALREADY_BOOKED" : "TECHNICAL_ERROR",
-    });
-    return;
+    if (insertErr) {
+      const dup = String(insertErr.message).toLowerCase().includes("unique") ||
+        String(insertErr.message).toLowerCase().includes("duplicate");
+      await patchBookingAlways({
+        gymId,
+        bookingNumber,
+        classId,
+        accept: false,
+        reason: dup ? "Aluno já está agendado nesta aula" : "Falha ao criar agendamento",
+        reasonCategory: dup ? "USER_IS_ALREADY_BOOKED" : "TECHNICAL_ERROR",
+      });
+      return;
+    }
+  } else {
+    console.log(
+      `[wellhub-webhook] booking-requested sem mapa local — aceitando via slot Wellhub class=${classId} slot=${slotIdResolved}`,
+    );
   }
 
   await patchBookingAlways({ gymId, bookingNumber, classId, accept: true });
-  await syncOccupancyFor(db, horarioId, data);
+  await occupancyPatch(
+    db,
+    gymId,
+    classId,
+    slotIdResolved,
+    horarioId || undefined,
+    data || undefined,
+    1,
+  );
 }
 
 async function handleBookingCanceled(eventData: Record<string, unknown>) {
   const db = serviceClient();
   const slot = slotFromEvent(eventData);
+  const gymId = slot.gym_id || envGymId();
   const bookingNumber = slot.booking_number;
-  if (!bookingNumber) return;
+  const classId = slot.class_id;
+  const slotId = slot.id;
 
-  const { data: ag } = await db
-    .from("agendamentos")
-    .select("id, horario_id, data")
-    .eq("wellhub_booking_number", bookingNumber)
-    .maybeSingle();
+  let horarioId = 0;
+  let data = "";
 
-  if (ag) {
-    await db.from("agendamentos").delete().eq("id", ag.id);
-    await syncOccupancyFor(db, ag.horario_id as number, ag.data as string);
-    return;
+  if (bookingNumber) {
+    const { data: ag } = await db
+      .from("agendamentos")
+      .select("id, horario_id, data")
+      .eq("wellhub_booking_number", bookingNumber)
+      .maybeSingle();
+
+    if (ag) {
+      await db.from("agendamentos").delete().eq("id", ag.id);
+      horarioId = Number(ag.horario_id);
+      data = String(ag.data ?? "");
+      console.log(`[wellhub-webhook] agendamento local removido booking=${bookingNumber} id=${ag.id}`);
+    }
   }
 
-  const mapped = await resolveSlot(db, slot.gym_id || envGymId(), slot.id, slot.class_id);
-  if (mapped) {
-    await syncOccupancyFor(db, mapped.horario_id as number, mapped.data as string);
-  }
+  const mapped = (!horarioId || !classId || !slotId)
+    ? await resolveSlot(db, gymId, slotId, classId)
+    : null;
+
+  const classResolved = classId || Number(mapped?.wellhub_class_id ?? 0);
+  const slotResolved = slotId || Number(mapped?.wellhub_slot_id ?? 0);
+  const horarioResolved = horarioId || Number(mapped?.horario_id ?? 0);
+  const dataResolved = data || String(mapped?.data ?? "");
+
+  // Wellhub já cancela o booking do usuário — NÃO chamar PATCH booking cancel.
+  await occupancyPatch(
+    db,
+    gymId,
+    classResolved,
+    slotResolved,
+    horarioResolved || undefined,
+    dataResolved || undefined,
+    -1,
+  );
 }
 
 async function resolveSlot(
