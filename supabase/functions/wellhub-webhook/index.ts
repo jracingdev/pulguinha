@@ -8,7 +8,9 @@ import {
   getSlot,
   markCheckedInToday,
   normalizeGympassId,
+  onlyDigits,
   patchBookingAlways,
+  resolveGymId,
   saoPauloDateISO,
   serviceClient,
   slotFromEvent,
@@ -124,33 +126,52 @@ async function processEvent(
 async function handleCheckin(eventData: Record<string, unknown>, source: string) {
   const db = serviceClient();
   const user = userFromEvent(eventData);
-  const gympassId = normalizeGympassId(user.unique_token ?? "");
-  if (gympassId.length !== 13) {
-    console.warn("[wellhub-webhook] checkin sem unique_token");
+  const gym = (eventData.gym ?? {}) as Record<string, unknown>;
+  const gymId = resolveGymId(gym.id, eventData.gym_id);
+  const rawToken = String(user.unique_token ?? "").trim();
+  const rawDigits = onlyDigits(rawToken);
+
+  if (!rawToken) {
+    console.warn(
+      `[wellhub-webhook] checkin sem unique_token gym=${gymId} source=${source} — validate pulado`,
+    );
     return;
   }
 
+  if (rawDigits.length !== 13) {
+    console.warn(
+      `[wellhub-webhook] checkin unique_token curto (${rawDigits.length} dígitos) gym=${gymId} source=${source} — seguindo com id normalizado`,
+    );
+  }
+
+  const gympassId = normalizeGympassId(rawToken);
   await upsertAlunoFromWellhub(db, user);
 
-  const gym = (eventData.gym ?? {}) as Record<string, unknown>;
   const product = (gym.product ?? eventData.product ?? {}) as Record<string, unknown>;
   const booking = (eventData.booking ?? {}) as Record<string, unknown>;
   const bookingNumber = String(booking.booking_number ?? "").trim() || undefined;
   const productId = product.id != null ? Number(product.id) : undefined;
 
   if (await alreadyCheckedInToday(db, gympassId)) {
-    console.log("[wellhub-webhook] check-in já consumido hoje", gympassId.slice(-4));
+    console.log(
+      `[wellhub-webhook] check-in já consumido hoje gym=${gymId} id=...${gympassId.slice(-4)} source=${source}`,
+    );
     return;
   }
 
-  const result = await validateAccess(gympassId);
+  const result = await validateAccess(gympassId, gymId);
+  console.log(
+    `[wellhub-webhook] validate gym=${result.gymId} sandbox=${result.sandbox} source=${source} id=...${gympassId.slice(-4)} → HTTP ${result.status}`,
+  );
   if (result.ok) {
     await markCheckedInToday(db, gympassId, source, {
       booking_number: bookingNumber,
       product_id: productId,
     });
   } else {
-    console.warn("[wellhub-webhook] validate falhou", result.status, result.text);
+    console.warn(
+      `[wellhub-webhook] validate falhou gym=${result.gymId} sandbox=${result.sandbox} HTTP ${result.status} ${String(result.text).slice(0, 300)}`,
+    );
   }
 }
 

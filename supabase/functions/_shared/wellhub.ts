@@ -264,10 +264,12 @@ export async function wellhubFetch(
   return { ok: res.ok, status: res.status, json, text, gymId, sandbox, path };
 }
 
-export async function validateAccess(gympassId: string) {
+export async function validateAccess(gympassId: string, gymId?: string) {
+  const resolvedGymId = resolveGymId(gymId);
   return wellhubFetch("/access/v1/validate", {
     method: "POST",
-    headers: { "X-Gym-Id": envGymId() },
+    gymId: resolvedGymId,
+    headers: { "X-Gym-Id": resolvedGymId },
     body: JSON.stringify({ gympass_id: gympassId }),
   });
 }
