@@ -157,16 +157,22 @@ async function syncSchedule(gymId: string) {
 
   const remoteClassesRes = await listClasses(gymId);
   const remoteClasses = asArray(remoteClassesRes.json, ["classes"]);
+  logs.push(`classes remotas gym=${gymId} status=${remoteClassesRes.status} n=${remoteClasses.length}`);
+  const remoteIds = new Set<number>();
   const byReference = new Map<string, number>();
   for (const c of remoteClasses) {
     const ref = String(c.reference ?? "");
     const id = Number(c.id);
+    if (Number.isFinite(id)) remoteIds.add(id);
     if (ref && Number.isFinite(id)) byReference.set(ref, id);
   }
 
+  // Só reusa mapeamento local se a class existir NESTE gym (evita IDs de sandbox na produção).
   const { data: mappedClasses } = await db.from("wellhub_classes").select("horario_id, wellhub_class_id, reference");
   for (const m of mappedClasses ?? []) {
-    byReference.set(String(m.reference), Number(m.wellhub_class_id));
+    const id = Number(m.wellhub_class_id);
+    if (!remoteIds.has(id)) continue;
+    byReference.set(String(m.reference), id);
   }
 
   const classMap = new Map<number, number>();
@@ -186,14 +192,19 @@ async function syncSchedule(gymId: string) {
       ...(categoryIds.length ? { categories: categoryIds } : {}),
     };
 
-    let classId = byReference.get(reference);
-    if (classId) {
-      const put = await putClass(gymId, classId, payload);
-      logs.push(`PUT class ${classId} (${reference}) → ${put.status}`);
-    } else {
+    const existingId = byReference.get(reference);
+    let classId: number | undefined;
+    if (existingId) {
+      const put = await putClass(gymId, existingId, payload);
+      logs.push(`PUT class ${existingId} (${reference}) → ${put.status}`);
+      if (put.ok) classId = existingId;
+      else logs.push(`PUT class ${existingId} falhou neste gym — criando nova`);
+    }
+    if (!classId) {
       const created = await createClasses(gymId, [payload]);
       const createdList = asArray(created.json, ["classes"]);
-      classId = Number(createdList[0]?.id);
+      const createdBody = created.json as Record<string, unknown> | null;
+      classId = Number(createdList[0]?.id ?? createdBody?.id);
       logs.push(`POST class (${reference}) → ${created.status} id=${classId || "?"}`);
       if (!classId) {
         logs.push(`falha criar class: ${created.text}`);
@@ -234,6 +245,10 @@ async function syncSchedule(gymId: string) {
     for (const day of days) {
       if (weekdays.size && !weekdays.has(weekdayIso(day))) continue;
       const occur = occurDateIso(day, String(h.hora));
+      const occurMs = Date.parse(occur);
+      if (Number.isFinite(occurMs) && occurMs < Date.now()) {
+        continue;
+      }
       const window = bookingWindowFor(occur);
       const booked = await countLocal(db, Number(h.id), day);
       const slotPayload = {
