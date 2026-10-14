@@ -10,7 +10,9 @@ class PartnerConfigStorage {
   static const wellhubGymIdKey = 'partner_wellhub_gym_id';
   static const wellhubSandboxKey = 'partner_wellhub_sandbox';
   static const totalpassApiKeyKey = 'partner_totalpass_api_key_enc';
+  static const totalpassPlaceApiKeyKey = 'partner_totalpass_place_api_key_enc';
   static const totalpassServiceCodeKey = 'partner_totalpass_service_code';
+  static const totalpassPlaceIdKey = 'partner_totalpass_place_id';
   static const totalpassPlanCodeKey = 'partner_totalpass_plan_code';
   static const totalpassSandboxKey = 'partner_totalpass_sandbox';
 
@@ -35,6 +37,8 @@ class PartnerConfigStorage {
       wellhubGymId: prefs.getString(wellhubGymIdKey) ?? '',
       wellhubUseSandbox: prefs.getBool(wellhubSandboxKey) ?? false,
       totalpassApiKey: _decodeSecret(prefs.getString(totalpassApiKeyKey) ?? ''),
+      totalpassPlaceApiKey: _decodeSecret(prefs.getString(totalpassPlaceApiKeyKey) ?? ''),
+      totalpassPlaceId: prefs.getString(totalpassPlaceIdKey) ?? '',
       totalpassServiceProviderCode: prefs.getString(totalpassServiceCodeKey) ?? '',
       totalpassPlanCode: prefs.getString(totalpassPlanCodeKey) ?? '',
       totalpassUseSandbox: prefs.getBool(totalpassSandboxKey) ?? false,
@@ -47,6 +51,8 @@ class PartnerConfigStorage {
     await prefs.setString(wellhubGymIdKey, config.wellhubGymId.trim());
     await prefs.setBool(wellhubSandboxKey, config.wellhubUseSandbox);
     await prefs.setString(totalpassApiKeyKey, _encodeSecret(config.totalpassApiKey.trim()));
+    await prefs.setString(totalpassPlaceApiKeyKey, _encodeSecret(config.totalpassPlaceApiKey.trim()));
+    await prefs.setString(totalpassPlaceIdKey, config.totalpassPlaceId.trim());
     await prefs.setString(totalpassServiceCodeKey, config.totalpassServiceProviderCode.trim());
     await prefs.setString(totalpassPlanCodeKey, config.totalpassPlanCode.trim());
     await prefs.setBool(totalpassSandboxKey, config.totalpassUseSandbox);
@@ -59,6 +65,8 @@ class PartnerStoredConfig {
     this.wellhubGymId = '',
     this.wellhubUseSandbox = false,
     this.totalpassApiKey = '',
+    this.totalpassPlaceApiKey = '',
+    this.totalpassPlaceId = '',
     this.totalpassServiceProviderCode = '',
     this.totalpassPlanCode = '',
     this.totalpassUseSandbox = false,
@@ -68,6 +76,8 @@ class PartnerStoredConfig {
   final String wellhubGymId;
   final bool wellhubUseSandbox;
   final String totalpassApiKey;
+  final String totalpassPlaceApiKey;
+  final String totalpassPlaceId;
   final String totalpassServiceProviderCode;
   final String totalpassPlanCode;
   final bool totalpassUseSandbox;

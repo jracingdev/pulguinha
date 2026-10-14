@@ -99,9 +99,9 @@ class PartnerAccessService {
       return _validateWellhubDirect(identifier, cfg);
     }
 
-    if (!PartnerConfig.totalpassConfigured) {
+    if (!PartnerConfig.totalpassLegacyConfigured) {
       return PartnerAccessResult.failure(
-        'TotalPass não configurado. Peça ao professor para configurar no painel admin.',
+        'Check-in TotalPass chega pelo app TotalPass. Abra o app, faça o check-in na academia e entre com o CPF.',
       );
     }
     return _validateTotalpassDirect(identifier, identifierType, mode, cfg);

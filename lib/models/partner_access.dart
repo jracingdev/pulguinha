@@ -41,8 +41,8 @@ class PartnerAccessResult {
 extension PartnerProviderX on PartnerProvider {
   String get label => this == PartnerProvider.wellhub ? 'Wellhub' : 'TotalPass';
 
-  /// Modo exigido pela documentação oficial no login do aluno:
-  /// GymPass valida check-in feito no app; TotalPass consome o token (track_usages).
+  /// Wellhub valida o check-in do app. TotalPass usa o webhook do dia e,
+  /// se a x-api-key legada existir, cai para track_usages (modo use).
   PartnerAccessMode get loginAccessMode =>
       this == PartnerProvider.wellhub ? PartnerAccessMode.validate : PartnerAccessMode.use;
 

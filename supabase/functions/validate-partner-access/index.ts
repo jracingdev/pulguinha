@@ -4,6 +4,7 @@ import {
   markCheckedInToday,
   serviceClient,
 } from "../_shared/wellhub.ts";
+import { hasTotalpassCheckinToday } from "../_shared/totalpass.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -202,13 +203,6 @@ serve(async (req) => {
         undefined;
       const sandbox = body.totalpass_sandbox ?? Deno.env.get("TOTALPASS_SANDBOX") === "true";
 
-      if (!apiKey || !serviceCode) {
-        return jsonResponse({
-          ok: false,
-          message: "Configure TOTALPASS_API_KEY e código da academia nos secrets do Supabase.",
-        }, 500);
-      }
-
       let idType: TotalpassIdType = body.identifier_type ?? "token";
       let normalized = identifier.trim();
 
@@ -217,6 +211,29 @@ serve(async (req) => {
         if (normalized.length !== 11) {
           return jsonResponse({ ok: false, message: "CPF inválido." }, 422);
         }
+        try {
+          const db = serviceClient();
+          if (await hasTotalpassCheckinToday(db, normalized)) {
+            console.log(`[AUDIT] ${new Date().toISOString()} | Provider: totalpass (cpf) | Mode: webhook | ID: ${maskIdentifier(normalized)} | Success: true`);
+            return jsonResponse({
+              ok: true,
+              provider,
+              identifier: normalized,
+              identifier_type: idType,
+              mode,
+              source: "webhook",
+            });
+          }
+        } catch (lookupError) {
+          console.warn("[totalpass] lookup check-in do dia", String(lookupError));
+        }
+      }
+
+      if (!apiKey || !serviceCode) {
+        return jsonResponse({
+          ok: false,
+          message: "Check-in TotalPass ainda não chegou. Abra o app TotalPass, selecione a academia e faça o check-in.",
+        }, 422);
       }
 
       const result = await validateTotalpass(

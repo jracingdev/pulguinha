@@ -7,6 +7,7 @@ import 'package:pulguinha/models/partner_access.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/services/partner_access_service.dart';
 import 'package:pulguinha/services/partner_config_storage.dart';
+import 'package:pulguinha/services/totalpass_sync_service.dart';
 import 'package:pulguinha/services/wellhub_sync_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -23,6 +24,8 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
   final _wellhubTokenCtrl = TextEditingController();
   final _wellhubGymIdCtrl = TextEditingController();
   final _totalpassApiKeyCtrl = TextEditingController();
+  final _totalpassPlaceKeyCtrl = TextEditingController();
+  final _totalpassPlaceIdCtrl = TextEditingController();
   final _totalpassServiceCodeCtrl = TextEditingController();
   final _totalpassPlanCodeCtrl = TextEditingController();
   final _testWellhubIdCtrl = TextEditingController();
@@ -33,8 +36,10 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
   bool _saving = false;
   bool _testing = false;
   bool _syncing = false;
+  bool _syncingTotalpass = false;
   bool _obscureWellhub = true;
   bool _obscureTotalpass = true;
+  bool _obscurePlace = true;
   bool _wellhubSandbox = false;
   bool _totalpassSandbox = false;
   String? _erroSenha;
@@ -52,6 +57,8 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
     _wellhubTokenCtrl.dispose();
     _wellhubGymIdCtrl.dispose();
     _totalpassApiKeyCtrl.dispose();
+    _totalpassPlaceKeyCtrl.dispose();
+    _totalpassPlaceIdCtrl.dispose();
     _totalpassServiceCodeCtrl.dispose();
     _totalpassPlanCodeCtrl.dispose();
     _testWellhubIdCtrl.dispose();
@@ -89,6 +96,10 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
       _testWellhubIdCtrl.text = PartnerConfig.testGympassIds.first;
     }
     _totalpassApiKeyCtrl.text = stored.totalpassApiKey;
+    _totalpassPlaceKeyCtrl.text = stored.totalpassPlaceApiKey;
+    _totalpassPlaceIdCtrl.text = stored.totalpassPlaceId.trim().isEmpty
+        ? PartnerConfig.totalpassProductionPlaceId
+        : stored.totalpassPlaceId;
     _totalpassServiceCodeCtrl.text = stored.totalpassServiceProviderCode;
     _totalpassPlanCodeCtrl.text = stored.totalpassPlanCode;
     _totalpassSandbox = stored.totalpassUseSandbox;
@@ -107,6 +118,8 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
         wellhubGymId: _wellhubGymIdCtrl.text,
         wellhubUseSandbox: _wellhubSandbox,
         totalpassApiKey: _totalpassApiKeyCtrl.text,
+        totalpassPlaceApiKey: _totalpassPlaceKeyCtrl.text,
+        totalpassPlaceId: _totalpassPlaceIdCtrl.text,
         totalpassServiceProviderCode: _totalpassServiceCodeCtrl.text,
         totalpassPlanCode: _totalpassPlanCodeCtrl.text,
         totalpassUseSandbox: _totalpassSandbox,
@@ -173,16 +186,44 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
     });
   }
 
+  Future<void> _copyTotalpassWebhook() async {
+    await Clipboard.setData(ClipboardData(text: PartnerConfig.totalpassWebhookUrl));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('URL do webhook TotalPass copiada')),
+    );
+  }
+
+  Future<void> _syncTotalpass() async {
+    setState(() {
+      _syncingTotalpass = true;
+      _testResult = null;
+    });
+    final result = await TotalpassSyncService.instance.syncSchedule();
+    if (!mounted) return;
+    final titles = result['titles'];
+    final titleText = titles is List && titles.isNotEmpty ? ' Aulas: ${titles.join(', ')}.' : '';
+    setState(() {
+      _syncingTotalpass = false;
+      _testResult = result['ok'] == true
+          ? 'TotalPass: ${result['events_created'] ?? 0} aulas novas, ${result['events_updated'] ?? 0} atualizadas, ${result['events_remote'] ?? '?'} na Booking.$titleText'
+          : 'Falha ao sincronizar TotalPass: ${result['message'] ?? result}';
+    });
+  }
+
   Future<void> _testTotalpass() async {
     setState(() {
       _testing = true;
       _testResult = null;
     });
+    final raw = _testTotalpassCtrl.text.trim();
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    final asCpf = digits.length == 11;
     final result = await PartnerAccessService.instance.validate(
       provider: PartnerProvider.totalpass,
-      identifier: _testTotalpassCtrl.text,
-      identifierType: TotalpassIdentifierType.token,
-      mode: PartnerAccessMode.use,
+      identifier: raw,
+      identifierType: asCpf ? TotalpassIdentifierType.cpf : TotalpassIdentifierType.token,
+      mode: asCpf ? PartnerAccessMode.validate : PartnerAccessMode.use,
     );
     if (!mounted) return;
     setState(() {
@@ -402,20 +443,76 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionTitle(icon: '🟢', title: 'TotalPass (inativo / em breve)'),
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.yellow.withValues(alpha: 0.08),
-                border: Border.all(color: AppColors.yellow.withValues(alpha: 0.25)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text(
-                'Login e cadastro públicos não oferecem TotalPass. A configuração abaixo fica salva para religar depois (kShowTotalpassUi).',
-                style: TextStyle(fontSize: 11, color: AppColors.yellow, height: 1.35, decoration: TextDecoration.none),
+            const SectionTitle(icon: '🟢', title: 'TotalPass'),
+            Text(
+              '${PartnerConfig.totalpassProductionUnitName} · placeId ${PartnerConfig.totalpassProductionPlaceId}',
+              style: const TextStyle(fontSize: 12, color: AppColors.white, height: 1.35, fontWeight: FontWeight.w800, decoration: TextDecoration.none),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Esse ID é o placeId da unidade real. A place_api_key é outro dado: o UUID que a academia gera em Integrações. A chave do portal de desenvolvedores é só a unidade de teste.',
+              style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35, decoration: TextDecoration.none),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _totalpassPlaceKeyCtrl.text.trim().isNotEmpty
+                  ? 'place_api_key salva neste aparelho. O sync só publica a grade se ela for da unidade 203438.'
+                  : 'Cole a place API key da unidade FUNCIONAL DO PULGUINHA. A partner API key não entra no app.',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.none,
+                color: _totalpassPlaceKeyCtrl.text.trim().isNotEmpty ? AppColors.neon : AppColors.yellow,
               ),
             ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _totalpassPlaceIdCtrl,
+              keyboardType: TextInputType.number,
+              decoration: _fieldDecoration('ID da unidade (placeId) — FUNCIONAL DO PULGUINHA'),
+              style: const TextStyle(color: AppColors.white, fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _totalpassPlaceKeyCtrl,
+              obscureText: _obscurePlace,
+              onChanged: (_) => setState(() {}),
+              decoration: _fieldDecoration('place_api_key da academia').copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePlace ? Icons.visibility : Icons.visibility_off, color: AppColors.gray),
+                  onPressed: () => setState(() => _obscurePlace = !_obscurePlace),
+                ),
+              ),
+              style: const TextStyle(color: AppColors.white, fontSize: 12),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Sandbox TotalPass (booking e check-in staging)', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
+              value: _totalpassSandbox,
+              activeColor: AppColors.neon,
+              onChanged: (v) => setState(() => _totalpassSandbox = v),
+            ),
+            const Text('Webhook de reserva e de check-in', style: TextStyle(fontSize: 12, color: AppColors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+            const SizedBox(height: 6),
+            SelectableText(
+              PartnerConfig.totalpassWebhookUrl,
+              style: const TextStyle(fontSize: 11, color: AppColors.neon, decoration: TextDecoration.none),
+            ),
+            const SizedBox(height: 8),
+            GhostButton(label: 'Copiar URL do webhook TotalPass', fullWidth: true, onPressed: _copyTotalpassWebhook),
+            const SizedBox(height: 10),
+            GhostButton(
+              label: _syncingTotalpass ? 'Sincronizando grade TotalPass...' : 'Sincronizar grade TotalPass',
+              fullWidth: true,
+              onPressed: _syncingTotalpass ? null : _syncTotalpass,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'API legada de catraca (track_usages) — opcional. O check-in do aluno chega pelo webhook.',
+              style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35, decoration: TextDecoration.none),
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _totalpassApiKeyCtrl,
               obscureText: _obscureTotalpass,
@@ -430,7 +527,7 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
             const SizedBox(height: 10),
             TextField(
               controller: _totalpassServiceCodeCtrl,
-              decoration: _fieldDecoration('Código da academia (service_provider_code)'),
+              decoration: _fieldDecoration('Código para integração (8 caracteres, API legada)'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
             const SizedBox(height: 10),
@@ -439,16 +536,10 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
               decoration: _fieldDecoration('Código do plano (service_provider_plan_code opcional)'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Sandbox TotalPass (staging)', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
-              value: _totalpassSandbox,
-              activeColor: AppColors.neon,
-              onChanged: (v) => setState(() => _totalpassSandbox = v),
-            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _testTotalpassCtrl,
-              decoration: _fieldDecoration('Testar token ou CPF TotalPass'),
+              decoration: _fieldDecoration('CPF do check-in do dia, ou token da API legada'),
               style: const TextStyle(color: AppColors.white, fontSize: 12),
             ),
             const SizedBox(height: 8),

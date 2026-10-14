@@ -14,8 +14,8 @@ class PartnerLoginPanel extends StatefulWidget {
   /// UI de login GymPass/Wellhub e TotalPass habilitada na tela inicial/login.
   static const bool kShowPartnerLoginUi = true;
 
-  /// Chip/cadastro público TotalPass. `false` = Wellhub ativo, TotalPass em breve (código permanece).
-  static const bool kShowTotalpassUi = false;
+  /// Chip/cadastro público TotalPass, no mesmo nível do Wellhub.
+  static const bool kShowTotalpassUi = true;
 
   final bool loading;
   final Future<void> Function(PartnerProvider provider, String identifier, TotalpassIdentifierType type) onLogin;
@@ -141,27 +141,9 @@ class _PartnerLoginPanelState extends State<PartnerLoginPanel> {
             style: const TextStyle(fontSize: 11, color: AppColors.gray, height: 1.45),
           ),
         ),
-        if (_provider == PartnerProvider.totalpass) ...[
-          const SizedBox(height: 10),
-          DropdownButtonFormField<TotalpassIdentifierType>(
-            value: _tpType,
-            dropdownColor: AppColors.card,
-            decoration: const InputDecoration(labelText: 'Tipo de identificação'),
-            items: const [
-              DropdownMenuItem(value: TotalpassIdentifierType.cpf, child: Text('CPF cadastrado (recomendado)')),
-              DropdownMenuItem(value: TotalpassIdentifierType.token, child: Text('Token diário do app')),
-              DropdownMenuItem(value: TotalpassIdentifierType.code, child: Text('Código de beneficiário')),
-            ],
-            onChanged: widget.loading
-                ? null
-                : (v) => setState(() {
-                      if (v != null) _tpType = v;
-                    }),
-          ),
-        ],
         const SizedBox(height: 10),
         FieldLabel(
-          label: _provider == PartnerProvider.wellhub ? 'ID Wellhub (13 dígitos)' : 'Identificador TotalPass',
+          label: _provider == PartnerProvider.wellhub ? 'ID Wellhub (13 dígitos)' : 'CPF TotalPass',
           child: TextField(
             controller: _identifierCtrl,
             enabled: !widget.loading,

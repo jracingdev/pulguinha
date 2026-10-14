@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.wellhub-sync]
 verify_jwt = true
+
+[functions.totalpass-webhook]
+verify_jwt = false
+
+[functions.totalpass-sync]
+verify_jwt = true
