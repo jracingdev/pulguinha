@@ -34,33 +34,55 @@ class HorarioHelper {
     return copia;
   }
 
-  /// Normaliza texto de dias (`Seg/Qua/Sex`, `Seg a Sex`, etc.) para weekdays ISO
-  /// (1 = segunda … 7 = domingo). Texto vazio = todos os dias.
+  static const _rotulos = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+  /// `Seg a Sex`, `Sáb e Dom`, `Seg/Dom`, `Todos os dias` — o que o restante do app lê.
+  static String formatDias(Set<int> days) {
+    final sorted = days.where((d) => d >= 1 && d <= 7).toSet().toList()..sort();
+    if (sorted.isEmpty) return '';
+    if (sorted.length == 7) return 'Todos os dias';
+    final contiguous = sorted.last - sorted.first + 1 == sorted.length;
+    if (sorted.length == 2 && sorted.first == 6 && sorted.last == 7) return 'Sáb e Dom';
+    if (contiguous && sorted.length >= 3) {
+      return '${_rotulos[sorted.first - 1]} a ${_rotulos[sorted.last - 1]}';
+    }
+    return sorted.map((d) => _rotulos[d - 1]).join('/');
+  }
+
+  static final _faixaRe = RegExp(
+    r'(seg|ter|qua|qui|sex|sab|dom|mon|tue|wed|thu|fri|sat|sun)\w*(?:-feira)?\s*(?:a|-|–|—)\s*(seg|ter|qua|qui|sex|sab|dom|mon|tue|wed|thu|fri|sat|sun)\w*(?:-feira)?',
+  );
+
+  /// Normaliza texto de dias (`Seg/Qua/Sex`, `Seg a Sex`, `Seg a Sáb`, `Dom`, etc.)
+  /// para weekdays ISO (1 = segunda … 7 = domingo). Texto vazio = todos os dias.
+  /// "Segunda a Sexta" continua só de segunda a sexta.
   static Set<int> weekdaysFromDias(String raw) {
     final t = _semAcento(raw.toLowerCase().trim());
     if (t.isEmpty || t.contains('todos') || t == 'diario' || t == 'diariamente') {
       return {1, 2, 3, 4, 5, 6, 7};
     }
 
-    if (RegExp(r'seg(?:unda)?\s*a\s*sex(?:ta)?').hasMatch(t) ||
-        RegExp(r'seg(?:unda)?\s*[-–]\s*sex(?:ta)?').hasMatch(t) ||
-        t.contains('segunda a sexta') ||
-        t.contains('uteis') ||
-        t.contains('util')) {
-      return {1, 2, 3, 4, 5};
-    }
-
-    if (RegExp(r'sab(?:ado)?\s*e\s*dom(?:ingo)?').hasMatch(t) ||
-        RegExp(r'sab(?:ado)?\s*/\s*dom(?:ingo)?').hasMatch(t)) {
-      return {6, 7};
-    }
-
-    final parts = t
-        .split(RegExp(r'[/|,;]+|\se\s+'))
-        .map((p) => p.trim())
-        .where((p) => p.isNotEmpty);
-
     final out = <int>{};
+    for (final m in _faixaRe.allMatches(t)) {
+      final a = _prefixToWeekday(m.group(1)!);
+      final b = _prefixToWeekday(m.group(2)!);
+      if (a == null || b == null) continue;
+      if (a <= b) {
+        for (var d = a; d <= b; d++) {
+          out.add(d);
+        }
+      } else {
+        out.add(a);
+        out.add(b);
+      }
+    }
+
+    if (RegExp(r'\buteis\b').hasMatch(t) || RegExp(r'\butil\b').hasMatch(t)) {
+      out.addAll({1, 2, 3, 4, 5});
+    }
+
+    final resto = t.replaceAll(_faixaRe, ' ');
+    final parts = resto.split(RegExp(r'[/|,;]+|\se\s+')).map((p) => p.trim()).where((p) => p.isNotEmpty);
     for (final part in parts) {
       final w = _tokenToWeekday(part);
       if (w != null) out.add(w);
@@ -90,6 +112,34 @@ class HorarioHelper {
       .replaceAll('õ', 'o')
       .replaceAll('ú', 'u')
       .replaceAll('ç', 'c');
+
+  static int? _prefixToWeekday(String prefix) {
+    switch (prefix) {
+      case 'seg':
+      case 'mon':
+        return 1;
+      case 'ter':
+      case 'tue':
+        return 2;
+      case 'qua':
+      case 'wed':
+        return 3;
+      case 'qui':
+      case 'thu':
+        return 4;
+      case 'sex':
+      case 'fri':
+        return 5;
+      case 'sab':
+      case 'sat':
+        return 6;
+      case 'dom':
+      case 'sun':
+        return 7;
+      default:
+        return null;
+    }
+  }
 
   static int? _tokenToWeekday(String token) {
     final t = _semAcento(token.toLowerCase().trim());

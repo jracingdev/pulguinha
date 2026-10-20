@@ -161,24 +161,74 @@ export function semAcento(s: string) {
   return s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
 
+const DIA_FAIXA = /(seg|ter|qua|qui|sex|sab|dom|mon|tue|wed|thu|fri|sat|sun)\w*(?:-feira)?\s*(?:a|-|–|—)\s*(seg|ter|qua|qui|sex|sab|dom|mon|tue|wed|thu|fri|sat|sun)\w*(?:-feira)?/gi;
+
+function prefixToWeekday(prefix: string): number | null {
+  switch (prefix) {
+    case "seg":
+    case "mon":
+      return 1;
+    case "ter":
+    case "tue":
+      return 2;
+    case "qua":
+    case "wed":
+      return 3;
+    case "qui":
+    case "thu":
+      return 4;
+    case "sex":
+    case "fri":
+      return 5;
+    case "sab":
+    case "sat":
+      return 6;
+    case "dom":
+    case "sun":
+      return 7;
+    default:
+      return null;
+  }
+}
+
+function tokenToWeekday(token: string): number | null {
+  const p = token.trim();
+  if (p.startsWith("seg") || p === "mon" || p.startsWith("monday")) return 1;
+  if (p.startsWith("ter") || p === "tue" || p.startsWith("tuesday")) return 2;
+  if (p.startsWith("qua") || p === "wed" || p.startsWith("wednesday")) return 3;
+  if (p.startsWith("qui") || p === "thu" || p.startsWith("thursday")) return 4;
+  if (p.startsWith("sex") || p === "fri" || p.startsWith("friday")) return 5;
+  if (p.startsWith("sab") || p === "sat" || p.startsWith("saturday")) return 6;
+  if (p.startsWith("dom") || p === "sun" || p.startsWith("sunday")) return 7;
+  return null;
+}
+
+/** ISO 1 = segunda … 7 = domingo. "Segunda a Sexta" não inclui sábado nem domingo. */
 export function weekdaysFromDias(raw: string): Set<number> {
   const t = semAcento(raw.trim());
   if (!t || t.includes("todos") || t === "diario" || t === "diariamente") {
     return new Set([1, 2, 3, 4, 5, 6, 7]);
   }
-  if (/seg(?:unda)?\s*a\s*sex(?:ta)?/.test(t) || /seg(?:unda)?\s*[-–]\s*sex(?:ta)?/.test(t) || t.includes("uteis")) {
-    return new Set([1, 2, 3, 4, 5]);
-  }
   const out = new Set<number>();
-  for (const part of t.split(/[/|,;]+|\se\s+/)) {
-    const p = part.trim();
-    if (p.startsWith("seg") || p === "mon") out.add(1);
-    else if (p.startsWith("ter") || p === "tue") out.add(2);
-    else if (p.startsWith("qua") || p === "wed") out.add(3);
-    else if (p.startsWith("qui") || p === "thu") out.add(4);
-    else if (p.startsWith("sex") || p === "fri") out.add(5);
-    else if (p.startsWith("sab") || p === "sat") out.add(6);
-    else if (p.startsWith("dom") || p === "sun") out.add(7);
+  const faixa = new RegExp(DIA_FAIXA.source, "gi");
+  for (const m of t.matchAll(faixa)) {
+    const a = prefixToWeekday(m[1]);
+    const b = prefixToWeekday(m[2]);
+    if (a == null || b == null) continue;
+    if (a <= b) {
+      for (let d = a; d <= b; d++) out.add(d);
+    } else {
+      out.add(a);
+      out.add(b);
+    }
+  }
+  if (/\buteis\b/.test(t) || /\butil\b/.test(t)) {
+    for (const d of [1, 2, 3, 4, 5]) out.add(d);
+  }
+  const resto = t.replace(new RegExp(DIA_FAIXA.source, "gi"), " ");
+  for (const part of resto.split(/[/|,;]+|\se\s+/)) {
+    const w = tokenToWeekday(part);
+    if (w != null) out.add(w);
   }
   return out;
 }

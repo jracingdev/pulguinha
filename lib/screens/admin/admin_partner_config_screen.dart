@@ -8,6 +8,7 @@ import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/services/partner_access_service.dart';
 import 'package:pulguinha/services/partner_config_storage.dart';
 import 'package:pulguinha/services/totalpass_sync_service.dart';
+import 'package:pulguinha/utils/totalpass_policy.dart';
 import 'package:pulguinha/services/wellhub_sync_service.dart';
 import 'package:pulguinha/theme/app_colors.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
@@ -449,15 +450,15 @@ class _AdminPartnerConfigScreenState extends State<AdminPartnerConfigScreen> {
               style: const TextStyle(fontSize: 12, color: AppColors.white, height: 1.35, fontWeight: FontWeight.w800, decoration: TextDecoration.none),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Esse ID é o placeId da unidade real. A place_api_key é outro dado: o UUID que a academia gera em Integrações. A chave do portal de desenvolvedores é só a unidade de teste.',
-              style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35, decoration: TextDecoration.none),
+            Text(
+              'A place_api_key define a unidade. J Racing (${TotalpassPolicy.portalTestPlaceId}) publica só uma aula de teste e registra o webhook. A grade real só sai se a chave autenticar ${PartnerConfig.totalpassProductionUnitName} (${TotalpassPolicy.productionPlaceId}).',
+              style: const TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35, decoration: TextDecoration.none),
             ),
             const SizedBox(height: 10),
             Text(
               _totalpassPlaceKeyCtrl.text.trim().isNotEmpty
-                  ? 'place_api_key salva neste aparelho. O sync só publica a grade se ela for da unidade 203438.'
-                  : 'Cole a place API key da unidade FUNCIONAL DO PULGUINHA. A partner API key não entra no app.',
+                  ? 'place_api_key salva neste aparelho. Teste publica 1 aula; a grade real só sai na unidade ${TotalpassPolicy.productionPlaceId}.'
+                  : 'Cole a place API key da unidade FUNCIONAL DO PULGUINHA quando a TotalPass liberar. A partner API key não entra no app.',
               style: TextStyle(
                 fontSize: 12,
                 height: 1.35,

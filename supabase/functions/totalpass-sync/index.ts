@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
+  decideTotalpassPublish,
+  TOTALPASS_PRODUCTION_PLACE_ID,
+  tpWeekday,
+} from "../_shared/totalpass_policy.ts";
+import {
   nextDays,
   padHora,
   weekdaysFromDias,
@@ -41,11 +46,6 @@ function placeFrom(body: Record<string, unknown>) {
 function webhookUrl() {
   const base = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
   return `${base}/functions/v1/totalpass-webhook`;
-}
-
-/** TotalPass weekday: 0 = domingo … 6 = sábado. */
-function tpWeekday(isoWeekday: number) {
-  return isoWeekday % 7;
 }
 
 function toAmPm(hora: string) {
@@ -136,6 +136,18 @@ function errorText(json: unknown, text: string) {
   return text;
 }
 
+async function loadHorarios(
+  db: ReturnType<typeof serviceClient>,
+  logs: string[],
+): Promise<Array<{ id: number; hora: string; dias: string; capacidade?: number }> | null> {
+  const { data, error } = await db.from("horarios").select("id, hora, dias, capacidade").order("id");
+  if (error) {
+    logs.push(error.message);
+    return null;
+  }
+  return (data ?? []) as Array<{ id: number; hora: string; dias: string; capacidade?: number }>;
+}
+
 async function syncSchedule(
   placeApiKey: string,
   sandbox: boolean,
@@ -147,27 +159,29 @@ async function syncSchedule(
 
   const plansRes = await totalpassFetch("booking", "/partner/plans", { placeApiKey, sandbox });
   const authenticated = extractAuthenticatedPlace(plansRes.json);
-  const expectedId = Number(body.totalpass_place_id ?? Deno.env.get("TOTALPASS_PLACE_ID") ?? "203438") || 203438;
   const expectedName = String(Deno.env.get("TOTALPASS_UNIT_NAME") ?? "FUNCIONAL DO PULGUINHA");
-  if (!authenticated.placeId || authenticated.placeId !== expectedId) {
-    logs.push(
-      `unidade autenticada placeId=${authenticated.placeId ?? "?"} nome=${authenticated.name.trim() || "?"} · esperada ${expectedId} ${expectedName}`,
-    );
+  const mode = decideTotalpassPublish(authenticated.placeId);
+  logs.push(
+    `unidade autenticada placeId=${authenticated.placeId ?? "?"} nome=${authenticated.name.trim() || "?"} · modo=${mode}`,
+  );
+  if (mode === "refuse") {
     return {
       ok: false,
       skipped: true,
+      publish_mode: mode,
       message:
         `A place_api_key autenticada é da unidade "${authenticated.name.trim() || "desconhecida"}" (placeId ${authenticated.placeId ?? "?"}). ` +
-        `A unidade real é ${expectedName}, placeId ${expectedId}. ` +
-        "Falta a place_api_key (UUID) gerada no portal de parceiros dessa unidade. A grade não foi publicada na unidade de teste.",
+        `A grade real só publica em ${expectedName}, placeId ${TOTALPASS_PRODUCTION_PLACE_ID}. ` +
+        "A unidade de teste do portal (J Racing, placeId 66691) publica só uma aula de validação. Nada foi publicado.",
       authenticated_place_id: authenticated.placeId,
       authenticated_place_name: authenticated.name.trim(),
-      expected_place_id: expectedId,
+      expected_place_id: TOTALPASS_PRODUCTION_PLACE_ID,
       expected_place_name: expectedName,
       plans_status: plansRes.status,
       logs,
     };
   }
+  const portalTest = mode === "portal_test";
 
   const hooks = await ensureWebhooks(placeApiKey, sandbox, logs);
   const plans = extractPlans(plansRes.json);
@@ -189,11 +203,8 @@ async function syncSchedule(
   const startDate = days[0];
   const endDate = days[days.length - 1];
 
-  const { data: horarios, error: horErr } = await db
-    .from("horarios")
-    .select("id, hora, dias, capacidade")
-    .order("id");
-  if (horErr) return { ok: false, message: horErr.message, logs };
+  const horarios = portalTest ? [] : await loadHorarios(db, logs);
+  if (horarios == null) return { ok: false, message: "falha ao ler horários", logs };
 
   const remoteRes = await totalpassFetch("booking", "/partner/events", { placeApiKey, sandbox });
   const remote = asArray(remoteRes.json, ["events"]);
@@ -202,13 +213,24 @@ async function syncSchedule(
   for (const ev of remote) {
     const ref = String(ev.externalReference ?? ev.external_reference ?? "");
     const desc = String(ev.description ?? "");
-    const fromDesc = desc.match(/horario:(\d+|teste)/);
+    const fromDesc = desc.match(/horario:(\d+|teste-portal|teste)/);
     const key = ref || (fromDesc ? `horario:${fromDesc[1]}` : "");
     if (key) byRef.set(key, ev);
   }
 
-  const rows = horarios ?? [];
-  const specs = rows.length
+  const rows = horarios;
+  const aulaPortal = {
+    horarioId: null as number | null,
+    reference: "horario:teste-portal",
+    title: "Pulguinha — aula teste",
+    description: "horario:teste-portal · validação do portal · não é a grade da unidade",
+    hora: "23:30",
+    dias: "Seg a Sex",
+    slots: 12,
+  };
+  const specs = portalTest
+    ? [aulaPortal]
+    : rows.length
     ? rows.map((h) => ({
       horarioId: Number(h.id),
       reference: `horario:${h.id}`,
@@ -219,16 +241,14 @@ async function syncSchedule(
       slots: Math.max(1, Number(h.capacidade ?? 12) || 12),
     }))
     : [{
-      horarioId: null as number | null,
+      ...aulaPortal,
       reference: "horario:teste",
-      title: "Pulguinha — aula teste",
       description: "horario:teste · grade ainda vazia · Funcional do Pulguinha",
       hora: "07:00",
-      dias: "Seg a Sex",
-      slots: 12,
     }];
 
-  if (!rows.length) logs.push("sem horários locais — publicando 1 evento de teste (seg–sex 07:00)");
+  if (portalTest) logs.push("J Racing: 1 aula de teste (seg–sex 23:30). Grade real não publicada.");
+  else if (!rows.length) logs.push("sem horários locais — publicando 1 evento de teste (seg–sex 07:00)");
 
   let created = 0;
   let updated = 0;
@@ -290,6 +310,7 @@ async function syncSchedule(
   const list = asArray(listed.json, ["events"]);
   return {
     ok: created + updated > 0 || list.length > 0,
+    publish_mode: mode,
     sandbox,
     plan: { id: plan.id, code: plan.code, name: plan.name },
     events_created: created,

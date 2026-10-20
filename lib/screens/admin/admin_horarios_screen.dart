@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:pulguinha/models/models.dart';
 import 'package:pulguinha/providers/app_state.dart';
 import 'package:pulguinha/theme/app_colors.dart';
+import 'package:pulguinha/utils/horario_helper.dart';
 import 'package:pulguinha/widgets/admin_page_layout.dart';
 import 'package:pulguinha/widgets/pulguinha_widgets.dart';
 
@@ -95,45 +96,146 @@ class AdminHorariosScreen extends StatelessWidget {
   }
 
   Future<void> _abrirModal(BuildContext context, AppState state, {Horario? editando}) async {
-    final horaCtrl = TextEditingController(text: editando?.hora ?? '');
-    final diasCtrl = TextEditingController(text: editando?.dias ?? '');
-    final capCtrl = TextEditingController(text: '${editando?.capacidade ?? 12}');
-
     await showPulguinhaModal(
       context: context,
       title: editando == null ? 'Novo Horário' : 'Editar Horário',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FieldLabel(label: 'Horário', child: TextField(controller: horaCtrl, decoration: const InputDecoration(hintText: '06:00'))),
-          FieldLabel(label: 'Dias', child: TextField(controller: diasCtrl, decoration: const InputDecoration(hintText: 'Seg/Qua/Sex'))),
-          FieldLabel(label: 'Vagas (capacidade)', child: TextField(controller: capCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '12'))),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: GhostButton(label: 'Cancelar', onPressed: () => Navigator.pop(context))),
-              const SizedBox(width: 10),
-              Expanded(
-                child: NeonButton(
-                  label: 'Salvar',
-                  onPressed: () {
-                    if (horaCtrl.text.trim().isEmpty || diasCtrl.text.trim().isEmpty) return;
-                    final cap = int.tryParse(capCtrl.text.trim()) ?? 12;
-                    final dados = Horario(
-                      id: editando?.id ?? 0,
-                      hora: horaCtrl.text.trim(),
-                      dias: diasCtrl.text.trim(),
-                      capacidade: cap.clamp(1, 50),
-                    );
-                    state.salvarHorario(editando: editando, dados: dados);
-                    Navigator.pop(context);
-                  },
+      child: _HorarioForm(
+        editando: editando,
+        onCancel: () => Navigator.pop(context),
+        onSave: (dados) {
+          state.salvarHorario(editando: editando, dados: dados);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+}
+
+class _HorarioForm extends StatefulWidget {
+  const _HorarioForm({required this.onSave, required this.onCancel, this.editando});
+
+  final Horario? editando;
+  final VoidCallback onCancel;
+  final ValueChanged<Horario> onSave;
+
+  @override
+  State<_HorarioForm> createState() => _HorarioFormState();
+}
+
+class _HorarioFormState extends State<_HorarioForm> {
+  static const _chips = <(int, String)>[
+    (1, 'Seg'),
+    (2, 'Ter'),
+    (3, 'Qua'),
+    (4, 'Qui'),
+    (5, 'Sex'),
+    (6, 'Sáb'),
+    (7, 'Dom'),
+  ];
+
+  late final TextEditingController _horaCtrl;
+  late final TextEditingController _capCtrl;
+  late Set<int> _dias;
+
+  @override
+  void initState() {
+    super.initState();
+    final editando = widget.editando;
+    _horaCtrl = TextEditingController(text: editando?.hora ?? '');
+    _capCtrl = TextEditingController(text: '${editando?.capacidade ?? 12}');
+    if (editando == null || editando.dias.trim().isEmpty) {
+      _dias = {1, 2, 3, 4, 5, 6};
+    } else {
+      _dias = HorarioHelper.weekdaysFromDias(editando.dias);
+    }
+  }
+
+  @override
+  void dispose() {
+    _horaCtrl.dispose();
+    _capCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _mesmosDias(Set<int> a, Set<int> b) => a.length == b.length && a.containsAll(b);
+
+  String _textoDias() {
+    final original = widget.editando?.dias ?? '';
+    if (widget.editando != null && original.trim().isNotEmpty && _mesmosDias(_dias, HorarioHelper.weekdaysFromDias(original))) {
+      return original;
+    }
+    return HorarioHelper.formatDias(_dias);
+  }
+
+  void _salvar() {
+    if (_horaCtrl.text.trim().isEmpty || _dias.isEmpty) return;
+    final cap = int.tryParse(_capCtrl.text.trim()) ?? 12;
+    widget.onSave(Horario(
+      id: widget.editando?.id ?? 0,
+      hora: _horaCtrl.text.trim(),
+      dias: _textoDias(),
+      capacidade: cap.clamp(1, 50),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = _dias.isEmpty ? 'Marque ao menos um dia.' : _textoDias();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FieldLabel(label: 'Horário', child: TextField(controller: _horaCtrl, decoration: const InputDecoration(hintText: '06:00'))),
+        const Text('Dias da aula', style: TextStyle(fontSize: 12, color: AppColors.gray, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+        const SizedBox(height: 6),
+        const Text(
+          'Sábado e domingo só entram na agenda se estiverem marcados.',
+          style: TextStyle(fontSize: 11, color: AppColors.gray, height: 1.35, decoration: TextDecoration.none),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final chip in _chips)
+              ChoiceChip(
+                label: Text(chip.$2),
+                selected: _dias.contains(chip.$1),
+                onSelected: (sel) {
+                  setState(() {
+                    final next = Set<int>.from(_dias);
+                    if (sel) {
+                      next.add(chip.$1);
+                    } else {
+                      next.remove(chip.$1);
+                    }
+                    _dias = next;
+                  });
+                },
+                selectedColor: AppColors.neon,
+                backgroundColor: AppColors.card2,
+                side: BorderSide.none,
+                labelStyle: TextStyle(
+                  color: _dias.contains(chip.$1) ? const Color(0xFF111111) : AppColors.gray,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(preview, style: const TextStyle(fontSize: 12, color: AppColors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+        const SizedBox(height: 10),
+        FieldLabel(label: 'Vagas (capacidade)', child: TextField(controller: _capCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '12'))),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: GhostButton(label: 'Cancelar', onPressed: widget.onCancel)),
+            const SizedBox(width: 10),
+            Expanded(child: NeonButton(label: 'Salvar', onPressed: _salvar)),
+          ],
+        ),
+      ],
     );
   }
 }
