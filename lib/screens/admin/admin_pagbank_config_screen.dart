@@ -16,14 +16,11 @@ class AdminPagBankConfigScreen extends StatefulWidget {
 
 class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
   final _senhaCtrl = TextEditingController();
-  final _tokenCtrl = TextEditingController();
   final _redirectCtrl = TextEditingController();
 
   bool _unlocked = false;
   bool _loading = true;
   bool _saving = false;
-  bool _obscureToken = true;
-  bool _useSandbox = false;
   String? _erroSenha;
 
   @override
@@ -35,7 +32,6 @@ class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
   @override
   void dispose() {
     _senhaCtrl.dispose();
-    _tokenCtrl.dispose();
     _redirectCtrl.dispose();
     super.dispose();
   }
@@ -60,9 +56,7 @@ class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
     }
 
     final stored = await PagBankConfigStorage.instance.load();
-    _tokenCtrl.text = stored.token;
     _redirectCtrl.text = stored.redirectUrl;
-    _useSandbox = stored.useSandbox;
 
     setState(() {
       _unlocked = true;
@@ -74,8 +68,6 @@ class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
     setState(() => _saving = true);
     await PagBankConfigStorage.instance.save(
       PagBankStoredConfig(
-        token: _tokenCtrl.text,
-        useSandbox: _useSandbox,
         redirectUrl: _redirectCtrl.text,
       ),
     );
@@ -183,25 +175,11 @@ class _AdminPagBankConfigScreenState extends State<AdminPagBankConfigScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SectionTitle(icon: '🔑', title: 'Token de autenticação'),
-            TextField(
-              controller: _tokenCtrl,
-              obscureText: _obscureToken,
-              decoration: _fieldDecoration('Bearer token PagBank').copyWith(
-                suffixIcon: IconButton(
-                  icon: Icon(_obscureToken ? Icons.visibility : Icons.visibility_off, color: AppColors.gray),
-                  onPressed: () => setState(() => _obscureToken = !_obscureToken),
-                ),
-              ),
-              style: const TextStyle(color: AppColors.white, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Ambiente Sandbox (testes)', style: TextStyle(color: AppColors.white, fontSize: 13, decoration: TextDecoration.none)),
-              subtitle: const Text('Desative em produção com token real.', style: TextStyle(color: AppColors.gray, fontSize: 11, decoration: TextDecoration.none)),
-              value: _useSandbox,
-              activeColor: AppColors.pagBank,
-              onChanged: (v) => setState(() => _useSandbox = v),
+            const Text(
+              'Por segurança, o token do PagBank não fica mais no app. Ele é configurado '
+              'nos secrets do Supabase (PAGBANK_TOKEN e PAGBANK_SANDBOX) e o checkout é '
+              'criado pelo servidor.',
+              style: TextStyle(color: AppColors.gray, fontSize: 12, height: 1.4, decoration: TextDecoration.none),
             ),
             const SizedBox(height: 8),
             FieldLabel(

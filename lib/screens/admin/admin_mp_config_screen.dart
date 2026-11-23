@@ -27,7 +27,6 @@ class _AdminMpConfigScreenState extends State<AdminMpConfigScreen> {
   bool _unlocked = false;
   bool _loading = true;
   bool _saving = false;
-  bool _obscureToken = true;
   String? _erroSenha;
 
   @override
@@ -199,20 +198,6 @@ class _AdminMpConfigScreenState extends State<AdminMpConfigScreen> {
             label: 'Chave pública (Public Key)',
             child: TextField(controller: _publicKeyCtrl, decoration: _fieldDecoration('APP_USR-... ou TEST-...'), autocorrect: false),
           ),
-          FieldLabel(
-            label: 'Access Token (produção ou teste)',
-            child: TextField(
-              controller: _accessTokenCtrl,
-              obscureText: _obscureToken,
-              decoration: _fieldDecoration('APP_USR-...').copyWith(
-                suffixIcon: IconButton(
-                  icon: Icon(_obscureToken ? Icons.visibility_off : Icons.visibility, color: AppColors.gray, size: 20),
-                  onPressed: () => setState(() => _obscureToken = !_obscureToken),
-                ),
-              ),
-              autocorrect: false,
-            ),
-          ),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -221,8 +206,8 @@ class _AdminMpConfigScreenState extends State<AdminMpConfigScreen> {
               border: Border.all(color: AppColors.yellow.withValues(alpha: 0.25)),
             ),
             child: const Text(
-              'O token fica armazenado neste dispositivo. Cada academia configura o seu. '
-              'Em APK/Android funciona direto; na web pode exigir proxy se o navegador bloquear a API.',
+              'Por segurança, o Access Token não fica mais no app. Ele é configurado '
+              'nos secrets do Supabase (MP_ACCESS_TOKEN) e o checkout é criado pelo servidor.',
               style: TextStyle(fontSize: 11, color: AppColors.white, height: 1.4, decoration: TextDecoration.none),
             ),
           ),

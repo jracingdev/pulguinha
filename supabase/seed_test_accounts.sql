@@ -4,12 +4,11 @@
 -- do revisor da Google Play e do administrador estejam ativas e funcionando.
 -- ==============================================================================
 
--- 1. Garante a conta de Administrador / Instrutor
-INSERT INTO admins (email, senha, nome)
-VALUES ('admin@pulguinha.com', 'admin123', 'Pulguinha Admin')
-ON CONFLICT (email) DO UPDATE 
-SET senha = 'admin123',
-    nome = 'Pulguinha Admin';
+-- 1. Conta de administrador: NÃO é criada/redefinida aqui.
+--    Antes este script gravava a senha 'admin123' no admin real da academia.
+--    Para o revisor da Google Play, crie um admin de demonstração com e-mail e
+--    senha próprios pelo painel do Supabase (Auth) e troque a senha depois da
+--    revisão. Nunca reutilize a senha do professor.
 
 -- 2. Garante a conta de Aluno de Teste
 INSERT INTO alunos (
