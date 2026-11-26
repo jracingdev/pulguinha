@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (appState.lastLoginErro != null) {
           erro = appState.lastLoginErro!;
         } else if (rl == UserType.admin && appState.useMock && !SupabaseConfig.isConfigured) {
-          erro = 'Modo local: use admin@pulguinha.com e senha admin123, ou reinstale o APK oficial.';
+          erro = 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
         } else if (rl == UserType.aluno && appState.useMock && !appState.emailJaCadastrado(em)) {
           erro = SupabaseConfig.isConfigured
               ? 'Conta não encontrada. Verifique e-mail/senha ou aguarde a conexão com o banco.'
@@ -355,7 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text(
-                'Modo offline: admin@pulguinha.com · senha admin123. Com internet, os dados sincronizam automaticamente.',
+                'Sem conexão com o servidor. Conecte-se à internet para entrar no painel.',
                 style: TextStyle(fontSize: 11, color: AppColors.yellow, fontWeight: FontWeight.w600, height: 1.4),
               ),
             ),
@@ -365,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: TextField(
             controller: emailCtrl,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(hintText: role == UserType.admin ? 'admin@pulguinha.com' : 'seu@email.com'),
+            decoration: InputDecoration(hintText: 'seu@email.com'),
           ),
         ),
         FieldLabel(

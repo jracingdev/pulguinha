@@ -26,12 +26,16 @@ class SupabaseService {
 
   /// Colunas leves — sem `foto` (base64 pode passar de 200 KB por aluno e derrubar o web).
   static const _alunoColumnsSemFoto =
-      'id,nome,email,senha,telefone,plano,vencimento,status,avatar,data_nascimento,anamnese,'
+      'id,nome,email,telefone,plano,vencimento,status,avatar,data_nascimento,anamnese,'
       'streak_presenca,pulguinha_points,data_cadastro,aluno_desde,horario_id,cep,logradouro,'
       'numero,complemento,bairro,cidade,uf,codigo_indicacao,credito_indicacao,wellhub_id,totalpass_cpf,beneficio_origem,fcm_token';
 
+  /// Nunca inclui `senha`: a coluna não é legível pelo app
+  /// (ver supabase/migration_protege_senhas_2_bloquear.sql).
+  static const _alunoColumnsComFoto = '$_alunoColumnsSemFoto,foto';
+
   Future<List<Aluno>> fetchAlunos({bool includeFoto = false}) async {
-    final columns = includeFoto ? '*' : _alunoColumnsSemFoto;
+    final columns = includeFoto ? _alunoColumnsComFoto : _alunoColumnsSemFoto;
     final rows = await _db.from('alunos').select(columns).order('nome');
     return _mapRows(rows as List, Aluno.fromJson, 'alunos');
   }
@@ -210,13 +214,13 @@ class SupabaseService {
   }) async {
     if (senha.isEmpty) return false;
     try {
-      final row = await _db
-          .from(tabela)
-          .select('id')
-          .eq('email', email.trim().toLowerCase())
-          .eq('senha', senha)
-          .maybeSingle();
-      return row != null;
+      // Conferida no servidor: a coluna `senha` não é legível pela chave anon.
+      final ok = await _db.rpc('conferir_senha_legada', params: {
+        'p_tabela': tabela,
+        'p_email': email.trim().toLowerCase(),
+        'p_senha': senha,
+      });
+      return ok == true;
     } catch (e) {
       debugPrint('Conferência de senha legada em $tabela: $e');
       return false;
@@ -245,18 +249,13 @@ class SupabaseService {
   }
 
   Future<Usuario?> _autenticarAdminLegado(String email, String senha) async {
-    if (senha.isEmpty) return null;
-    final rows = await _db.from('admins').select().eq('email', email).eq('senha', senha).maybeSingle();
-    if (rows == null) return null;
-    final map = Map<String, dynamic>.from(rows as Map);
-    return Usuario(tipo: UserType.admin, nome: map['nome'] as String, email: map['email'] as String);
+    if (!await senhaLegadaConfere(tabela: 'admins', email: email, senha: senha)) return null;
+    return buscarAdminPorEmail(email);
   }
 
   Future<Aluno?> _autenticarAlunoLegado(String email, String senha) async {
-    if (senha.isEmpty) return null;
-    final rows = await _db.from('alunos').select().eq('email', email).eq('senha', senha).maybeSingle();
-    if (rows == null) return null;
-    return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
+    if (!await senhaLegadaConfere(tabela: 'alunos', email: email, senha: senha)) return null;
+    return buscarAlunoPorEmail(email);
   }
 
   String _mensagemAuth(AuthException e) {
@@ -278,7 +277,7 @@ class SupabaseService {
 
   Future<Aluno> insertAluno(Aluno aluno) async {
     final payload = aluno.toInsertJson();
-    final rows = await _db.from('alunos').insert(payload).select().single();
+    final rows = await _db.from('alunos').insert(payload).select(_alunoColumnsComFoto).single();
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }
 
@@ -289,7 +288,7 @@ class SupabaseService {
   }
 
   Future<Aluno> updateAluno(Aluno aluno) async {
-    final rows = await _db.from('alunos').update(aluno.toJson()).eq('id', aluno.id).select().single();
+    final rows = await _db.from('alunos').update(aluno.toJson()).eq('id', aluno.id).select(_alunoColumnsComFoto).single();
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }
 
@@ -397,7 +396,7 @@ class SupabaseService {
   }
 
   Future<Aluno?> buscarAlunoPorEmail(String email) async {
-    final rows = await _db.from('alunos').select().eq('email', email.trim().toLowerCase()).maybeSingle();
+    final rows = await _db.from('alunos').select(_alunoColumnsComFoto).eq('email', email.trim().toLowerCase()).maybeSingle();
     if (rows == null) return null;
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }
@@ -405,7 +404,7 @@ class SupabaseService {
   Future<Aluno?> buscarAlunoPorWellhubId(String wellhubId) async {
     final id = wellhubId.replaceAll(RegExp(r'\D'), '');
     if (id.isEmpty) return null;
-    final rows = await _db.from('alunos').select().eq('wellhub_id', id).maybeSingle();
+    final rows = await _db.from('alunos').select(_alunoColumnsComFoto).eq('wellhub_id', id).maybeSingle();
     if (rows == null) return null;
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }
@@ -413,7 +412,7 @@ class SupabaseService {
   Future<Aluno?> buscarAlunoPorTotalpassCpf(String cpf) async {
     final digits = cpf.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) return null;
-    final rows = await _db.from('alunos').select().eq('totalpass_cpf', digits).maybeSingle();
+    final rows = await _db.from('alunos').select(_alunoColumnsComFoto).eq('totalpass_cpf', digits).maybeSingle();
     if (rows == null) return null;
     return Aluno.fromJson(Map<String, dynamic>.from(rows as Map));
   }

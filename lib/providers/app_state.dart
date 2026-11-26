@@ -645,7 +645,9 @@ class AppState extends ChangeNotifier {
       if (!useMock) {
         return SupabaseService.instance.autenticarAdmin(em, sn);
       }
-      if (em == MockData.adminEmail && sn == MockData.adminSenha) {
+      // Admin do modo demo só existe em build de desenvolvimento: no app
+      // publicado, sem servidor não há acesso ao painel.
+      if (!kReleaseMode && em == MockData.adminEmail && sn == MockData.adminSenha) {
         return Usuario(tipo: UserType.admin, nome: MockData.adminNome, email: MockData.adminEmail);
       }
       return null;
@@ -1207,7 +1209,9 @@ class AppState extends ChangeNotifier {
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
-          table: 'alunos',
+          // `alunos_sinal` só avisa que a tabela mudou (sem dados pessoais);
+          // a lista é recarregada pela API, que nunca devolve `senha`.
+          table: 'alunos_sinal',
           callback: (_) => _syncAlunosFromServer(),
         )
         .onPostgresChanges(

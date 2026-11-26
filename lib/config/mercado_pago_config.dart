@@ -4,7 +4,6 @@ import 'package:pulguinha/services/mp_config_storage.dart';
 /// Configuração Mercado Pago por academia — salva localmente pelo admin.
 class MercadoPagoConfig {
   static const _envPublicKey = String.fromEnvironment('MP_PUBLIC_KEY');
-  static const _envAccessToken = String.fromEnvironment('MP_ACCESS_TOKEN');
 
   static const _envLinkPlanoMensal = String.fromEnvironment('MP_LINK_PLANO_MENSAL');
   static const _envLinkPlanoTrimestral = String.fromEnvironment('MP_LINK_PLANO_TRIMESTRAL');
@@ -25,6 +24,12 @@ class MercadoPagoConfig {
 
   static Future<void> initialize() async {
     _stored = await MpConfigStorage.instance.load();
+    // Versões antigas guardavam o Access Token no aparelho. Ele agora fica só
+    // nos secrets do Supabase (Edge Function); apaga qualquer cópia local.
+    if (_stored.accessToken.trim().isNotEmpty) {
+      _stored = _stored.copyWith(accessToken: '');
+      await MpConfigStorage.instance.save(_stored);
+    }
   }
 
   static Future<void> reload() async {
@@ -35,7 +40,9 @@ class MercadoPagoConfig {
       stored.trim().isNotEmpty ? stored.trim() : env.trim();
 
   static String get publicKey => _effective(_stored.publicKey, _envPublicKey);
-  static String get accessToken => _effective(_stored.accessToken, _envAccessToken);
+  /// O app nunca usa o Access Token: o checkout é criado pela Edge Function
+  /// `create-mp-preference`, que lê o token dos secrets do Supabase.
+  static String get accessToken => '';
 
   static String get linkPlanoMensal => _effective(_stored.linkPlanoMensal, _envLinkPlanoMensal);
   static String get linkPlanoTrimestral => _effective(_stored.linkPlanoTrimestral, _envLinkPlanoTrimestral);

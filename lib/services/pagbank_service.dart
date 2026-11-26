@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:pulguinha/config/pagbank_config.dart';
 import 'package:pulguinha/models/models.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PagBankCheckoutResult {
@@ -45,50 +43,25 @@ class PagBankService {
     Usuario? aluno,
     String? gradeSelecionada,
   }) async {
-    final token = PagBankConfig.token;
-    if (token.isEmpty) return null;
-
+    // O token do PagBank fica só nos secrets do Supabase; o servidor confere o
+    // preço pelo product_id e cria o checkout.
     try {
       final referenceId = _referenceId(produto, aluno);
-      final itemName = gradeSelecionada != null ? '${produto.nome} ($gradeSelecionada)' : produto.nome;
-      final body = <String, dynamic>{
-        'reference_id': referenceId,
-        'customer_modifiable': true,
-        'items': [
-          {
-            'reference_id': 'prod_${produto.id}',
-            'name': itemName.length > 100 ? itemName.substring(0, 100) : itemName,
-            'description': produto.desc.length > 255 ? produto.desc.substring(0, 255) : produto.desc,
-            'quantity': 1,
-            'unit_amount': (produto.preco * 100).round(),
+      final response = await Supabase.instance.client.functions.invoke(
+        PagBankConfig.edgeFunctionName,
+        body: {
+          'product_id': produto.id,
+          'grade': gradeSelecionada,
+          'reference_id': referenceId,
+          'redirect_url': PagBankConfig.redirectUrl,
+          if (aluno != null && aluno.email.isNotEmpty && aluno.nome.isNotEmpty) ...{
+            'customer_name': aluno.nome,
+            'customer_email': aluno.email,
           },
-        ],
-        'redirect_url': PagBankConfig.redirectUrl,
-      };
-
-      if (aluno != null && aluno.email.isNotEmpty && aluno.nome.isNotEmpty) {
-        body['customer'] = {
-          'name': aluno.nome,
-          'email': aluno.email,
-        };
-        body['customer_modifiable'] = false;
-      }
-
-      final response = await http.post(
-        Uri.parse('${PagBankConfig.apiBaseUrl}/checkouts'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
         },
-        body: jsonEncode(body),
       );
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        debugPrint('PagBank API erro ${response.statusCode}: ${response.body}');
-        return null;
-      }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = Map<String, dynamic>.from(response.data as Map);
       final payUrl = _extractPayUrl(data);
       if (payUrl == null || payUrl.isEmpty) return null;
 
